@@ -466,18 +466,16 @@ namespace YARG.Menu.Career
                 return 0;
             }
 
-            var profiles = PlayerContainer.Players.Where(player => !player.SittingOut && !player.Profile.IsBot)
-                                                 .Select(player => player.Profile.Id)
-                                                 .ToList();
-            if (profiles.Count == 0)
+            // The active band's save, or (no band) the save of exactly the current players.
+            var credit = CareerBands.CurrentCredit(ScoreContainer.Careers);
+            if (credit.Block == CareerCreditBlock.NoPlayers)
             {
                 YargLogger.LogFormatError("Career: No active players for career '{0}'.",
                     career?.Name);
                 return 0;
             }
 
-            var save = ScoreContainer.Careers.FindActiveSaveForProfiles(career.Id, profiles);
-            return save?.Id ?? 0;
+            return CareerBands.FindSaveId(ScoreContainer.Careers, career, credit);
         }
 
         public static CareerEvaluation Evaluate(CareerPreset career, int careerSaveId)

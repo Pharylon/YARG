@@ -6,7 +6,7 @@ using YARG.Career;
 
 namespace YARG.Scores
 {
-    public class CareerDatabase
+    public partial class CareerDatabase
     {
         private readonly SQLiteConnection _db;
 
@@ -21,6 +21,8 @@ namespace YARG.Scores
             _db.CreateTable<CareerSaveProfiles>();
             _db.CreateTable<CareerSongCompletions>();
             _db.CreateTable<CareerTierProgress>();
+            _db.CreateTable<CareerBand>();
+            _db.CreateTable<CareerBandMember>();
         }
 
         #region Reads
@@ -73,6 +75,7 @@ namespace YARG.Scores
         /// Find the active save for this career whose member set exactly matches the given profiles.
         /// A save belongs to a *set* of players (one CareerSaveProfiles row per member); solo play is
         /// a one-member set, band play an N-member set. Returns null if no such save exists.
+        /// Band-owned saves are never matched here (see <c>FindActiveSaveForBand</c>).
         /// </summary>
         public CareerSaves FindActiveSaveForProfiles(Guid careerId, IEnumerable<Guid> profileIds)
         {
@@ -85,7 +88,7 @@ namespace YARG.Scores
             var candidates = _db.Query<CareerSaves>(
                 @"SELECT DISTINCT cs.* FROM CareerSaves cs
                   INNER JOIN CareerSaveProfiles csp ON csp.CareerSaveId = cs.Id
-                  WHERE cs.CareerId = ? AND cs.IsDeleted = 0",
+                  WHERE cs.CareerId = ? AND cs.IsDeleted = 0 AND cs.BandId IS NULL",
                 careerId);
 
             foreach (var candidate in candidates)

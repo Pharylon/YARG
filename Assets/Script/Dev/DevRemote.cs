@@ -37,6 +37,8 @@ namespace YARG.Dev
     ///   simulate ...            Commit a made-up career song result (see DevRemote.Career.cs).
     ///   career [career=...]     Report a career's progress for the current players.
     ///   scorescreen ...         Open the score screen with a made-up result.
+    ///   band / profile / player / players / dialog / type / press
+    ///                           Bands, test players and driving dialogs (see DevRemote.Bands.cs).
     /// </summary>
     public partial class DevRemote : MonoBehaviour
     {
@@ -48,6 +50,11 @@ namespace YARG.Dev
         private string _resultPath;
         private bool _busy;
         private float _nextPoll;
+
+        // Remote commands are not input, so without this the idle dimmer darkens every screenshot after
+        // three minutes.
+        private static readonly MethodInfo _resetIdleDimmer = typeof(YARG.Menu.Persistent.IdleDimmer).GetMethod(
+            "ResetTimer", BindingFlags.Instance | BindingFlags.NonPublic);
 
         private static readonly MethodInfo _invokeNavigation = typeof(Navigator).GetMethod(
             "InvokeNavigationEvent", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -139,6 +146,12 @@ namespace YARG.Dev
                 string result = null;
                 IEnumerator deferred = null;
 
+                var dimmer = FindAnyObjectByType<YARG.Menu.Persistent.IdleDimmer>();
+                if (dimmer != null)
+                {
+                    _resetIdleDimmer?.Invoke(dimmer, null);
+                }
+
                 try
                 {
                     switch (command)
@@ -170,6 +183,27 @@ namespace YARG.Dev
                             break;
                         case "scorescreen":
                             result = ShowScoreScreen(argument);
+                            break;
+                        case "band":
+                            result = BandCommand(argument);
+                            break;
+                        case "profile":
+                            result = ProfileCommand(argument);
+                            break;
+                        case "player":
+                            result = PlayerCommand(argument);
+                            break;
+                        case "players":
+                            result = $"ok {DescribePlayers()}";
+                            break;
+                        case "dialog":
+                            result = DescribeDialog();
+                            break;
+                        case "type":
+                            result = TypeText(argument);
+                            break;
+                        case "press":
+                            result = PressButton(argument);
                             break;
                         case "wait":
                             deferred = Wait(argument);
@@ -313,9 +347,11 @@ namespace YARG.Dev
         private static string DescribeState()
         {
             var selected = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            var career = GlobalVariables.State.CurrentCareer;
             return $"ok scene={SceneManager.GetActiveScene().name} " +
                 $"screen={Screen.width}x{Screen.height} " +
-                $"selected={(selected != null ? selected.name : "none")}";
+                $"selected={(selected != null ? selected.name : "none")}" +
+                (career is null ? "" : $" careerSong={career.CareerSongId} band={career.BandId?.ToString() ?? "none"}");
         }
 
         private static IEnumerator Wait(string argument)

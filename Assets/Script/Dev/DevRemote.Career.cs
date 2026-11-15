@@ -183,7 +183,7 @@ namespace YARG.Dev
             var saveId = CareerSimulator.FindSaveId(career);
             var evaluation = CareerMenu.Evaluate(career, saveId);
 
-            var text = new StringBuilder($"career='{career.Name}' save={saveId}");
+            var text = new StringBuilder($"career='{career.Name}' {DescribeOwner()} save={saveId}");
             if (evaluation.UsesFans)
             {
                 text.Append($" fans={evaluation.TotalFans}");
@@ -448,6 +448,35 @@ namespace YARG.Dev
             out string error)
         {
             options = new Dictionary<string, string>();
+
+            foreach (var word in SplitWords(argument))
+            {
+                // "selected" is the default when no tier is given; accepted for readability.
+                if (word.Equals("selected", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var equals = word.IndexOf('=');
+                var key = equals > 0 ? word.Substring(0, equals).ToLowerInvariant() : string.Empty;
+                if (!TargetOptions.Contains(key) && !(allowResult && ResultOptions.Contains(key)))
+                {
+                    error = $"unknown option '{word}'";
+                    return false;
+                }
+
+                options[key] = word.Substring(equals + 1);
+            }
+
+            error = null;
+            return true;
+        }
+
+        /// <summary>
+        /// Splits on whitespace, keeping double-quoted parts together (the quotes are dropped).
+        /// </summary>
+        private static List<string> SplitWords(string argument)
+        {
             var words = new List<string>();
             var current = new StringBuilder();
             var quoted = false;
@@ -477,27 +506,7 @@ namespace YARG.Dev
                 words.Add(current.ToString());
             }
 
-            foreach (var word in words)
-            {
-                // "selected" is the default when no tier is given; accepted for readability.
-                if (word.Equals("selected", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var equals = word.IndexOf('=');
-                var key = equals > 0 ? word.Substring(0, equals).ToLowerInvariant() : string.Empty;
-                if (!TargetOptions.Contains(key) && !(allowResult && ResultOptions.Contains(key)))
-                {
-                    error = $"unknown option '{word}'";
-                    return false;
-                }
-
-                options[key] = word.Substring(equals + 1);
-            }
-
-            error = null;
-            return true;
+            return words;
         }
     }
 }

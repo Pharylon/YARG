@@ -197,10 +197,14 @@ namespace YARG.Scores
             }
 
             var participants = playerEntries.Select(entry => entry.PlayerId).Distinct().ToList();
-            if (participants.Count == 0 ||
-                participants.Any(id => PlayerContainer.GetProfileById(id)?.IsBot == true))
+            var hasBots = participants.Any(id => PlayerContainer.GetProfileById(id)?.IsBot == true);
+
+            // The active band's save if the song was played as a band (a member must have played),
+            // otherwise the save of exactly these players.
+            var credit = CareerBands.Credit(Careers, context.BandId, participants, hasBots);
+            if (!credit.Counts)
             {
-                YargLogger.LogInfo("Career: skipping completion, no valid human players.");
+                YargLogger.LogFormatInfo("Career: skipping completion, it does not count ({0}).", credit.Block);
                 return;
             }
 
@@ -213,8 +217,7 @@ namespace YARG.Scores
                 return;
             }
 
-            // The save belongs to the set of players who actually played this song.
-            var saveId = Careers.GetOrCreateSave(career.Id, career.Version, participants);
+            var saveId = CareerBands.GetOrCreateSaveId(Careers, career, credit);
 
             var commit = new CareerSongCompletionCommit
             {

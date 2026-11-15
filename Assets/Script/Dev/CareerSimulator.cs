@@ -105,21 +105,17 @@ namespace YARG.Dev
                 VenueHint = tier.VenueHint,
                 CareerSongId = tier.Songs[songIndex].Id,
                 SongIndex = songIndex,
+                BandId = CareerBands.ActiveBandId,
             };
         }
 
         /// <summary>
-        /// The active save of the current players for this career, or 0 if they have none yet.
+        /// The active save for this career of the active band, or (no band) of the current players; 0 if
+        /// there is none yet. The same save the career menu shows.
         /// </summary>
         public static int FindSaveId(CareerPreset career)
         {
-            var profiles = CareerPlayers().Select(player => player.Profile.Id).ToList();
-            if (ScoreContainer.Careers is null || profiles.Count == 0)
-            {
-                return 0;
-            }
-
-            return ScoreContainer.Careers.FindActiveSaveForProfiles(career.Id, profiles)?.Id ?? 0;
+            return CareerBands.FindSaveId(ScoreContainer.Careers, career, CareerBands.CurrentCredit(ScoreContainer.Careers));
         }
 
         /// <summary>
@@ -156,17 +152,24 @@ namespace YARG.Dev
                 return false;
             }
 
+            // The score path decides credit itself (and is checked below); a grant has to decide here.
+            var credit = CareerBands.CurrentCredit(careers);
+            if (result.Path == SimulationPath.Grant && !credit.Counts)
+            {
+                error = $"the result would not count ({credit.Block})";
+                return false;
+            }
+
             return result.Path == SimulationPath.Grant
-                ? Grant(careers, career, tierIndex, songIndex, result, players, out error)
+                ? Grant(careers, career, tierIndex, songIndex, result, credit, out error)
                 : RecordScore(careers, career, tierIndex, songIndex, result, players, out error);
         }
 
         private static bool Grant(CareerDatabase careers, CareerPreset career, int tierIndex, int songIndex,
-            SimulatedResult result, List<YargPlayer> players, out string error)
+            SimulatedResult result, CareerCredit credit, out string error)
         {
             var song = career.Tiers[tierIndex].Songs[songIndex];
-            var saveId = careers.GetOrCreateSave(career.Id, career.Version,
-                players.Select(player => player.Profile.Id).ToList());
+            var saveId = CareerBands.GetOrCreateSaveId(careers, career, credit);
 
             CareerSongOutcome.Commit(career, careers, new CareerSongCompletionCommit
             {

@@ -20,6 +20,9 @@
 #   shot <path>, window <w> <h>, state,
 #   simulate / career / scorescreen (career testing, see Assets/Script/Dev/DevRemote.Career.cs), e.g.
 #   simulate career="YARG Setlist Rock" tier=0 song=2 stars=4
+#   band list|create|select|rename|members|delete|adopt, profile create, player add|remove|sitout, players,
+#   dialog, type <text>, press <button label> (bands and dialogs, see Assets/Script/Dev/DevRemote.Bands.cs), e.g.
+#   band create name="The Testers" hometown=Austin genre=Rock members="New Profile"
 set -u
 REPO="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 BUILD="$REPO/Builds/DevLinux"

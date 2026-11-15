@@ -60,6 +60,9 @@ namespace YARG.Menu.Career
                 return viewList;
             }
 
+            // Who the careers are played as: the active band, or the current players.
+            viewList.Add(new BandViewType(Refresh));
+
             foreach (var career in CustomContentManager.Careers.DefaultPresets)
             {
                 viewList.Add(new CareerViewType(career));
@@ -78,6 +81,15 @@ namespace YARG.Menu.Career
             base.OnSelectedIndexChanged();
             _careerNameText.text = CurrentSelection?.GetPrimaryText(true);
             _careerDescriptionText.text = CurrentSelection?.GetSecondaryText(true);
+        }
+
+        /// <summary>
+        /// Rebuilds the list and the header, after the active band or the players changed.
+        /// </summary>
+        public void Refresh()
+        {
+            RequestViewListUpdate();
+            OnSelectedIndexChanged();
         }
 
         private void Back()

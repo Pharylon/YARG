@@ -45,7 +45,7 @@ Design principles to keep:
 Facts later steps rely on. Re-check them after merging `upstream/dev`.
 
 - **How a song start carries career context.** `SongViewType.ViewClick()` builds a `CareerContext` (career, tier and song ids and indexes, `VenueHint`) into `GlobalVariables.State.CurrentCareer`. `PersistentState` is a struct reset to `Default` by `ScoreScreenMenu.OnDisable` (unless `Setlist.IsPlaying`), `GameManager.ForceQuitSong` and the History replay paths. `BackgroundManager` reads `VenueHint`; DifficultySelect forces bots to sit out when a career context is set. Note the score screen does **not** reset state while a setlist show is playing, so a playlist gig must manage `CurrentCareer` per song itself.
-- **How saves are resolved.** No save id travels with a song. `ScoreContainer.CommitCareerCompletion` takes the distinct `PlayerId`s of the recorded `PlayerScoreRecord`s and calls `CareerDatabase.GetOrCreateSave(careerId, version, profileIds)`, which finds the active save whose `CareerSaveProfiles` member set *equals* that set, or creates one. The menu (`CareerMenu.FindSaveId`) resolves the same way from `PlayerContainer.Players` that are not sitting out and not bots. So the save is per exact player set: if one more person joins, it is a different (new) save. Reset (hold Yellow) soft-deletes the save.
+- **How saves are resolved.** No save id travels with a song. `ScoreContainer.CommitCareerCompletion` takes the distinct `PlayerId`s of the recorded `PlayerScoreRecord`s and calls `CareerDatabase.GetOrCreateSave(careerId, version, profileIds)`, which finds the active save whose `CareerSaveProfiles` member set *equals* that set, or creates one. The menu (`CareerMenu.FindSaveId`) resolves the same way from `PlayerContainer.Players` that are not sitting out and not bots. So the save is per exact player set: if one more person joins, it is a different (new) save. Reset (hold Yellow) soft-deletes the save. *Since step 3 (bands): with an active band (`CareerBands.ActiveBandId`, carried as `CareerContext.BandId`) the save is the band's one active save for the career instead; all resolution goes through `CareerBands` (see section 1).*
 - **How the view list is built.** `CareerMenu.CreateViewList()`: for each tier, a `TierViewType` header; unlocked tiers list their songs (`SongViewType`) only when expanded (uncommitted collapse work: one expanded tier at a time, kept in a static `_expandedTier`). The first locked tier is shown with its lock hint and the list stops there; bonus tiers that are locked are skipped. Progress comes from a cached `CareerEvaluation`; `ApplyProgress()` + `RequestViewListUpdate()` redraw it. New public `CareerMenu.RefreshProgress()` reloads from the database and presents unlocks (skipped while a dialog is open, so it is deferred, not lost).
 - **How the score screen gets its data.** `GameManager.EndSong()` fills `GlobalVariables.State.ScoreScreenStats` (`ScoreScreenStats`: per-player `PlayerScoreCard { Player, Stats (BaseStats), IsHighScore, IsReplay }`, `BandScore`, `BandStars`, `MeanAverageOffset`, `ReplayInfo`), records the score, then loads `SceneIndex.Score`. `ScoreScreenMenu.OnEnable` only reads that struct and `State.CurrentSong`; it does not read the database or the career context. History replays build the same struct (`ReplayViewType`). So "+fans" / contract lines need either new fields on `ScoreScreenStats` or a read of the committed completion (e.g. remember the commit's id in state). *Step 2 chose a static: `CareerSongOutcome.Last`, set by every career commit (cleared at the start of `CommitCareerCompletion`) and matched against `State.CurrentCareer` by `CareerScoreScreen.FanLine()`; contract lines can ride on the same outcome.* After the score screen the menu scene reopens the career menu (`MenuManager._lastOpenMenu`), which re-evaluates progress and shows unlock dialogs.
 - **What per-player stats are stored.** `PlayerScoreRecord` (table `PlayerScores`, linked by `GameRecordId`): `PlayerId`, `Instrument`, `Difficulty`, `EnginePresetId`, `Score`, `Stars` (`StarAmount`), `NotesHit`, `NotesMissed`, `IsFc`, `IsReplay`, `Percent` (nullable, older rows lack it; use `GetPercent()`). **Not stored:** max combo/best streak, star power phrases/activations/time, overstrums, solo bonuses, modifiers, song speed per player. Those exist in memory on `BaseStats` (and in the replay file's `ReplayStats`) only. `GameRecord` (table `GameRecords`): date, song checksum/name/artist/charter, replay file name/checksum, `BandScore`, `BandStars` (`StarAmount`), `SongSpeed`, `PlayedWithReplay`, `HasBots`. Not stored: no-fail setting, modifiers, player count other than by counting `PlayerScores` rows.
@@ -63,6 +63,10 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
   - `career` / `simulate` also print the save's fans, per-tier and per-song fans for fan careers, `G` for gold, and (simulate) the last commit's outcome (`fans 175 -> 300 (+125), unlocked ...`).
   - `start` (isolated data) installs the dev careers from `scripts/dev/careers/` (e.g. `career="Fan Test"`).
   - Unlock dialogs do not react to `nav Green`; close them with `click 0.5 0.746` at 1600x900.
+  - Bands and dialogs (`Assets/Script/Dev/DevRemote.Bands.cs`): `band list|create name=.. [hometown=..] [genre=..] [members=a,b] [select=false]|select <band|none>|rename <band> to=..|members <band> members=..|delete <band>|adopt <band> career=..`; `profile create name=.. [player=true]`, `player add|remove <profile>`, `player sitout <profile> <bool>`, `players`; `dialog` (title, text field, buttons of the open dialog), `type <text>` (sets the open dialog's text field), `press <label>` (clicks the dialog or list button whose label matches). `career`/`simulate` print `band=` and use the active band's save; `state` prints the current career context's song and band. Profiles made with `profile create` are saved with the profiles and survive restarts of the test data.
+  - The career list's first row is now the band row, so the first career is one `nav Down` away. The list wraps around, so count `nav Up` carefully.
+  - The menu's idle dimmer (3 minutes without real input) used to darken screenshots; the remote now resets it on every command.
+  - NUnit: `CareerBandsTests` (credit rule, band fans, and band/profile-set save resolution against an in-memory SQLite database using the game's own sqlite-net code and `Assets/Plugins/Sqlite3/Linux/x86_64/libsqlite3.so`, which the test project copies to its output).
   - Shared code: `Assets/Script/Dev/CareerSimulator.cs` (`SimulatedResult`, `CareerSimulator.TryCommit`, `ScoreScreenStatsFor`). The career menu's debug Grant Stars uses the same code with `path=grant` (completion row with `Source = DebugGrant`, no score records). Add new result fields (player count, failed song, ...) to `SimulatedResult` and its parser.
 
 ---
@@ -72,21 +76,29 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
 Today a save belongs to "whichever profiles happened to play". A band makes that explicit and gives us something to hang a name, fans and history on.
 
 ### Data
-- [ ] `Bands` table: `Id` (Guid), `Name`, `Hometown`, `Genre` (free text or `Genrelizer.BaseGenre`), `CreatedAt`, `IsDeleted`.
-- [ ] `BandMembers` table: `BandId`, `ProfileId`, `JoinedAt`.
-- [ ] `CareerSaves.BandId` (nullable Guid). Null = legacy profile-set save, which keeps working.
-- [ ] `CareerDatabase`: create/rename/soft-delete band, add/remove member, `GetBandsForProfile`, `GetOrCreateSave(careerId, version, bandId)`.
-- [ ] `CareerContext`: add `BandId`. `CommitCareerCompletion` uses the band's save when set, otherwise the current profile-set lookup.
+- [x] `Bands` table (`CareerBand`, `Assets/Script/Scores/Career/CareerBand.cs`): `Id` (Guid), `Name`, `Hometown`, `Genre` (free text), `CreatedAt`, `IsDeleted`.
+- [x] `BandMembers` table (`CareerBandMember`): `Id`, `BandId`, `ProfileId`, `JoinedAt`. Removing a member deletes the row.
+- [x] `CareerSaves.BandId` (nullable Guid, indexed). Null = legacy profile-set save, which keeps working: sqlite-net adds the column on start, old rows read null (verified on the step-2 test database: saves 1 and 2 resolved and evaluated exactly as before). A band save has **no** `CareerSaveProfiles` rows; `FindActiveSaveForProfiles` also filters `BandId IS NULL`, so a band save (or an adopted one) is never picked up as a player set's save.
+- [x] `CareerDatabase` (new partial `CareerDatabase.Bands.cs`): `CreateBand`, `RenameBand`, `SoftDeleteBand`, `GetBand`, `GetBands`, `GetBandsForProfile`, `GetBandMembers`, `AddBandMember` (idempotent), `RemoveBandMember`, `FindActiveSaveForBand`, `GetOrCreateSave(careerId, version, bandId)`, `GetActiveSavesForBand`, `AdoptSave`. The only edits to `CareerDatabase.cs` itself: `partial`, two `CreateTable` calls, the `BandId IS NULL` filter.
+- [x] `CareerContext.BandId` (Guid?), set from the active band by `SongViewType.ViewClick` (and by the simulator's `ContextFor`). `ScoreContainer.CommitCareerCompletion` decides credit with `CareerBands.Credit(...)` and resolves the save with `CareerBands.GetOrCreateSaveId(...)`: the band's save when `BandId` is set, otherwise the profile-set lookup as before.
+- **Save resolution** lives in `Assets/Script/Career/CareerBands.cs` (`Credit`, `CurrentCredit`, `FindSaveId`, `GetOrCreateSaveId`, `BandFans`, `ActiveBandId`); the rule itself is pure in `CareerCredit.cs`. `CareerMenu.FindSaveId`, the score path and `CareerSimulator` all go through it, so menu, score path and dev commands always agree.
+- **Active band:** `CareerBands.ActiveBandId`, a static for the session only (not persisted: every game start begins with "No band"). Persisting it (settings or a profile field) is a possible follow-up.
 
 ### Rules (proposed defaults, see open questions)
-- [ ] A gig counts for the band if at least one member is playing. Non-member humans may sit in.
-- [ ] Bots stay disallowed for now (matches the current career rule).
-- [ ] One active save per (band, career). "New career" soft-deletes like today.
+- [x] A gig counts for the band if at least one member is among the human players. Non-member humans may sit in; they do not change which save is used (`CareerCredit.Decide`, NUnit `BandCountsWhenOneMemberPlaysAndOthersMaySitIn`, `SitInDoesNotChangeTheBandSave`; in game: band with Bob only and New Profile playing committed nothing, after `player add Bob` the result landed on the band's save). With no member playing, the career menu still shows the band's progress, with "(no member is playing, results will not count)" after the band name.
+- [x] Bots stay disallowed (any bot among the players blocks credit, band or not; `BotsBlockCreditWithOrWithoutBand`).
+- [x] One active save per (band, career). "New career" (hold Yellow) soft-deletes the band's save like today and the next result creates a fresh one (`ResetGivesTheBandAFreshSave`; the in-game reset itself was not re-driven, it is a hold action the remote cannot send, and its code is unchanged: it soft-deletes whatever save the menu shows).
+- [x] A deleted band (`IsDeleted`) blocks credit (`BandMissing`) and is cleared as the active band.
+
+### Band fans
+- [x] A band's fans = sum of the fan totals of its active saves, careers that use fans only (`CareerFans.BandFans`, pure; `CareerBands.BandFans` evaluates each save). Saves of careers no longer installed are skipped; reset (soft-deleted) saves no longer count. Derived, never stored. Shown on the career list's band row.
 
 ### UI
-- [ ] Band select / create screen before the career list (name, hometown, genre, pick members from profiles).
-- [ ] Show the active band in the career menu header.
-- [ ] Migration path: offer "create a band from this save" for existing profile-set saves (optional, low priority).
+- [x] Band select / create, plain and built from stock pieces, reached from the career list: its first row is "Band: <name>" (or "No band: play as the current players"); the left panel shows hometown, genre, members and band fans. Clicking it opens a list dialog: every band (active one marked), "No band", "New band...", and for the active band "Rename", "Members of", "Delete". New band: rename dialog for name, hometown and genre (both optional), then a member picker (list dialog of `[x]`/`[  ]` toggles over the non-bot profiles, preset to the current human players). Delete uses the stock confirm-delete dialog (type the band's name). Code: `Menu/Career/CareerBandDialogs.cs`, `ViewTypes/BandViewType.cs`. The list dialog's list buttons get runtime navigatables, so a controller can reach them (the stock list dialog does not do this).
+- [x] Active band in the career menu header: second line under the career name, "Band: The Testers · 613 fans" (fans only for fan careers). No band: header unchanged.
+- [x] Migration path: after creating a band, if exactly its members already have profile-set saves, a dialog offers to move them to the band ("Bring It" / "Start Fresh"); `AdoptSave` sets `BandId` on the save. Verified in game (Carol's Rock save moved to "Carol Trio"; afterwards Carol without a band has no Rock save).
+- Not done: band icon/art (the band row has an empty icon box), editing hometown/genre after creation, a dedicated band screen (section 4).
+- Known, not from this step: the sticky `CareerSong.IsCompleted` strikethrough (0.2) now also leaks between band and no-band views of the same career within a session (a song struck through on one save shows struck through on another until restart). Worth fixing when touching the evaluation next.
 
 ---
 
@@ -207,7 +219,7 @@ A contract is an optional condition attached to a tier (the gig) or a single son
 
 1. **Groundwork** (section 0.1): branch, rebase, carry over debug grant. Done; test tooling (section 2) done too.
 2. **Fans, no bands yet**: first the dev remote's `simulate` command (section 2, "Test tooling"), then `FanCount` unlock + evaluation + header/locked-tier text. Smallest playable slice; works with today's profile-set saves. Done (2026-11-15), see section 2.
-3. **Bands**: tables, save ownership, select/create UI.
+3. **Bands**: tables, save ownership, select/create UI. Done (2026-11-15), see section 1.
 4. **Contracts Phase A** + score screen lines.
 5. **Band sheet, ranks, history log.**
 6. **Default career content + preset editor fields.**
@@ -221,11 +233,11 @@ Each step should leave existing careers working and be mergeable on its own.
 
 1. ~~Name.~~ **Decided:** it is called Career, front end and back end. New code goes under the existing `Career` names.
 2. **Upstream or fork-only?** If we want this accepted upstream, steps 2 and 4 are the easiest to pitch as small PRs; bands are a bigger conversation with wyrdough.
-3. **Who has to be present** for a band gig to count: any one member, a majority, or everyone?
+3. **Who has to be present** for a band gig to count: any one member, a majority, or everyone? *Implemented default (step 3): any one member; non-members may sit in. One place to change: `CareerCredit.Decide`.*
 4. **Bots as fill-in members?** Currently any bot blocks career credit.
 5. ~~**Do bonus tiers earn fans?**~~ **Decided (step 2):** yes, at half rate (`CareerFans.BONUS_RATE`); their fans count toward the total like any other, and completing them is never required.
 6. ~~**Do existing star-gated careers get fans too**~~ **Decided (step 2):** only careers that opt in (any `FanCount` tier). Others show no fan UI.
-7. **Solo play**: is a one-person band fine, and do `FullBand`-style contracts need a solo-friendly alternative?
+7. **Solo play**: is a one-person band fine, and do `FullBand`-style contracts need a solo-friendly alternative? *One-person bands work (step 3); the contract half is still open.*
 
 ---
 

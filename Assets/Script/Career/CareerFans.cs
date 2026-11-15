@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace YARG.Career
 {
@@ -96,6 +97,24 @@ namespace YARG.Career
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// A band's fans: the sum of the fan totals of its active saves, one evaluation per save. Only
+        /// careers that use fans count, since the others never show a fan number. Derived, never stored.
+        /// </summary>
+        public static int BandFans(IEnumerable<CareerEvaluation> saveEvaluations)
+        {
+            var total = 0;
+            foreach (var evaluation in saveEvaluations)
+            {
+                if (evaluation is { UsesFans: true })
+                {
+                    total += evaluation.TotalFans;
+                }
+            }
+
+            return total;
         }
     }
 }

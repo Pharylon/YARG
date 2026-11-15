@@ -144,6 +144,7 @@ namespace YARG.Menu.Career
                 VenueHint = _tierVenueHint,
                 CareerSongId = _song.Id,
                 SongIndex = _songIndex,
+                BandId = CareerBands.ActiveBandId,
             };
 
             _onPlay?.Invoke();

@@ -14,5 +14,9 @@ namespace YARG.Career
         public string VenueHint;
         public Guid CareerSongId;
         public int SongIndex;
+
+        // The band the song is played as (see CareerBands.ActiveBandId), or null to credit the save of
+        // the exact set of players who played.
+        public Guid? BandId;
     }
 }
