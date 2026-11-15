@@ -24,6 +24,9 @@
 #   player add|remove|sitout, players,
 #   dialog, type <text>, press <button label> (bands and dialogs, see Assets/Script/Dev/DevRemote.Bands.cs), e.g.
 #   band create name="The Testers" hometown=Austin genre=Rock members="New Profile"
+#   songs, validate, editor open|copy|tier|song|rows|fields|set|scroll|close (career content and the career
+#   preset editor, see Assets/Script/Dev/DevRemote.Content.cs), e.g.
+#   editor open career="YARG Setlist Headliner"   editor set "Fan Multiplier" 3
 set -u
 REPO="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
 BUILD="$REPO/Builds/DevLinux"
@@ -99,5 +102,5 @@ case "${1:-}" in
     do)   shift; run "$@";;
     shot) out="${2:-$DIR/shot.png}"; run "shot $out" >/dev/null && echo "$out";;
     stop) pkill -f "^$BUILD/YARG " ;;
-    *)    sed -n '2,22p' "$0";;
+    *)    sed -n '2,25p' "$0";;
 esac

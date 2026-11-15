@@ -39,6 +39,8 @@ namespace YARG.Dev
     ///   scorescreen ...         Open the score screen with a made-up result.
     ///   band / profile / player / players / dialog / type / press
     ///                           Bands, test players and driving dialogs (see DevRemote.Bands.cs).
+    ///   songs / validate / editor
+    ///                           Career content checks and the career preset editor (see DevRemote.Content.cs).
     /// </summary>
     public partial class DevRemote : MonoBehaviour
     {
@@ -204,6 +206,15 @@ namespace YARG.Dev
                             break;
                         case "press":
                             result = PressButton(argument);
+                            break;
+                        case "songs":
+                            result = DescribeSongs(argument);
+                            break;
+                        case "validate":
+                            result = ValidateCareer(argument);
+                            break;
+                        case "editor":
+                            result = EditorCommand(argument);
                             break;
                         case "wait":
                             deferred = Wait(argument);

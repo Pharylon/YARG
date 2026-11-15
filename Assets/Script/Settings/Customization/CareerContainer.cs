@@ -16,6 +16,25 @@ namespace YARG.Settings.Customization
 
         public override IReadOnlyList<CareerPreset> DefaultPresets => CareerPreset.Defaults;
 
+        public override void Initialize()
+        {
+            base.Initialize();
+            CareerValidationLog.LogAll(DefaultPresets);
+            CareerValidationLog.LogAll(CustomPresets);
+        }
+
+        public override void ReloadPresetAtPath(string path)
+        {
+            base.ReloadPresetAtPath(path);
+            foreach (var career in CustomPresets)
+            {
+                if (career.Path == path)
+                {
+                    CareerValidationLog.Log(career);
+                }
+            }
+        }
+
         public override BasePreset CopyPreset(BasePreset source, BasePreset destination)
         {
             var newPreset = (CareerPreset) base.CopyPreset(source, destination);

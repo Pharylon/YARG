@@ -2238,6 +2238,31 @@
                 "EmptySongSummary": "      {0}. ... [{1}]",
                 "UnknownSong": "Unknown Song",
                 "UnknownArtist": "Unknown Artist",
+                "SongContractNone": "No contract (exempt from the tier's)",
+                "SongContractTier": "From tier: {0}",
+                "SongContractTierNone": "From tier: none",
+                "WarningSummary": " [!] {0}",
+                "Issue": {
+                    "Unreachable": {
+                        "FanCount": "Can never open: needs {0} fans, at most {1} can be earned before it",
+                        "StarCount": "Can never open: needs {0} stars, at most {1} before it",
+                        "CompletionCount": "Can never open: needs {0} songs, only {1} before it"
+                    },
+                    "NoFanSongs": "Can never open: needs {0} fans, but no tier before it earns fans",
+                    "ContractParameter": "Contract parameter {0} is out of range ({1})",
+                    "NegativeBonus": "Contract fan bonus {0}% is negative (counts as 0)",
+                    "NegativeMultiplier": "Fan multiplier {0} is negative (no fans)",
+                    "DuplicateSongId": "Shares its Id with an earlier song (shared progress)",
+                    "DuplicateTierId": "Shares its Id with an earlier tier",
+                    "Song": "Song {0}: {1}",
+                    "Range": {
+                        "MinStars": "1 to 5 stars, 6 for gold",
+                        "MinAccuracy": "0 to 100%",
+                        "FullCombo": "0 for every player, or a number of players",
+                        "MinDifficulty": "0 Beginner to 5 Expert+",
+                        "FullBand": "1 or more players"
+                    }
+                },
                 "Fields": {
                     "Name": "Name",
                     "Description": "Description",
@@ -2256,7 +2281,22 @@
                     "Source": "Source",
                     "Charter": "Charter",
                     "Identifier": "Identifier",
-                    "FallbackDescription": "Fallback Description"
+                    "FallbackDescription": "Fallback Description",
+                    "FanMultiplier": "Fan Multiplier",
+                    "City": "City",
+                    "VenueName": "Venue Name",
+                    "ContractType": "Contract",
+                    "SongContract": "Contract",
+                    "ContractParameter": {
+                        "MinStars": "Minimum Stars (6 = gold)",
+                        "MinAccuracy": "Minimum Accuracy (%)",
+                        "FullCombo": "Full Combos (0 = all)",
+                        "MinDifficulty": "Difficulty (4 = Expert)",
+                        "FullBand": "Minimum Players"
+                    },
+                    "ContractBonus": "Contract Fan Bonus (%)",
+                    "ContractText": "Contract Text",
+                    "Warning": "Warning"
                 },
                 "Enums": {
                     "UnlockType": {
@@ -2288,6 +2328,15 @@
                         "SongHash": "Song Hash",
                         "ShortName": "Short Name",
                         "SongTuple": "Song Tuple"
+                    },
+                    "CareerContractType": {
+                        "None": "None",
+                        "MinStars": "Minimum Stars",
+                        "MinAccuracy": "Minimum Accuracy",
+                        "FullCombo": "Full Combo",
+                        "MinDifficulty": "Minimum Difficulty",
+                        "NoFailOff": "No-Fail Off",
+                        "FullBand": "Full Band"
                     }
                 }
             },
