@@ -168,7 +168,7 @@ namespace YARG.Dev
             var saveId = careers.GetOrCreateSave(career.Id, career.Version,
                 players.Select(player => player.Profile.Id).ToList());
 
-            careers.CommitSongCompletion(new CareerSongCompletionCommit
+            CareerSongOutcome.Commit(career, careers, new CareerSongCompletionCommit
             {
                 CareerSaveId = saveId,
                 CareerId = career.Id,
@@ -178,12 +178,11 @@ namespace YARG.Dev
                 SongIndex = songIndex,
                 SongChecksum = song.SongEntry?.Hash.HashBytes ?? Array.Empty<byte>(),
                 BandStars = result.BandStars.GetStarCount(),
+                IsGold = result.BandStars == StarAmount.StarGold,
                 BandScore = result.BandScore,
                 CompletedAt = DateTime.Now,
                 Source = CareerCompletionSource.DebugGrant,
             });
-
-            career.SyncProgress(careers, saveId);
 
             error = null;
             return true;

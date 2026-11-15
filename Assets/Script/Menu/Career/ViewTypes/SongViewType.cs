@@ -21,6 +21,11 @@ namespace YARG.Menu.Career
         /// </summary>
         public float Reveal { get; set; } = 1f;
 
+        /// <summary>
+        /// The career uses fans: a completed song also shows the fans its best result earned.
+        /// </summary>
+        public bool ShowFans { get; set; }
+
         private readonly CareerSong _song;
         private readonly SongEntry  _songEntry;
         private readonly Guid  _careerId;
@@ -79,7 +84,13 @@ namespace YARG.Menu.Career
 
         public override string GetSecondaryText(bool selected)
         {
-            return AddStrikethrough(FormatAs(DetailLine(), TextType.Secondary, selected));
+            var detail = DetailLine();
+            if (ShowFans && _result is { Completed: true })
+            {
+                detail = Localize.KeyFormat("Menu.Career.SongFans", detail, _result.Fans.ToString("N0"));
+            }
+
+            return AddStrikethrough(FormatAs(detail, TextType.Secondary, selected));
         }
 
         private string AddStrikethrough(string text)

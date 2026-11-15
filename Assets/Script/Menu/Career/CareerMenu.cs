@@ -24,7 +24,7 @@ using YARG.Scores;
 
 namespace YARG.Menu.Career
 {
-    public class CareerMenu : ListMenu<ViewType, SongView>
+    public partial class CareerMenu : ListMenu<ViewType, SongView>
     {
         protected override int ExtraListViewPadding => 16;
 
@@ -274,7 +274,7 @@ namespace YARG.Menu.Career
 
                 if (result.Unlocked)
                 {
-                    viewList.Add(new TierViewType(tier, result, collapsed, ToggleTier));
+                    viewList.Add(new TierViewType(tier, result, collapsed, ToggleTier) { ShowFans = _evaluation.UsesFans });
                 }
                 else
                 {
@@ -286,7 +286,14 @@ namespace YARG.Menu.Career
                         continue;
                     }
 
-                    viewList.Add(new TierViewType(tier, result));
+                    viewList.Add(new TierViewType(tier, result) { ShowFans = _evaluation.UsesFans });
+
+                    // Fan-count tiers unlock against total fans, in any order, so every one is listed.
+                    if (tier.UnlockType == UnlockType.FanCount)
+                    {
+                        continue;
+                    }
+
                     break;
                 }
 
@@ -303,7 +310,7 @@ namespace YARG.Menu.Career
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
                         songIndex == tier.Songs.Length - 1,
                         songIndex < result.Songs.Count ? result.Songs[songIndex] : null,
-                        OnSongPlayed) { Reveal = reveal });
+                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans });
                 }
             }
 
@@ -437,8 +444,7 @@ namespace YARG.Menu.Career
             _sessionCareer = career;
             ApplyProgress(evaluation);
 
-            SetText(_careerNameText, career.Name);
-            SetText(_careerDescriptionText, career.Description);
+            UpdateHeader();
 
             _progressDirty = false;
 
@@ -488,6 +494,7 @@ namespace YARG.Menu.Career
         {
             _evaluation = evaluation;
             _careerSaveId = evaluation?.CareerSaveId ?? 0;
+            UpdateHeader();
         }
 
         private void OnSongPlayed()

@@ -1,0 +1,220 @@
+{
+  "Id": "85c07510-27eb-4bfe-a656-90586afc50bf",
+  "Name": "Dev Fan Test",
+  "Type": "Career",
+  "Description": "DEV TEST CAREER, not shipped. Fan-count unlocks, mixed venue sizes, a bonus tier. Installed by scripts/dev/yarg-remote.sh into the isolated test data only.",
+  "Source": "yarg",
+  "Version": 1,
+  "Tiers": [
+    {
+      "Name": "Open Mic Night",
+      "Id": "3f6b2f67-0941-4a2e-934d-54fbc01e63ce",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992",
+          "SongId": "a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
+          "SongId": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
+          "SongId": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Starter",
+      "VenueHint": null,
+      "UnlockType": "StarCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "The Rusty Nail",
+      "City": "Springfield"
+    },
+    {
+      "Name": "Busking",
+      "Id": "967c4368-62d6-4888-bfe5-0a672d558ee5",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "f492da61-1cb4-4635-a0c7-099d3d0ea4f2",
+          "SongId": "f492da61-1cb4-4635-a0c7-099d3d0ea4f2",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "530a0afc-da9c-4951-abdd-9d63df35165a",
+          "SongId": "530a0afc-da9c-4951-abdd-9d63df35165a",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "7eb17eb8-6379-48f4-a60d-ae61b17571b9",
+          "SongId": "7eb17eb8-6379-48f4-a60d-ae61b17571b9",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Starter",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 100,
+      "CompletionMode": "SingleSong",
+      "IsBonus": true,
+      "City": "Springfield"
+    },
+    {
+      "Name": "Coffee House Set",
+      "Id": "f2217279-f5b5-49f5-916c-d20782e2a58c",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "bbc23ee6-4336-4fb5-990e-e03a9841bb8c",
+          "SongId": "bbc23ee6-4336-4fb5-990e-e03a9841bb8c",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "dca3cc66-f65d-4709-bcda-eb5250c2e4b7",
+          "SongId": "dca3cc66-f65d-4709-bcda-eb5250c2e4b7",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "4420cda8-b7cd-4f81-a104-3a587ea823ed",
+          "SongId": "4420cda8-b7cd-4f81-a104-3a587ea823ed",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Small",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 200,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "The Daily Grind",
+      "City": "Springfield"
+    },
+    {
+      "Name": "Dive Bar Gig",
+      "Id": "42059323-5d84-41d9-9119-a7c47957474a",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "d21e5db8-e372-42bf-bbcb-9fb8a0c74462",
+          "SongId": "d21e5db8-e372-42bf-bbcb-9fb8a0c74462",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "35e9770e-ac25-4339-8ae7-c6abcf89156c",
+          "SongId": "35e9770e-ac25-4339-8ae7-c6abcf89156c",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "ef6121fa-9aee-4b96-a644-16fba205d4c8",
+          "SongId": "ef6121fa-9aee-4b96-a644-16fba205d4c8",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Small",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 250,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "The Broken Amp",
+      "City": "Shelbyville"
+    },
+    {
+      "Name": "Club Night",
+      "Id": "da267836-5e25-455a-8d89-b457d813efc5",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "06a92c7e-b1db-4159-9471-7c3bc6505155",
+          "SongId": "06a92c7e-b1db-4159-9471-7c3bc6505155",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "56390e0b-debb-4743-a1ba-0e8a401af492",
+          "SongId": "56390e0b-debb-4743-a1ba-0e8a401af492",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "2c69588b-c01d-4df9-ac7f-1dc0fe5884a1",
+          "SongId": "2c69588b-c01d-4df9-ac7f-1dc0fe5884a1",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Medium",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 1200,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "Club Neon",
+      "City": "Capital City"
+    },
+    {
+      "Name": "Theater Show",
+      "Id": "53b05a08-274d-43c2-a119-b17623ceff4e",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "ece8093f-07f3-49ea-9111-efe6776c67c2",
+          "SongId": "ece8093f-07f3-49ea-9111-efe6776c67c2",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "815e8f4d-6568-437a-86e4-cef5e3ab3f95",
+          "SongId": "815e8f4d-6568-437a-86e4-cef5e3ab3f95",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "9e3f47e3-7d12-4399-8a48-3e47155b6c15",
+          "SongId": "9e3f47e3-7d12-4399-8a48-3e47155b6c15",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Large",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 3000,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "FanMultiplier": 10.0,
+      "VenueName": "The Grand",
+      "City": "Capital City"
+    },
+    {
+      "Name": "Arena Headliner",
+      "Id": "526903e7-96d5-4424-a30d-df41f8b0fe82",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "e1cdf591-ab4f-4f7f-944f-4874e50d774d",
+          "SongId": "e1cdf591-ab4f-4f7f-944f-4874e50d774d",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "783e6fa5-2d5f-4a8c-8004-3172830d7f8e",
+          "SongId": "783e6fa5-2d5f-4a8c-8004-3172830d7f8e",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "3e7849c4-bac4-4749-bfca-e5ccb349bef9",
+          "SongId": "3e7849c4-bac4-4749-bfca-e5ccb349bef9",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Epic",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 7000,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "Ogdenville Arena",
+      "City": "Ogdenville"
+    }
+  ]
+}

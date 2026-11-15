@@ -47,7 +47,7 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
 - **How a song start carries career context.** `SongViewType.ViewClick()` builds a `CareerContext` (career, tier and song ids and indexes, `VenueHint`) into `GlobalVariables.State.CurrentCareer`. `PersistentState` is a struct reset to `Default` by `ScoreScreenMenu.OnDisable` (unless `Setlist.IsPlaying`), `GameManager.ForceQuitSong` and the History replay paths. `BackgroundManager` reads `VenueHint`; DifficultySelect forces bots to sit out when a career context is set. Note the score screen does **not** reset state while a setlist show is playing, so a playlist gig must manage `CurrentCareer` per song itself.
 - **How saves are resolved.** No save id travels with a song. `ScoreContainer.CommitCareerCompletion` takes the distinct `PlayerId`s of the recorded `PlayerScoreRecord`s and calls `CareerDatabase.GetOrCreateSave(careerId, version, profileIds)`, which finds the active save whose `CareerSaveProfiles` member set *equals* that set, or creates one. The menu (`CareerMenu.FindSaveId`) resolves the same way from `PlayerContainer.Players` that are not sitting out and not bots. So the save is per exact player set: if one more person joins, it is a different (new) save. Reset (hold Yellow) soft-deletes the save.
 - **How the view list is built.** `CareerMenu.CreateViewList()`: for each tier, a `TierViewType` header; unlocked tiers list their songs (`SongViewType`) only when expanded (uncommitted collapse work: one expanded tier at a time, kept in a static `_expandedTier`). The first locked tier is shown with its lock hint and the list stops there; bonus tiers that are locked are skipped. Progress comes from a cached `CareerEvaluation`; `ApplyProgress()` + `RequestViewListUpdate()` redraw it. New public `CareerMenu.RefreshProgress()` reloads from the database and presents unlocks (skipped while a dialog is open, so it is deferred, not lost).
-- **How the score screen gets its data.** `GameManager.EndSong()` fills `GlobalVariables.State.ScoreScreenStats` (`ScoreScreenStats`: per-player `PlayerScoreCard { Player, Stats (BaseStats), IsHighScore, IsReplay }`, `BandScore`, `BandStars`, `MeanAverageOffset`, `ReplayInfo`), records the score, then loads `SceneIndex.Score`. `ScoreScreenMenu.OnEnable` only reads that struct and `State.CurrentSong`; it does not read the database or the career context. History replays build the same struct (`ReplayViewType`). So "+fans" / contract lines need either new fields on `ScoreScreenStats` or a read of the committed completion (e.g. remember the commit's id in state). After the score screen the menu scene reopens the career menu (`MenuManager._lastOpenMenu`), which re-evaluates progress and shows unlock dialogs.
+- **How the score screen gets its data.** `GameManager.EndSong()` fills `GlobalVariables.State.ScoreScreenStats` (`ScoreScreenStats`: per-player `PlayerScoreCard { Player, Stats (BaseStats), IsHighScore, IsReplay }`, `BandScore`, `BandStars`, `MeanAverageOffset`, `ReplayInfo`), records the score, then loads `SceneIndex.Score`. `ScoreScreenMenu.OnEnable` only reads that struct and `State.CurrentSong`; it does not read the database or the career context. History replays build the same struct (`ReplayViewType`). So "+fans" / contract lines need either new fields on `ScoreScreenStats` or a read of the committed completion (e.g. remember the commit's id in state). *Step 2 chose a static: `CareerSongOutcome.Last`, set by every career commit (cleared at the start of `CommitCareerCompletion`) and matched against `State.CurrentCareer` by `CareerScoreScreen.FanLine()`; contract lines can ride on the same outcome.* After the score screen the menu scene reopens the career menu (`MenuManager._lastOpenMenu`), which re-evaluates progress and shows unlock dialogs.
 - **What per-player stats are stored.** `PlayerScoreRecord` (table `PlayerScores`, linked by `GameRecordId`): `PlayerId`, `Instrument`, `Difficulty`, `EnginePresetId`, `Score`, `Stars` (`StarAmount`), `NotesHit`, `NotesMissed`, `IsFc`, `IsReplay`, `Percent` (nullable, older rows lack it; use `GetPercent()`). **Not stored:** max combo/best streak, star power phrases/activations/time, overstrums, solo bonuses, modifiers, song speed per player. Those exist in memory on `BaseStats` (and in the replay file's `ReplayStats`) only. `GameRecord` (table `GameRecords`): date, song checksum/name/artist/charter, replay file name/checksum, `BandScore`, `BandStars` (`StarAmount`), `SongSpeed`, `PlayedWithReplay`, `HasBots`. Not stored: no-fail setting, modifiers, player count other than by counting `PlayerScores` rows.
 - **Gold stars.** `GameRecord.BandStars` and `PlayerScoreRecord.Stars` are `StarAmount`, where `StarGold` (6) is distinct from `Star5`. `CareerSongCompletions.BandStars` is an int written with `GetStarCount()`, which maps gold to 5, so the completion row loses gold; it is recoverable only by joining `GameRecords` on `GameRecordId` (0 for `DebugGrant` rows). Add a column (or store the raw `StarAmount`) if fans need gold.
 - **Failed songs.** Nothing is recorded or committed unless `GameManager.EndSong` reaches `RecordScores` with a valid band score; quitting from the pause menu goes through `ForceQuitSong` and records nothing.
@@ -55,11 +55,13 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
 
 ### 0.3 Testing
 
-- **Pure-logic tests:** there is no test assembly for game code in the Unity project (only a transitive `com.unity.test-framework`), and `Assembly-CSharp` cannot be referenced from an asmdef. YARG.Core runs NUnit through a normal SDK project (`YARG.Core/YARG.Core.UnitTests`, `dotnet test`). `dotnet` 10 is installed here with the NUnit packages cached. Set up: `Tests/YARG.Career.Tests` (net10.0, NUnit) references the assemblies Unity last compiled into `Library/ScriptAssemblies` (`Assembly-CSharp.dll`, `YARG.Core.Package.dll`); any Unity compile refreshes them, including `yarg-remote.sh build`. Run `dotnet test Tests/YARG.Career.Tests` (seconds). Only code that does not call into UnityEngine can be tested this way (`CareerEvaluation`, future fan/contract math). One test so far: star-sum unlock and best-of-replays.
+- **Pure-logic tests:** there is no test assembly for game code in the Unity project (only a transitive `com.unity.test-framework`), and `Assembly-CSharp` cannot be referenced from an asmdef. YARG.Core runs NUnit through a normal SDK project (`YARG.Core/YARG.Core.UnitTests`, `dotnet test`). `dotnet` 10 is installed here with the NUnit packages cached. Set up: `Tests/YARG.Career.Tests` (net10.0, NUnit) references the assemblies Unity last compiled into `Library/ScriptAssemblies` (`Assembly-CSharp.dll`, `YARG.Core.Package.dll`); any Unity compile refreshes them, including `yarg-remote.sh build`. Run `dotnet test Tests/YARG.Career.Tests` (seconds). Only code that does not call into UnityEngine can be tested this way (`CareerEvaluation`, future fan/contract math). Tests: star-sum unlock and best-of-replays (`CareerEvaluationTests`), fan formula, best-result-only, gold, bonus half rate, fan-count unlocks with several tiers open, existing-style career unchanged, outcome preview, tier JSON (`CareerFansTests`). The project also references `Newtonsoft.Json` (NuGet) and `ZString` (from `Assets/Packages`, needed by `YargLogger` calls in content callbacks).
 - **In-game:** `scripts/dev/yarg-remote.sh` (see its header). `start` now runs with isolated data in `$XDG_RUNTIME_DIR/yarg-dev-remote/data` (seeded from the dev folder's profiles, settings and song cache; only default careers), `start --shared-data` uses the dev folder, `wipe` deletes the test data. Career commands (`Assets/Script/Dev/DevRemote.Career.cs`):
   - `simulate [career=<index|guid|name>] [tier=<n> song=<n|all>] [stars=<0..5|gold>] [score=<n>] [percent=<0..100>] [fc=<bool>] [difficulty=<name>] [path=<score|grant>]` commits through `ScoreContainer.RecordScore` (GameRecord + PlayerScores + `CommitCareerCompletion` + `SyncProgress`) as the current non-bot players; without `tier=` it uses the career menu's selection (a song, or every song of a tier header). It refreshes the open career menu and prints the career's progress.
   - `career [career=...]` prints per tier: open/locked (needs N), star sum, best stars per song.
-  - `scorescreen <same song/result options>` opens the score screen with a made-up result (display only, commits nothing).
+  - `scorescreen <same song/result options> [commit=true]` opens the score screen with a made-up result. Default: commits nothing and shows what the result *would* earn (fan line via `CareerSongOutcome.Preview`). `commit=true`: commits through the score path first, so the screen shows the real outcome and the menu presents unlocks on Continue.
+  - `career` / `simulate` also print the save's fans, per-tier and per-song fans for fan careers, `G` for gold, and (simulate) the last commit's outcome (`fans 175 -> 300 (+125), unlocked ...`).
+  - `start` (isolated data) installs the dev careers from `scripts/dev/careers/` (e.g. `career="Fan Test"`).
   - Unlock dialogs do not react to `nav Green`; close them with `click 0.5 0.746` at 1600x900.
   - Shared code: `Assets/Script/Dev/CareerSimulator.cs` (`SimulatedResult`, `CareerSimulator.TryCommit`, `ScoreScreenStatsFor`). The career menu's debug Grant Stars uses the same code with `path=grant` (completion row with `Source = DebugGrant`, no score records). Add new result fields (player count, failed song, ...) to `SimulatedResult` and its parser.
 
@@ -97,11 +99,13 @@ No controller is needed: fans, unlocks and contracts are all computed from saved
 - [x] Score screen with made-up results: yes, `scorescreen` command. The score screen reads only `State.ScoreScreenStats` + `CurrentSong`, so "+fans"/contract lines must come through new fields there or a lookup of the committed completion (see 0.2).
 
 ### Content model
-- [ ] `UnlockType.FanCount`: tier unlocks when band fans >= `UnlockCriteria`.
-- [ ] Unlock against **total** fans rather than "previous regular tier", so several gigs can be open at once and the player picks a path.
-- [ ] Optional per-tier `FanMultiplier` override; default comes from `VenueSize`.
-- [ ] Optional per-tier `City` / `VenueName` strings for flavor (text only).
-- [ ] Bump `CareerPreset.Version` handling if needed so old saves evaluate sanely against edited content.
+- [x] `UnlockType.FanCount`: tier unlocks when the save's fans >= `UnlockCriteria` (the save is the profile-set save today; the same evaluation serves a band-owned save later, since it only reads that save's completion rows).
+- [x] Unlock against **total** fans rather than "previous regular tier", so several gigs can be open at once and the player picks a path. Tier 0 is always open; star/completion tiers keep their old rule.
+- [x] Optional per-tier `FanMultiplier` (nullable float, times `BASE_FANS` = 100) overriding the venue's multiplier; default comes from `VenueSize`.
+- [x] Optional per-tier `City` / `VenueName` strings for flavor (text only; shown above the description in the career header for the selected tier).
+- [x] JSON: new fields are omitted when unset, old content loads unchanged, copy constructor copies them (NUnit `TierJsonRoundTripAndOldContent`).
+- [x] `CareerPreset.Version` handling: not needed. Everything is derived from completion rows keyed by song id at evaluation time, so edited content just re-evaluates.
+- **Opt-in:** a career uses fans when any tier uses `FanCount` (`CareerFans.UsesFans`); no explicit flag. Careers that don't opt in show no fan UI (fans are still computed in the evaluation, just never shown).
 
 ### Fan formula (first draft, tune in playtests)
 Per song, take the **best** result only, so replaying improves your total but can't be farmed:
@@ -119,15 +123,17 @@ bandFans = sum of songFans over all completed songs (bonus tiers included? see o
 | Large | 1,500 | | 5 | 1.0 |
 | Epic | 4,000 | | gold | 1.25 |
 
-- [ ] Put the numbers in one static table (`CareerFans.cs`) so tuning is a one-file change.
-- [ ] `CareerEvaluation`: add `SongResult.Fans`, `TierResult.Fans`, `CareerEvaluation.BandFans`, and `FanCount` unlock handling + `RemainingToUnlock`.
-- [ ] Gold stars: `BandStars` is stored as an int star count today; check whether gold is distinguishable, add a column if not. *Checked: the completion row maps gold to 5; `GameRecords.BandStars` keeps `StarGold` (see 0.2). Column not added yet.*
+- [x] Put the numbers in one static table (`Assets/Script/Career/CareerFans.cs`, pure) so tuning is a one-file change. Venue multipliers 1 / 2.5 / 6 / 15 / 40 (NotSpecified = Starter), star factors as above (0 stars = 0), bonus tiers x0.5, rounded half away from zero. `contractBonus` not added yet (contracts step).
+- [x] `CareerEvaluation`: `SongResult.Fans` + `BestIsGold`, `TierResult.Fans`, `CareerEvaluation.TotalFans` (named `TotalFans`, not `BandFans`: it is the save's total) + `UsesFans`, and `FanCount` unlock handling + `RemainingToUnlock` (decided after all tiers are summed). Existing star/completion results are unchanged (NUnit `ExistingStyleCareerIsUnaffected`; in game the Rock save evaluated identically before and after). Sticky strikethrough for songs in `FanCount` tiers: only at gold (the song can still earn fans until then).
+- [x] Gold stars: new raw column `CareerSongCompletions.IsGold` (bool; `BandStars` still stores 5 for gold, so star unlocks are untouched). Written by `ScoreContainer.CommitCareerCompletion` (`gameRecord.BandStars == StarGold`) and the simulator; sqlite-net adds the column on start, old rows read as false. Verified against an existing test database.
+- [x] `CareerSongOutcome` (pure + one commit helper): evaluation before/after a commit gives fans gained and newly unlocked tiers; `CareerSongOutcome.Last` carries it to the score screen. `SyncProgress` now returns its evaluation.
 
 ### UI
-- [ ] Fan total in the career header; fans earned per song/tier in the list.
-- [ ] Locked tier text: "Needs 2,400 more fans".
-- [ ] Score screen: "+350 fans" line and "New venue unlocked" presentation (reuse `UnlockSeen`).
-- [ ] Lang strings in `en-US.json`.
+- [x] Fan total in the career header (second line under the career name); fans per tier (header: "14 / 15 · 300 fans") and per completed song ("Artist · 125 fans") in the list. Fan careers list every locked `FanCount` tier with its hint instead of stopping at the first locked tier (locked bonus tiers still hidden).
+- [x] Locked tier text: "Needs 2,400 more fans".
+- [x] Score screen: minimal version, reusing the existing status pill next to the band score: "+188 fans · Unlocked: Club Night", or "No new fans: only your best result counts". Shown only for a fan career's song when the score was saved. The full "New venue unlocked" presentation is the existing career-menu unlock dialog (`UnlockSeen`), which fires for fan-gated tiers on return to the menu. A richer score-screen panel would need prefab work (not done).
+- [x] Lang strings in `en-US.json` (`Menu.Career.UnlockFans`, `HeaderFans`, `TierFans`, `SongFans`, `Venue`, `FansGained`, `FansNoGain`, `FansUnlocked`, editor enum `FanCount`).
+- [x] Dev/test content: `scripts/dev/careers/Dev_Fan_Test.85c07510.json` ("Dev Fan Test": official setlist songs, Starter to Epic venues, one `FanMultiplier` override, a fan-gated bonus tier, two tiers that open together at 300 fans). `yarg-remote.sh start` copies it into the isolated test data only; it is not in the game's content or builds.
 
 ---
 
@@ -200,7 +206,7 @@ A contract is an optional condition attached to a tier (the gig) or a single son
 ## 6. Suggested build order
 
 1. **Groundwork** (section 0.1): branch, rebase, carry over debug grant. Done; test tooling (section 2) done too.
-2. **Fans, no bands yet**: first the dev remote's `simulate` command (section 2, "Test tooling"), then `FanCount` unlock + evaluation + header/locked-tier text. Smallest playable slice; works with today's profile-set saves.
+2. **Fans, no bands yet**: first the dev remote's `simulate` command (section 2, "Test tooling"), then `FanCount` unlock + evaluation + header/locked-tier text. Smallest playable slice; works with today's profile-set saves. Done (2026-11-15), see section 2.
 3. **Bands**: tables, save ownership, select/create UI.
 4. **Contracts Phase A** + score screen lines.
 5. **Band sheet, ranks, history log.**
@@ -217,8 +223,8 @@ Each step should leave existing careers working and be mergeable on its own.
 2. **Upstream or fork-only?** If we want this accepted upstream, steps 2 and 4 are the easiest to pitch as small PRs; bands are a bigger conversation with wyrdough.
 3. **Who has to be present** for a band gig to count: any one member, a majority, or everyone?
 4. **Bots as fill-in members?** Currently any bot blocks career credit.
-5. **Do bonus tiers earn fans?** Proposed: yes, at half rate, and they still don't gate anything.
-6. **Do existing star-gated careers get fans too** (as a display number), or only careers that opt in?
+5. ~~**Do bonus tiers earn fans?**~~ **Decided (step 2):** yes, at half rate (`CareerFans.BONUS_RATE`); their fans count toward the total like any other, and completing them is never required.
+6. ~~**Do existing star-gated careers get fans too**~~ **Decided (step 2):** only careers that opt in (any `FanCount` tier). Others show no fan UI.
 7. **Solo play**: is a one-person band fine, and do `FullBand`-style contracts need a solo-friendly alternative?
 
 ---

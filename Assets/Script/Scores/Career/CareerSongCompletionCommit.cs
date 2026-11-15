@@ -14,6 +14,7 @@ namespace YARG.Scores
         public byte[] SongChecksum;
         public int GameRecordId;
         public int BandStars;
+        public bool IsGold;
         public int BandScore;
         public DateTime CompletedAt;
         public CareerCompletionSource Source;

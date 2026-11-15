@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using YARG.Career;
 using YARG.Core;
 using YARG.Core.Game;
 using YARG.Core.Logging;
@@ -180,6 +181,8 @@ namespace YARG.Scores
         /// </summary>
         private static void CommitCareerCompletion(GameRecord gameRecord, List<PlayerScoreRecord> playerEntries)
         {
+            CareerSongOutcome.Last = null;
+
             var context = GlobalVariables.State.CurrentCareer;
             if (context is null)
             {
@@ -224,13 +227,13 @@ namespace YARG.Scores
                 SongChecksum = gameRecord.SongChecksum,
                 GameRecordId = gameRecord.Id,
                 BandStars = gameRecord.BandStars.GetStarCount(),
+                IsGold = gameRecord.BandStars == StarAmount.StarGold,
                 BandScore = gameRecord.BandScore,
                 CompletedAt = DateTime.Now,
                 Source = CareerCompletionSource.SingleSong,
             };
 
-            Careers.CommitSongCompletion(commit);
-            career.SyncProgress(Careers, saveId);
+            CareerSongOutcome.Commit(career, Careers, commit);
         }
 
         private static void UpdateBandHighScore(HashWrapper songChecksum)

@@ -19,7 +19,10 @@ namespace YARG.Career
     public enum UnlockType
     {
         StarCount,
-        CompletionCount
+        CompletionCount,
+        // Unlocks when the save's total fans (see CareerFans) reach UnlockCriteria, regardless of
+        // which tiers they came from, so several tiers can be open at once.
+        FanCount,
     }
 
     public enum CompletionBonusType
@@ -70,6 +73,16 @@ namespace YARG.Career
         // Bonus is not counted towards other tier unlocks
         public bool IsBonus;
 
+        // Fans per song relative to the Starter venue (see CareerFans). Null: from VenueSize.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public float? FanMultiplier;
+
+        // Flavor text only.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string City;
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string VenueName;
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
@@ -115,6 +128,9 @@ namespace YARG.Career
             UnlockCriteria = other.UnlockCriteria;
             CompletionMode = other.CompletionMode;
             IsBonus = other.IsBonus;
+            FanMultiplier = other.FanMultiplier;
+            City = other.City;
+            VenueName = other.VenueName;
         }
 
         public void AddSong(CareerSong song)

@@ -344,7 +344,15 @@
             "BonusTier": "Bonus: {0}",
             "DebugGrant": "(Debug) Grant Stars",
             "DebugGranted": "Granted full stars to {0} song(s).",
-            "DebugNothingToGrant": "Select an unlocked tier or a song to grant stars."
+            "DebugNothingToGrant": "Select an unlocked tier or a song to grant stars.",
+            "UnlockFans": "Needs {0} more fans",
+            "HeaderFans": "{0} fans",
+            "TierFans": "{0}  ·  {1} fans",
+            "SongFans": "{0}  ·  {1} fans",
+            "Venue": "{0}, {1}",
+            "FansGained": "+{0} fans",
+            "FansNoGain": "No new fans: only your best result counts",
+            "FansUnlocked": "{0}  ·  Unlocked: {1}"
         },
         "Main": {
             "MessageOfTheDay": "<align=center><size=32><b>Welcome to v0.15!</b></size></align>\n\nv0.15 is a major update that adds many highly requested and necessary gameplay features such as roll/trill lanes and Big \"YARG\" endings, as well as revamped user interface in the song selection and results screen, drum lane customization, automatic genre categorization, experimental custom vocalist characters in venues, and more.\n\n<b>If you have any feedback or find any bugs, please let us know on Discord or GitHub.</b>\n\nHappy YARGin'!",
@@ -2154,7 +2162,8 @@
                 "Enums": {
                     "UnlockType": {
                         "StarCount": "Star Count",
-                        "CompletionCount": "Completion Count"
+                        "CompletionCount": "Completion Count",
+                        "FanCount": "Fan Count"
                     },
                     "CareerCompletionMode": {
                         "SingleSong": "Individual Songs",

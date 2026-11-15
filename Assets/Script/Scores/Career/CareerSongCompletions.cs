@@ -24,6 +24,9 @@ namespace YARG.Scores
         public int GameRecordId { get; set; }
 
         public int BandStars { get; set; }
+        // BandStars holds 5 for a gold result; this keeps the gold (fans count it). False on rows
+        // written before the column existed.
+        public bool IsGold { get; set; }
         public int BandScore { get; set; }
 
         public DateTime CompletedAt { get; set; }

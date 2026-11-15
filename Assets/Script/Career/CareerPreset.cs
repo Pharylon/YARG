@@ -64,12 +64,13 @@ namespace YARG.Career
         /// Fire after a song completion has been committed for this career: re-evaluate progress from
         /// the raw rows and apply tier unlock/completion changes. Scaffolding for now — the trigger
         /// is a direct call from the score path; an event from GameManager can replace it later.
+        /// Returns the evaluation it applied, or null if there is no save.
         /// </summary>
-        public void SyncProgress(CareerDatabase careers, int careerSaveId)
+        public CareerEvaluation SyncProgress(CareerDatabase careers, int careerSaveId)
         {
             if (careers is null || careerSaveId <= 0)
             {
-                return;
+                return null;
             }
 
             var snapshot = careers.LoadProgressSnapshot(careerSaveId);
@@ -87,6 +88,8 @@ namespace YARG.Career
                     careers.MarkTierCompleted(careerSaveId, tier.TierId);
                 }
             }
+
+            return evaluation;
         }
 
         public void AddTier(CareerTier tier)

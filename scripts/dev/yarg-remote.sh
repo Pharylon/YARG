@@ -8,6 +8,8 @@
 #                                        use with the profiles, settings and song cache of the dev data folder,
 #                                        so test results never touch real progress. --shared-data uses the
 #                                        dev data folder itself (~/.config/unity3d/YARC/YARG/dev).
+#                                        The isolated folder also gets the dev/test careers in
+#                                        scripts/dev/careers (e.g. "Dev Fan Test", fan-count unlocks).
 #   yarg-remote.sh wipe                  Delete the test data folder; the next start seeds it again
 #   yarg-remote.sh do "<cmd>" ...        Run remote commands in order, print the results
 #   yarg-remote.sh shot [file.png]       Save a screenshot, print its path
@@ -55,6 +57,14 @@ seed() {
     echo "seeded test data in $DATA from $SEED" >&2
 }
 
+# Dev/test careers (scripts/dev/careers/*.json, e.g. the fan-count test career) go into the test data
+# folder only, as custom careers. They are copied on every start so edits to them take effect. File
+# names must be the game's own (<Name with _>.<first 8 of Id>.json) or the game renames them.
+install_test_careers() {
+    mkdir -p "$DATA/custom/careers"
+    cp "$REPO"/scripts/dev/careers/*.json "$DATA/custom/careers/" 2>/dev/null || true
+}
+
 case "${1:-}" in
     build)
         mkdir -p "$DIR"
@@ -70,6 +80,7 @@ case "${1:-}" in
             shift
         else
             seed
+            install_test_careers
             data_args=(-persistent-data-path "$DATA")
         fi
         mkdir -p "$DIR"; rm -f "$DIR/cmd.txt" "$DIR/result.txt"
@@ -84,5 +95,5 @@ case "${1:-}" in
     do)   shift; run "$@";;
     shot) out="${2:-$DIR/shot.png}"; run "shot $out" >/dev/null && echo "$out";;
     stop) pkill -f "^$BUILD/YARG " ;;
-    *)    sed -n '2,21p' "$0";;
+    *)    sed -n '2,22p' "$0";;
 esac

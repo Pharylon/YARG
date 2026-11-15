@@ -34,6 +34,11 @@ namespace YARG.Menu.Career
 
         public CareerTier Tier => _tier;
 
+        /// <summary>
+        /// The career uses fans: the header also shows the fans the tier's songs earned.
+        /// </summary>
+        public bool ShowFans { get; set; }
+
         // A locked tier is still selectable so the list can be browsed, but it starts nothing.
         public override bool IsClickable => !IsLocked;
 
@@ -82,8 +87,14 @@ namespace YARG.Menu.Career
                 {
                     UnlockType.StarCount => Localize.KeyFormat("Menu.Career.StarProgress", _result?.StarSum ?? 0, _tier.Songs?.Length * STARS_PER_SONG ?? 0),
                     UnlockType.CompletionCount => Localize.KeyFormat("Menu.Career.StarProgress", _result?.RemainingToUnlock ?? 0, _tier.Songs?.Length ?? 0),
+                    UnlockType.FanCount => Localize.KeyFormat("Menu.Career.StarProgress", _result?.StarSum ?? 0, _tier.Songs?.Length * STARS_PER_SONG ?? 0),
                     _ => "Unknown Unlock Type (how?)"
                 };
+
+                if (ShowFans)
+                {
+                    text = Localize.KeyFormat("Menu.Career.TierFans", text, (_result?.Fans ?? 0).ToString("N0"));
+                }
             }
 
             return FormatAs(text, TextType.Secondary, selected);
@@ -102,6 +113,8 @@ namespace YARG.Menu.Career
                     Localize.KeyFormat("Menu.Career.UnlockStars", remaining),
                 UnlockType.CompletionCount =>
                     Localize.KeyFormat("Menu.Career.UnlockSongs", remaining),
+                UnlockType.FanCount =>
+                    Localize.KeyFormat("Menu.Career.UnlockFans", remaining.ToString("N0")),
                 _ => Localize.Key("Menu.Career.Locked"),
             };
         }

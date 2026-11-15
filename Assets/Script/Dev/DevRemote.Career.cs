@@ -6,7 +6,9 @@ using System.Linq;
 using System.Text;
 using YARG.Career;
 using YARG.Core;
+using YARG.Core.Game;
 using YARG.Menu.Career;
+using YARG.Scores;
 
 namespace YARG.Dev
 {
@@ -24,19 +26,23 @@ namespace YARG.Dev
     ///   difficulty=&lt;Beginner|Easy|Medium|Hard|Expert|ExpertPlus&gt;
     ///   path=&lt;score|grant&gt;   score (default): through ScoreContainer.RecordScore like a played song.
     ///                        grant: a completion row only, like the career menu's debug Grant Stars.
+    ///   commit=&lt;true|false&gt; scorescreen only: commit the result through the score path first (as after a
+    ///                        real song), so the screen shows the real fan outcome. Default false: the
+    ///                        screen shows what the result would earn, and nothing is saved.
     ///
     /// Commands:
     ///   simulate ...     Commit the result for each chosen song as the current (non-bot) players, then
     ///                    refresh the career menu if it shows that career. Reports the career's progress.
     ///   career ...       Report the career's progress: per tier, whether it is open, its star total and
-    ///                    each song's best stars ("-" = never completed).
-    ///   scorescreen ...  Open the score screen for one song with the result. Shows only, commits nothing.
+    ///                    each song's best stars ("-" = never completed, "G" = gold). Careers that use
+    ///                    fans also report the save's total fans and each tier's and song's fans.
+    ///   scorescreen ...  Open the score screen for one song with the result (see commit=).
     /// </summary>
     public partial class DevRemote
     {
         private static readonly HashSet<string> ResultOptions = new()
         {
-            "stars", "score", "percent", "fc", "difficulty", "path",
+            "stars", "score", "percent", "fc", "difficulty", "path", "commit",
         };
 
         private static readonly HashSet<string> TargetOptions = new()
@@ -71,6 +77,11 @@ namespace YARG.Dev
             }
 
             var summary = Summarize(career);
+            if (committed > 0 && CareerSongOutcome.Last is { } outcome && outcome.CareerId == career.Id)
+            {
+                summary = $"last: {DescribeOutcome(outcome)} | {summary}";
+            }
+
             return error is null
                 ? $"ok committed {committed} | {summary}"
                 : $"error committed {committed} of {targets.Count}, then: {error} | {summary}";
@@ -120,6 +131,36 @@ namespace YARG.Dev
                 return "error the song is not in the library";
             }
 
+            var commit = false;
+            if (options.TryGetValue("commit", out var commitText) && !bool.TryParse(commitText, out commit))
+            {
+                return "error commit must be true or false";
+            }
+
+            if (commit)
+            {
+                result.Path = SimulationPath.Score;
+                if (!CareerSimulator.TryCommit(career, tierIndex, songIndex, result, out error))
+                {
+                    return $"error {error}";
+                }
+            }
+            else
+            {
+                // What this result would earn on top of the saved progress (the score screen reads the
+                // outcome the score path leaves behind).
+                var saveId = CareerSimulator.FindSaveId(career);
+                var snapshot = saveId > 0 && ScoreContainer.Careers is not null
+                    ? ScoreContainer.Careers.LoadProgressSnapshot(saveId)
+                    : new CareerProgressSnapshot { CareerSaveId = saveId };
+                CareerSongOutcome.Last = CareerSongOutcome.Preview(career, snapshot, new CareerSongCompletions
+                {
+                    CareerSongId = career.Tiers[tierIndex].Songs[songIndex].Id,
+                    BandStars = result.BandStars.GetStarCount(),
+                    IsGold = result.BandStars == StarAmount.StarGold,
+                });
+            }
+
             // What the end of a career song leaves behind (see GameManager.EndSong).
             GlobalVariables.State = PersistentState.Default;
             GlobalVariables.State.CurrentSong = song;
@@ -127,7 +168,8 @@ namespace YARG.Dev
             GlobalVariables.State.ScoreScreenStats = CareerSimulator.ScoreScreenStatsFor(result);
 
             GlobalVariables.Instance.LoadScene(SceneIndex.Score);
-            return $"ok showing '{song.Name}'";
+            return $"ok showing '{song.Name}'{(commit ? " (committed)" : "")}: " +
+                DescribeOutcome(CareerSongOutcome.Last);
         }
 
         private static CareerMenu OpenCareerMenu()
@@ -142,6 +184,11 @@ namespace YARG.Dev
             var evaluation = CareerMenu.Evaluate(career, saveId);
 
             var text = new StringBuilder($"career='{career.Name}' save={saveId}");
+            if (evaluation.UsesFans)
+            {
+                text.Append($" fans={evaluation.TotalFans}");
+            }
+
             foreach (var tier in evaluation.Tiers)
             {
                 var content = career.Tiers[tier.TierIndex];
@@ -154,8 +201,13 @@ namespace YARG.Dev
                 text.Append(tier.Unlocked ? " open" : $" locked(needs {tier.RemainingToUnlock})");
                 text.Append($" stars={tier.StarSum}/{content.Songs.Length * ViewType.STARS_PER_SONG}");
                 text.Append(" best=[");
-                text.Append(string.Join(",", tier.Songs.Select(song => song.Completed ? song.BestStars.ToString() : "-")));
+                text.Append(string.Join(",", tier.Songs.Select(song =>
+                    !song.Completed ? "-" : song.BestIsGold ? "G" : song.BestStars.ToString())));
                 text.Append(']');
+                if (evaluation.UsesFans)
+                {
+                    text.Append($" fans={tier.Fans}=[{string.Join(",", tier.Songs.Select(song => song.Fans))}]");
+                }
                 if (tier.Completed)
                 {
                     text.Append(" completed");
@@ -163,6 +215,21 @@ namespace YARG.Dev
             }
 
             return text.ToString();
+        }
+
+        private static string DescribeOutcome(CareerSongOutcome outcome)
+        {
+            if (outcome is null)
+            {
+                return "no career outcome";
+            }
+
+            var text = outcome.UsesFans
+                ? $"fans {outcome.FansBefore} -> {outcome.FansAfter} (+{outcome.FansGained})"
+                : "career does not use fans";
+            return outcome.UnlockedTierNames.Count == 0
+                ? text
+                : $"{text}, unlocked {string.Join(", ", outcome.UnlockedTierNames.Select(name => $"'{name}'"))}";
         }
 
         private static bool TryResolveTargets(Dictionary<string, string> options, out CareerPreset career,
