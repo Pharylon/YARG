@@ -37,6 +37,22 @@ namespace YARG.Menu.Career
         private int _careerSaveId;
 
         private static CareerPreset _sessionCareer;
+
+        public CareerPreset Career => _career;
+
+        // The one tier whose songs are listed, or null when every tier is collapsed. Kept for the
+        // session so returning from a song keeps the list as it was left.
+        private static Guid? _expandedTier;
+
+        private const float TIER_ANIMATION_SECONDS = 0.2f;
+
+        // While a tier animation runs, the songs of both tiers are listed: one growing, one shrinking.
+        private Guid? _expandingTier;
+        private Guid? _collapsingTier;
+        private float _animationStart;
+        private float _animationProgress;
+
+        private bool IsAnimatingTiers => _expandingTier is not null || _collapsingTier is not null;
         private bool _progressDirty;
 
         private CancellationTokenSource _backgroundCts;
@@ -94,6 +110,8 @@ namespace YARG.Menu.Career
 
         protected override void OnDisable()
         {
+            FinishTierAnimation();
+
             base.OnDisable();
 
             StopVideo();
@@ -112,7 +130,7 @@ namespace YARG.Menu.Career
                 Navigator.Instance.PopScheme();
             }
 
-            _ = Navigator.Instance.PushScheme(new NavigationScheme(new ()
+            var entries = new List<NavigationScheme.Entry>
             {
                 new NavigationScheme.Entry(MenuAction.Up, "Menu.Common.Up",
                     ctx => {
@@ -132,7 +150,98 @@ namespace YARG.Menu.Career
                     onHoldHandler: ResetCareer),
                 new NavigationScheme.Entry(MenuAction.Red, "Menu.Common.Back",
                     Back, hide: true),
-            }, false));
+            };
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            entries.Add(new NavigationScheme.Entry(MenuAction.Blue, "Menu.Career.DebugGrant", DebugGrantStars));
+#endif
+
+            _ = Navigator.Instance.PushScheme(new NavigationScheme(entries, false));
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// Testing aid: records a full-star completion for the selected song, or for every song of the
+        /// selected tier, through the same progress sync a real completion runs (see
+        /// <see cref="YARG.Dev.CareerSimulator"/>, which the dev remote's <c>simulate</c> shares).
+        /// </summary>
+        private void DebugGrantStars()
+        {
+            if (_career is null)
+            {
+                return;
+            }
+
+            var grants = new List<(int tierIndex, int songIndex)>();
+            switch (CurrentSelection)
+            {
+                case SongViewType song:
+                    grants.Add((song.TierIndex, song.SongIndex));
+                    break;
+                case TierViewType header when header.IsClickable:
+                    var tierIndex = _career.Tiers.ToList().IndexOf(header.Tier);
+                    for (var songIndex = 0; songIndex < header.Tier.Songs.Length; songIndex++)
+                    {
+                        grants.Add((tierIndex, songIndex));
+                    }
+                    break;
+            }
+
+            if (grants.Count == 0)
+            {
+                ToastManager.ToastInformation(Localize.Key("Menu.Career.DebugNothingToGrant"));
+                return;
+            }
+
+            if (YARG.Dev.CareerSimulator.CareerPlayers().Count == 0)
+            {
+                ToastManager.ToastInformation(Localize.Key("Menu.Career.NoPlayers"));
+                return;
+            }
+
+            var result = new YARG.Dev.SimulatedResult
+            {
+                Path = YARG.Dev.SimulationPath.Grant,
+                Stars = ViewType.STARS_PER_SONG,
+            };
+
+            var granted = 0;
+            foreach (var (tierIndex, songIndex) in grants)
+            {
+                if (!YARG.Dev.CareerSimulator.TryCommit(_career, tierIndex, songIndex, result, out var error))
+                {
+                    YargLogger.LogFormatError("Career: debug grant failed: {0}", error);
+                    break;
+                }
+
+                granted++;
+            }
+
+            RefreshProgress();
+
+            ToastManager.ToastSuccess(Localize.KeyFormat("Menu.Career.DebugGranted", granted));
+        }
+#endif
+
+        /// <summary>
+        /// Reloads progress from the database and redraws the list, presenting any new unlocks. For
+        /// progress committed while this menu is open (debug grants, the dev remote).
+        /// </summary>
+        public void RefreshProgress()
+        {
+            if (_career is null)
+            {
+                return;
+            }
+
+            ApplyProgress(LoadProgress(_career));
+            RequestViewListUpdate();
+
+            // Only one dialog can be open. Unlocks stay unseen until the next refresh or visit.
+            if (!DialogManager.Instance.IsDialogShowing)
+            {
+                CheckUnlocks();
+            }
         }
 
         private void SetVideoNavigation()
@@ -161,9 +270,11 @@ namespace YARG.Menu.Career
                 var tier = _career.Tiers[tierIndex];
                 var result = _evaluation.Tiers[tierIndex];
 
+                var collapsed = tier.Id != _expandedTier && tier.Id != _collapsingTier;
+
                 if (result.Unlocked)
                 {
-                    viewList.Add(new TierViewType(tier, result));
+                    viewList.Add(new TierViewType(tier, result, collapsed, ToggleTier));
                 }
                 else
                 {
@@ -179,20 +290,149 @@ namespace YARG.Menu.Career
                     break;
                 }
 
+                if (collapsed)
+                {
+                    continue;
+                }
+
+                var reveal = RevealFor(tier.Id);
+
                 for (var songIndex = 0; songIndex < tier.Songs.Length; songIndex++)
                 {
                     viewList.Add(new SongViewType(
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
+                        songIndex == tier.Songs.Length - 1,
                         songIndex < result.Songs.Count ? result.Songs[songIndex] : null,
-                        OnSongPlayed));
+                        OnSongPlayed) { Reveal = reveal });
                 }
             }
 
             return viewList;
         }
 
+        /// <summary>
+        /// Expands the tier and collapses whichever one was open, or collapses it if it was the open one.
+        /// </summary>
+        private void ToggleTier(CareerTier tier)
+        {
+            FinishTierAnimation();
+
+            if (_expandedTier == tier.Id)
+            {
+                _collapsingTier = tier.Id;
+                _expandedTier = null;
+            }
+            else
+            {
+                _collapsingTier = _expandedTier;
+                _expandingTier = tier.Id;
+                _expandedTier = tier.Id;
+            }
+
+            _animationStart = Time.unscaledTime;
+            _animationProgress = 0f;
+
+            // The collapsing tier's songs stay listed until they have shrunk away; the expanding tier's
+            // are listed now at zero height. A mouse click may come from anywhere, so the selection
+            // goes to the clicked header.
+            RequestViewListUpdate();
+            SelectTier(tier.Id);
+        }
+
+        private void Update()
+        {
+            if (!IsAnimatingTiers)
+            {
+                return;
+            }
+
+            var t = Mathf.Clamp01((Time.unscaledTime - _animationStart) / TIER_ANIMATION_SECONDS);
+            if (t >= 1f)
+            {
+                FinishTierAnimation();
+                return;
+            }
+
+            _animationProgress = Mathf.SmoothStep(0f, 1f, t);
+            foreach (var song in ViewList.OfType<SongViewType>())
+            {
+                song.Reveal = RevealFor(song.TierId);
+            }
+
+            RefreshViewsObjects();
+        }
+
+        private void FinishTierAnimation()
+        {
+            if (!IsAnimatingTiers)
+            {
+                return;
+            }
+
+            _expandingTier = null;
+            _collapsingTier = null;
+
+            // Dropping the collapsed tier's songs shifts every row below them, so the selection is
+            // found again by what it was rather than where it was.
+            var selected = CurrentSelection;
+            RequestViewListUpdate();
+
+            switch (selected)
+            {
+                case TierViewType header:
+                    SelectTier(header.Tier.Id);
+                    break;
+                case SongViewType song:
+                    if (!SetIndexTo(view => view is SongViewType other && other.Song.Id == song.Song.Id))
+                    {
+                        SelectTier(song.TierId);
+                    }
+                    break;
+            }
+        }
+
+        private float RevealFor(Guid tierId)
+        {
+            if (tierId == _expandingTier)
+            {
+                return _animationProgress;
+            }
+
+            if (tierId == _collapsingTier)
+            {
+                return 1f - _animationProgress;
+            }
+
+            return 1f;
+        }
+
+        private void SelectTier(Guid tierId)
+        {
+            SetIndexTo(view => view is TierViewType header && header.Tier.Id == tierId);
+        }
+
+        /// <summary>
+        /// The tier the players are working on: the first unlocked one not yet completed, else the last
+        /// unlocked one.
+        /// </summary>
+        private static Guid? CurrentTierId(CareerEvaluation evaluation)
+        {
+            var unlocked = evaluation?.Tiers.Where(tier => tier.Unlocked).ToList();
+            if (unlocked is null || unlocked.Count == 0)
+            {
+                return null;
+            }
+
+            return (unlocked.FirstOrDefault(tier => !tier.Completed) ?? unlocked[^1]).TierId;
+        }
+
         public void Initialize(CareerPreset career, CareerEvaluation evaluation)
         {
+            if (_sessionCareer?.Id != career.Id)
+            {
+                _expandedTier = CurrentTierId(evaluation);
+            }
+
             _career = career;
             _sessionCareer = career;
             ApplyProgress(evaluation);

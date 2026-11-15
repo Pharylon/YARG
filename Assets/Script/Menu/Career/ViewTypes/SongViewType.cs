@@ -11,6 +11,15 @@ namespace YARG.Menu.Career
     {
         public override BackgroundType Background => BackgroundType.Normal;
         public bool HasSongEntry => _songEntry != null;
+        public Guid TierId => _tierId;
+        public CareerSong Song => _song;
+        public int TierIndex => _tierIndex;
+        public int SongIndex => _songIndex;
+
+        /// <summary>
+        /// Driven by <see cref="CareerMenu"/> while the tier expands or collapses.
+        /// </summary>
+        public float Reveal { get; set; } = 1f;
 
         private readonly CareerSong _song;
         private readonly SongEntry  _songEntry;
@@ -19,6 +28,7 @@ namespace YARG.Menu.Career
         private readonly int   _tierIndex;
         private readonly int   _songIndex;
         private readonly string _tierVenueHint;
+        private readonly bool  _lastInTier;
         private readonly CareerEvaluation.SongResult _result;
         private readonly Action _onPlay;
 
@@ -31,7 +41,8 @@ namespace YARG.Menu.Career
         /// and only reloads it when something could have changed.
         /// </param>
         public SongViewType(CareerSong song, Guid careerId, Guid tierId, int tierIndex, int songIndex,
-            string tierVenueHint, CareerEvaluation.SongResult result = null, Action onPlay = null)
+            string tierVenueHint, bool lastInTier, CareerEvaluation.SongResult result = null,
+            Action onPlay = null)
         {
             _song = song;
             _songEntry = song.SongEntry;
@@ -40,6 +51,7 @@ namespace YARG.Menu.Career
             _tierIndex = tierIndex;
             _songIndex = songIndex;
             _tierVenueHint = tierVenueHint;
+            _lastInTier = lastInTier;
             _result = result;
             _onPlay = onPlay;
         }
@@ -54,6 +66,8 @@ namespace YARG.Menu.Career
                 BestStars   = _result?.BestStars ?? 0,
                 Artist      = _songEntry?.Artist.ToString() ?? string.Empty,
                 Album       = _songEntry?.Album.ToString() ?? string.Empty,
+                LastInGroup = _lastInTier,
+                Reveal      = Reveal,
             };
         }
 

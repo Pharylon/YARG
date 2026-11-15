@@ -35,6 +35,13 @@ namespace YARG.Menu.Career
 
             public string LockHint;
 
+            // Whether this row closes its tier's box: the last song of a tier, or a locked tier
+            // header (which lists no songs).
+            public bool LastInGroup;
+
+            // How far an animating song row is expanded, from 0 (hidden) to 1 (full height).
+            public float Reveal;
+
             public readonly bool IsHeader => Kind != CareerRowKind.Song;
         }
 
