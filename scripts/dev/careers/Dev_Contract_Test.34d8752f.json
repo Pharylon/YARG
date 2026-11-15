@@ -1,0 +1,203 @@
+{
+  "Id": "34d8752f-99f3-4977-bb24-920928628ca5",
+  "Name": "Dev Contract Test",
+  "Type": "Career",
+  "Description": "DEV TEST CAREER, not shipped. Gig contracts of every Phase A type, on tiers and on songs, with fan bonuses. Installed by scripts/dev/yarg-remote.sh into the isolated test data only.",
+  "Source": "yarg",
+  "Version": 1,
+  "Tiers": [
+    {
+      "Name": "Soundcheck",
+      "Id": "b0e1a3c2-1d4e-4f6a-9b8c-000000000001",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992",
+          "SongId": "a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
+          "SongId": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
+          "Identifier": "SongId",
+          "Contract": {
+            "Type": "MinStars",
+            "Parameter": 4,
+            "BonusPercent": 50
+          }
+        },
+        {
+          "Id": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
+          "SongId": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
+          "Identifier": "SongId",
+          "Contract": {
+            "Type": "MinAccuracy",
+            "Parameter": 90,
+            "BonusPercent": 20
+          }
+        }
+      ],
+      "VenueSize": "Starter",
+      "VenueHint": null,
+      "UnlockType": "StarCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "The Rusty Nail",
+      "City": "Springfield"
+    },
+    {
+      "Name": "Open Stage",
+      "Id": "b0e1a3c2-1d4e-4f6a-9b8c-000000000002",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "f492da61-1cb4-4635-a0c7-099d3d0ea4f2",
+          "SongId": "f492da61-1cb4-4635-a0c7-099d3d0ea4f2",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "530a0afc-da9c-4951-abdd-9d63df35165a",
+          "SongId": "530a0afc-da9c-4951-abdd-9d63df35165a",
+          "Identifier": "SongId",
+          "Contract": {
+            "Type": "FullCombo",
+            "Parameter": 0,
+            "BonusPercent": 50
+          }
+        },
+        {
+          "Id": "7eb17eb8-6379-48f4-a60d-ae61b17571b9",
+          "SongId": "7eb17eb8-6379-48f4-a60d-ae61b17571b9",
+          "Identifier": "SongId",
+          "Contract": {
+            "Type": "None",
+            "Parameter": 0,
+            "BonusPercent": 25
+          }
+        }
+      ],
+      "VenueSize": "Starter",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "Contract": {
+        "Type": "FullCombo",
+        "Parameter": 1,
+        "BonusPercent": 25
+      }
+    },
+    {
+      "Name": "Pro Night",
+      "Id": "b0e1a3c2-1d4e-4f6a-9b8c-000000000003",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "bbc23ee6-4336-4fb5-990e-e03a9841bb8c",
+          "SongId": "bbc23ee6-4336-4fb5-990e-e03a9841bb8c",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "dca3cc66-f65d-4709-bcda-eb5250c2e4b7",
+          "SongId": "dca3cc66-f65d-4709-bcda-eb5250c2e4b7",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "4420cda8-b7cd-4f81-a104-3a587ea823ed",
+          "SongId": "4420cda8-b7cd-4f81-a104-3a587ea823ed",
+          "Identifier": "SongId",
+          "Contract": {
+            "Type": "MinStars",
+            "Parameter": 6,
+            "BonusPercent": 100
+          }
+        }
+      ],
+      "VenueSize": "Small",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "Contract": {
+        "Type": "MinDifficulty",
+        "Parameter": 3,
+        "BonusPercent": 25
+      }
+    },
+    {
+      "Name": "Clean Show",
+      "Id": "b0e1a3c2-1d4e-4f6a-9b8c-000000000004",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "d21e5db8-e372-42bf-bbcb-9fb8a0c74462",
+          "SongId": "d21e5db8-e372-42bf-bbcb-9fb8a0c74462",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "35e9770e-ac25-4339-8ae7-c6abcf89156c",
+          "SongId": "35e9770e-ac25-4339-8ae7-c6abcf89156c",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "ef6121fa-9aee-4b96-a644-16fba205d4c8",
+          "SongId": "ef6121fa-9aee-4b96-a644-16fba205d4c8",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Small",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "Contract": {
+        "Type": "NoFailOff",
+        "Parameter": 0,
+        "BonusPercent": 25
+      }
+    },
+    {
+      "Name": "Full Band Night",
+      "Id": "b0e1a3c2-1d4e-4f6a-9b8c-000000000005",
+      "Description": null,
+      "Songs": [
+        {
+          "Id": "06a92c7e-b1db-4159-9471-7c3bc6505155",
+          "SongId": "06a92c7e-b1db-4159-9471-7c3bc6505155",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "56390e0b-debb-4743-a1ba-0e8a401af492",
+          "SongId": "56390e0b-debb-4743-a1ba-0e8a401af492",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "2c69588b-c01d-4df9-ac7f-1dc0fe5884a1",
+          "SongId": "2c69588b-c01d-4df9-ac7f-1dc0fe5884a1",
+          "Identifier": "SongId",
+          "Contract": {
+            "Type": "FullBand",
+            "Parameter": 3,
+            "BonusPercent": 100,
+            "Text": "Bring the whole crew: 3 or more players"
+          }
+        }
+      ],
+      "VenueSize": "Medium",
+      "VenueHint": null,
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "Contract": {
+        "Type": "FullBand",
+        "Parameter": 2,
+        "BonusPercent": 40
+      }
+    }
+  ]
+}

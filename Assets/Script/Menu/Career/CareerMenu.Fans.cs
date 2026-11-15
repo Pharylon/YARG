@@ -1,3 +1,4 @@
+using System.Linq;
 using YARG.Career;
 using YARG.Localization;
 
@@ -15,10 +16,16 @@ namespace YARG.Menu.Career
         {
             base.OnSelectedIndexChanged();
 
-            if (_evaluation is { UsesFans: true })
+            if (_evaluation is { UsesFans: true } || HasContracts())
             {
                 UpdateHeader();
             }
+        }
+
+        private bool HasContracts()
+        {
+            return _career?.Tiers.Any(tier => tier.Contract is not null || tier.Songs?.Any(song => song.Contract is not null) == true)
+                ?? false;
         }
 
         private void UpdateHeader()
@@ -33,6 +40,12 @@ namespace YARG.Menu.Career
 
             // Second line: the band playing (if any), then the save's fans (fan careers only).
             var subtitle = BandHeaderText();
+
+            // The selected row's contract, so it is known before the song is picked.
+            if (CareerContractText.Line(SelectedContract(), _evaluation?.UsesFans ?? false) is { } contract)
+            {
+                description = $"<b>{Localize.KeyFormat("Menu.Career.Contract.Upcoming", contract)}</b>\n\n{description}";
+            }
 
             if (_evaluation is { UsesFans: true })
             {
@@ -63,6 +76,17 @@ namespace YARG.Menu.Career
             {
                 TierViewType header => header.Tier,
                 SongViewType song when song.TierIndex < _career.Tiers.Count => _career.Tiers[song.TierIndex],
+                _ => null,
+            };
+        }
+
+        private CareerContract SelectedContract()
+        {
+            return CurrentSelection switch
+            {
+                TierViewType header => header.Tier.Contract is { IsActive: true } contract ? contract : null,
+                SongViewType song when song.TierIndex < _career.Tiers.Count =>
+                    CareerContracts.For(_career.Tiers[song.TierIndex], song.Song),
                 _ => null,
             };
         }

@@ -141,9 +141,9 @@ namespace YARG.Menu.ScoreScreen
                     ColoredPillElement.ColoredPillPreset.HarderModifier);
                 _scoreStatusPill.gameObject.SetActive(true);
             }
-            else if (!isReplay && YARG.Menu.Career.CareerScoreScreen.FanLine() is { } fanLine)
+            else if (!isReplay && YARG.Menu.Career.CareerScoreScreen.StatusLine() is { } careerLine)
             {
-                _scoreStatusPill.SetValues(fanLine, ColoredPillElement.ColoredPillPreset.EasierModifier);
+                _scoreStatusPill.SetValues(careerLine, ColoredPillElement.ColoredPillPreset.EasierModifier);
                 _scoreStatusPill.gameObject.SetActive(true);
             }
             else

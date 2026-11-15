@@ -202,8 +202,8 @@ namespace YARG.Career.Tests
             // Completion unlocks count regular-tier songs completed: 2 of 5.
             Assert.That(evaluation.Tiers[3].RemainingToUnlock, Is.EqualTo(3));
             Assert.That(evaluation.Tiers[0].Songs[0].BestStars, Is.EqualTo(5));
-            Assert.That(first.Songs[0].IsCompleted, Is.True);
-            Assert.That(first.Songs[1].IsCompleted, Is.False);
+            Assert.That(evaluation.Tiers[0].Songs[0].Done, Is.True);
+            Assert.That(evaluation.Tiers[0].Songs[1].Done, Is.False);
 
             evaluation = Evaluate(career,
                 Completion(first.Songs[0], 5),

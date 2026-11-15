@@ -1,4 +1,5 @@
 using System;
+using YARG.Career;
 
 namespace YARG.Scores
 {
@@ -15,6 +16,8 @@ namespace YARG.Scores
         public int GameRecordId;
         public int BandStars;
         public bool IsGold;
+        public CareerContractType? ContractType;
+        public bool ContractMet;
         public int BandScore;
         public DateTime CompletedAt;
         public CareerCompletionSource Source;

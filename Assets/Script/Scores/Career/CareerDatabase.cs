@@ -169,6 +169,8 @@ namespace YARG.Scores
                 GameRecordId = commit.GameRecordId,
                 BandStars = commit.BandStars,
                 IsGold = commit.IsGold,
+                ContractType = commit.ContractType,
+                ContractMet = commit.ContractMet,
                 BandScore = commit.BandScore,
                 CompletedAt = commit.CompletedAt,
                 Source = commit.Source,

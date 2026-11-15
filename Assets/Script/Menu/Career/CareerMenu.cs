@@ -310,7 +310,7 @@ namespace YARG.Menu.Career
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
                         songIndex == tier.Songs.Length - 1,
                         songIndex < result.Songs.Count ? result.Songs[songIndex] : null,
-                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans });
+                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract });
                 }
             }
 

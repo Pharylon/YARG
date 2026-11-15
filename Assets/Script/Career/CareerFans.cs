@@ -8,11 +8,12 @@ namespace YARG.Career
     /// one-file change. Pure (no UnityEngine), so it is covered by Tests/YARG.Career.Tests.
     ///
     /// <code>
-    /// songFans = BASE_FANS * venueMultiplier * starFactor(bestStars) * (bonus tier ? BONUS_RATE : 1)
+    /// songFans = BASE_FANS * venueMultiplier * starFactor(stars) * (bonus tier ? BONUS_RATE : 1)
+    ///            * (1 + contractBonusPercent / 100, if that result met the song's contract)
     /// </code>
     ///
-    /// Only the song's best result counts (see <see cref="CareerEvaluation"/>), so replaying improves
-    /// the total but cannot farm it. A career shows fans only when it opts in (<see cref="UsesFans"/>).
+    /// Only the song's best result counts (see <see cref="CareerEvaluation"/>): the one result worth the
+    /// most fans, contract bonus included. Replaying improves the total but cannot farm it. A career shows fans only when it opts in (<see cref="UsesFans"/>).
     /// </summary>
     public static class CareerFans
     {
@@ -68,11 +69,24 @@ namespace YARG.Career
         /// </summary>
         public static int SongFans(CareerTier tier, int stars)
         {
-            var fans = BASE_FANS * TierMultiplier(tier) * StarFactor(stars);
+            return SongFans(tier, stars, 0);
+        }
+
+        /// <summary>
+        /// Fans for a result of <paramref name="stars"/> that earns a contract bonus of
+        /// <paramref name="contractBonusPercent"/> (0 if it did not meet a contract). Negative bonuses
+        /// count as 0.
+        /// </summary>
+        public static int SongFans(CareerTier tier, int stars, int contractBonusPercent)
+        {
+            double fans = BASE_FANS * TierMultiplier(tier) * StarFactor(stars);
             if (tier.IsBonus)
             {
                 fans *= BONUS_RATE;
             }
+
+            // Multiplied before dividing so a round bonus (+10%) gives exact halves to round.
+            fans = fans * (100 + Math.Max(0, contractBonusPercent)) / 100;
 
             return (int) Math.Round(fans, MidpointRounding.AwayFromZero);
         }

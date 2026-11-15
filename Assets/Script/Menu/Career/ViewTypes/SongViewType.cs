@@ -26,6 +26,11 @@ namespace YARG.Menu.Career
         /// </summary>
         public bool ShowFans { get; set; }
 
+        /// <summary>
+        /// The contract of the song's tier, which applies unless the song has its own.
+        /// </summary>
+        public CareerContract TierContract { get; set; }
+
         private readonly CareerSong _song;
         private readonly SongEntry  _songEntry;
         private readonly Guid  _careerId;
@@ -90,12 +95,36 @@ namespace YARG.Menu.Career
                 detail = Localize.KeyFormat("Menu.Career.SongFans", detail, _result.Fans.ToString("N0"));
             }
 
+            detail = AddContract(detail);
+
             return AddStrikethrough(FormatAs(detail, TextType.Secondary, selected));
+        }
+
+        /// <summary>
+        /// A song with its own contract shows it (the tier header shows the tier's); a song exempt from
+        /// its tier's contract says so; a song whose counted result met its contract says that.
+        /// </summary>
+        private string AddContract(string detail)
+        {
+            if (_result is { ContractMet: true })
+            {
+                return Localize.KeyFormat("Menu.Career.Contract.SongMet", detail);
+            }
+
+            if (_song.Contract is { IsActive: false } && TierContract is { IsActive: true })
+            {
+                return Localize.KeyFormat("Menu.Career.Contract.SongNone", detail);
+            }
+
+            return CareerContractText.Line(_song.Contract, ShowFans) is { } own
+                ? Localize.KeyFormat("Menu.Career.HeaderJoin", detail, own)
+                : detail;
         }
 
         private string AddStrikethrough(string text)
         {
-            if (_song.IsCompleted)
+            // From this save's evaluation, so it never carries over from another save (see SongResult.Done).
+            if (_result is { Done: true })
             {
                 return ZString.Format("<color=white><s>{0}</s></color>", text);
             }

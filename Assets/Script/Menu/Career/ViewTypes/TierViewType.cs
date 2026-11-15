@@ -97,6 +97,12 @@ namespace YARG.Menu.Career
                 }
             }
 
+            // The gig's contract, which every song of the tier is played under unless it has its own.
+            if (CareerContractText.Line(_tier.Contract, ShowFans) is { } contract)
+            {
+                text = Localize.KeyFormat("Menu.Career.HeaderJoin", text, contract);
+            }
+
             return FormatAs(text, TextType.Secondary, selected);
         }
 

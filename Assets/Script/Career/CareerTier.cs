@@ -83,6 +83,10 @@ namespace YARG.Career
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string VenueName;
 
+        // Optional gig contract for every song of the tier (a song's own contract overrides it).
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public CareerContract Contract;
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
@@ -131,6 +135,7 @@ namespace YARG.Career
             FanMultiplier = other.FanMultiplier;
             City = other.City;
             VenueName = other.VenueName;
+            Contract = other.Contract is null ? null : new CareerContract(other.Contract);
         }
 
         public void AddSong(CareerSong song)

@@ -15,7 +15,7 @@ What already exists (official career system, merged to `upstream/dev` as #1741):
 | Piece | Where | Notes |
 |---|---|---|
 | Content model | `Assets/Script/Career/CareerPreset.cs`, `CareerTier.cs`, `CareerSong.cs`, `CareerPreset.Defaults.cs` | Tiers of songs; `UnlockType` = `StarCount` / `CompletionCount`; `IsBonus`; `VenueSize`, `VenueHint`; completion bonus media. Defaults: "YARG Setlist Rock", "YARG Setlist Pop" |
-| Progress evaluation | `Assets/Script/Career/CareerEvaluation.cs`, `CareerProgressSnapshot.cs` | Pure function over raw rows. Nothing derived is stored. One side effect: it sets the sticky `CareerSong.IsCompleted` flag (strikethrough), which is never cleared, not even by a reset in the same session |
+| Progress evaluation | `Assets/Script/Career/CareerEvaluation.cs`, `CareerProgressSnapshot.cs` | Pure function over raw rows. Nothing derived is stored. *Fixed in step 4:* it used to set the sticky `CareerSong.IsCompleted` flag (strikethrough) on the shared content object; the strikethrough now comes from `SongResult.Done` of the evaluation being shown, and the (upstream) field is no longer written or read |
 | Progress sync | `CareerPreset.SyncProgress(CareerDatabase, saveId)` (in `CareerPreset.cs`) | Re-evaluates and writes `CareerTierProgress` unlocked/completed timestamps. Called right after every completion commit |
 | Persistence | `Assets/Script/Scores/Career/*` | `CareerDatabase` (queries + commits), `CareerSaves`, `CareerSaveProfiles`, `CareerSongCompletions`, `CareerTierProgress` (sqlite-net, in `scores/scores.db`), `CareerSongCompletionCommit`, `CareerCompletionSource` (`SingleSong`, playlist kinds, `DebugGrant`) |
 | Song start | `Menu/Career/ViewTypes/SongViewType.cs` `ViewClick()` | Sets `GlobalVariables.State.CurrentSong` and `.CurrentCareer` (`CareerContext`), pushes DifficultySelect (which forces bots to sit out for careers) |
@@ -48,6 +48,7 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
 - **How saves are resolved.** No save id travels with a song. `ScoreContainer.CommitCareerCompletion` takes the distinct `PlayerId`s of the recorded `PlayerScoreRecord`s and calls `CareerDatabase.GetOrCreateSave(careerId, version, profileIds)`, which finds the active save whose `CareerSaveProfiles` member set *equals* that set, or creates one. The menu (`CareerMenu.FindSaveId`) resolves the same way from `PlayerContainer.Players` that are not sitting out and not bots. So the save is per exact player set: if one more person joins, it is a different (new) save. Reset (hold Yellow) soft-deletes the save. *Since step 3 (bands): with an active band (`CareerBands.ActiveBandId`, carried as `CareerContext.BandId`) the save is the band's one active save for the career instead; all resolution goes through `CareerBands` (see section 1).*
 - **How the view list is built.** `CareerMenu.CreateViewList()`: for each tier, a `TierViewType` header; unlocked tiers list their songs (`SongViewType`) only when expanded (uncommitted collapse work: one expanded tier at a time, kept in a static `_expandedTier`). The first locked tier is shown with its lock hint and the list stops there; bonus tiers that are locked are skipped. Progress comes from a cached `CareerEvaluation`; `ApplyProgress()` + `RequestViewListUpdate()` redraw it. New public `CareerMenu.RefreshProgress()` reloads from the database and presents unlocks (skipped while a dialog is open, so it is deferred, not lost).
 - **How the score screen gets its data.** `GameManager.EndSong()` fills `GlobalVariables.State.ScoreScreenStats` (`ScoreScreenStats`: per-player `PlayerScoreCard { Player, Stats (BaseStats), IsHighScore, IsReplay }`, `BandScore`, `BandStars`, `MeanAverageOffset`, `ReplayInfo`), records the score, then loads `SceneIndex.Score`. `ScoreScreenMenu.OnEnable` only reads that struct and `State.CurrentSong`; it does not read the database or the career context. History replays build the same struct (`ReplayViewType`). So "+fans" / contract lines need either new fields on `ScoreScreenStats` or a read of the committed completion (e.g. remember the commit's id in state). *Step 2 chose a static: `CareerSongOutcome.Last`, set by every career commit (cleared at the start of `CommitCareerCompletion`) and matched against `State.CurrentCareer` by `CareerScoreScreen.FanLine()`; contract lines can ride on the same outcome.* After the score screen the menu scene reopens the career menu (`MenuManager._lastOpenMenu`), which re-evaluates progress and shows unlock dialogs.
+- **Contracts (step 4).** `CareerContract` on `CareerTier`/`CareerSong` (song overrides tier, a song contract of type `None` cancels the tier's). `ScoreContainer.CommitCareerCompletion` judges the play with `CareerContracts.IsMet(contract, gameRecord, playerEntries, noFailOff)` and stores `ContractType`/`ContractMet` on the completion row. The no-fail setting is read live from `SettingsManager.Settings.NoFail` at commit time: toggling it mid-song, or un-failing, invalidates the score, so the value at commit is the play's. Players judged = every human `PlayerScoreRecord` of the play (band members and sit-ins). `CareerSongOutcome.Last` now also carries `Contract`/`ContractMet` for the score screen.
 - **What per-player stats are stored.** `PlayerScoreRecord` (table `PlayerScores`, linked by `GameRecordId`): `PlayerId`, `Instrument`, `Difficulty`, `EnginePresetId`, `Score`, `Stars` (`StarAmount`), `NotesHit`, `NotesMissed`, `IsFc`, `IsReplay`, `Percent` (nullable, older rows lack it; use `GetPercent()`). **Not stored:** max combo/best streak, star power phrases/activations/time, overstrums, solo bonuses, modifiers, song speed per player. Those exist in memory on `BaseStats` (and in the replay file's `ReplayStats`) only. `GameRecord` (table `GameRecords`): date, song checksum/name/artist/charter, replay file name/checksum, `BandScore`, `BandStars` (`StarAmount`), `SongSpeed`, `PlayedWithReplay`, `HasBots`. Not stored: no-fail setting, modifiers, player count other than by counting `PlayerScores` rows.
 - **Gold stars.** `GameRecord.BandStars` and `PlayerScoreRecord.Stars` are `StarAmount`, where `StarGold` (6) is distinct from `Star5`. `CareerSongCompletions.BandStars` is an int written with `GetStarCount()`, which maps gold to 5, so the completion row loses gold; it is recoverable only by joining `GameRecords` on `GameRecordId` (0 for `DebugGrant` rows). Add a column (or store the raw `StarAmount`) if fans need gold.
 - **Failed songs.** Nothing is recorded or committed unless `GameManager.EndSong` reaches `RecordScores` with a valid band score; quitting from the pause menu goes through `ForceQuitSong` and records nothing.
@@ -67,6 +68,9 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
   - The career list's first row is now the band row, so the first career is one `nav Down` away. The list wraps around, so count `nav Up` carefully.
   - The menu's idle dimmer (3 minutes without real input) used to darken screenshots; the remote now resets it on every command.
   - NUnit: `CareerBandsTests` (credit rule, band fans, and band/profile-set save resolution against an in-memory SQLite database using the game's own sqlite-net code and `Assets/Plugins/Sqlite3/Linux/x86_64/libsqlite3.so`, which the test project copies to its output).
+  - Contracts (step 4): `simulate`/`scorescreen` take `fc=true|false|"A,B"`, `difficulty=<d>|"A:Hard,B:Expert"`, `players=<n|"A,B">`, `nofail=on|off`, `failed=true`. `career`/`simulate` mark each song's best stars with `+` (counted result met the contract) or `x` (missed), and print `contract <Type>(<param>, +N%) met|missed` for the last commit. Dev career "Dev Contract Test" (`scripts/dev/careers/Dev_Contract_Test.34d8752f.json`) has every Phase A type on tiers and songs, a song override, a `None` exemption, a `Text` override and a song without contract; all tiers open at 0 fans. `players=` without a band commits to that player set's save (not the one the menu shows); use a band to keep one save.
+  - `scorescreen` must be started from the menu scene: run from the score screen, the old screen's `OnDisable` resets the state and the new one comes up empty (dev tool limitation). Continue (`nav Green`) back to the menu first.
+  - NUnit: `CareerContractsTests` (judge per type, which row counts, strikethrough rule, JSON, completion row columns on in-memory SQLite). 59 tests in total.
   - Shared code: `Assets/Script/Dev/CareerSimulator.cs` (`SimulatedResult`, `CareerSimulator.TryCommit`, `ScoreScreenStatsFor`). The career menu's debug Grant Stars uses the same code with `path=grant` (completion row with `Source = DebugGrant`, no score records). Add new result fields (player count, failed song, ...) to `SimulatedResult` and its parser.
 
 ---
@@ -82,7 +86,7 @@ Today a save belongs to "whichever profiles happened to play". A band makes that
 - [x] `CareerDatabase` (new partial `CareerDatabase.Bands.cs`): `CreateBand`, `RenameBand`, `SoftDeleteBand`, `GetBand`, `GetBands`, `GetBandsForProfile`, `GetBandMembers`, `AddBandMember` (idempotent), `RemoveBandMember`, `FindActiveSaveForBand`, `GetOrCreateSave(careerId, version, bandId)`, `GetActiveSavesForBand`, `AdoptSave`. The only edits to `CareerDatabase.cs` itself: `partial`, two `CreateTable` calls, the `BandId IS NULL` filter.
 - [x] `CareerContext.BandId` (Guid?), set from the active band by `SongViewType.ViewClick` (and by the simulator's `ContextFor`). `ScoreContainer.CommitCareerCompletion` decides credit with `CareerBands.Credit(...)` and resolves the save with `CareerBands.GetOrCreateSaveId(...)`: the band's save when `BandId` is set, otherwise the profile-set lookup as before.
 - **Save resolution** lives in `Assets/Script/Career/CareerBands.cs` (`Credit`, `CurrentCredit`, `FindSaveId`, `GetOrCreateSaveId`, `BandFans`, `ActiveBandId`); the rule itself is pure in `CareerCredit.cs`. `CareerMenu.FindSaveId`, the score path and `CareerSimulator` all go through it, so menu, score path and dev commands always agree.
-- **Active band:** `CareerBands.ActiveBandId`, a static for the session only (not persisted: every game start begins with "No band"). Persisting it (settings or a profile field) is a possible follow-up.
+- **Active band:** `CareerBands.ActiveBandId`. *Since step 4 it is remembered across starts:* stored by ID in the settings file (hidden setting `CareerActiveBandId`, saved whenever it changes) and restored on the first read once settings and the score database are loaded, only if that band still exists and is not deleted; otherwise it starts as "No band" and the setting is cleared. Verified: selected band survives a restart; a band soft-deleted behind the game's back comes back as "No band" with the setting nulled.
 
 ### Rules (proposed defaults, see open questions)
 - [x] A gig counts for the band if at least one member is among the human players. Non-member humans may sit in; they do not change which save is used (`CareerCredit.Decide`, NUnit `BandCountsWhenOneMemberPlaysAndOthersMaySitIn`, `SitInDoesNotChangeTheBandSave`; in game: band with Bob only and New Profile playing committed nothing, after `player add Bob` the result landed on the band's save). With no member playing, the career menu still shows the band's progress, with "(no member is playing, results will not count)" after the band name.
@@ -98,7 +102,7 @@ Today a save belongs to "whichever profiles happened to play". A band makes that
 - [x] Active band in the career menu header: second line under the career name, "Band: The Testers · 613 fans" (fans only for fan careers). No band: header unchanged.
 - [x] Migration path: after creating a band, if exactly its members already have profile-set saves, a dialog offers to move them to the band ("Bring It" / "Start Fresh"); `AdoptSave` sets `BandId` on the save. Verified in game (Carol's Rock save moved to "Carol Trio"; afterwards Carol without a band has no Rock save).
 - Not done: band icon/art (the band row has an empty icon box), editing hometown/genre after creation, a dedicated band screen (section 4).
-- Known, not from this step: the sticky `CareerSong.IsCompleted` strikethrough (0.2) now also leaks between band and no-band views of the same career within a session (a song struck through on one save shows struck through on another until restart). Worth fixing when touching the evaluation next.
+- ~~Known: the sticky `CareerSong.IsCompleted` strikethrough leaks between band and no-band views.~~ Fixed in step 4 (`SongResult.Done`, NUnit `DoneDoesNotCarryOverToAnotherSave`; in game: Rock solo save shows two struck songs, the same career as The Testers right after shows none).
 
 ---
 
@@ -106,7 +110,7 @@ Today a save belongs to "whichever profiles happened to play". A band makes that
 
 ### Test tooling (build first)
 No controller is needed: fans, unlocks and contracts are all computed from saved completion rows, so tests write those rows directly.
-- [x] Dev remote command `simulate`: commit a completion for the selected (or named) career song through the same path as a real score, with chosen stars and score. Also takes accuracy (`percent`), full combo (`fc`) and `difficulty` already. Still to add when needed: player count (contracts; today every current non-bot player is credited) and a failed/abandoned song (nothing credited).
+- [x] Dev remote command `simulate`: commit a completion for the selected (or named) career song through the same path as a real score, with chosen stars and score. Also takes accuracy (`percent`), full combo (`fc=true|false|"Alice,Bob"` per player), `difficulty` (all, or `"Alice:Hard,Bob:Expert"`), player count (`players=<n|names>`), no-fail (`nofail=on|off`, for that commit only) and a failed/abandoned song (`failed=true`: nothing recorded or credited). Step 4.
 - [x] Generalize the existing debug "Grant Stars" action to share that code (`CareerSimulator`, `path=grant`).
 - [x] Score screen with made-up results: yes, `scorescreen` command. The score screen reads only `State.ScoreScreenStats` + `CurrentSong`, so "+fans"/contract lines must come through new fields there or a lookup of the committed completion (see 0.2).
 
@@ -135,8 +139,8 @@ bandFans = sum of songFans over all completed songs (bonus tiers included? see o
 | Large | 1,500 | | 5 | 1.0 |
 | Epic | 4,000 | | gold | 1.25 |
 
-- [x] Put the numbers in one static table (`Assets/Script/Career/CareerFans.cs`, pure) so tuning is a one-file change. Venue multipliers 1 / 2.5 / 6 / 15 / 40 (NotSpecified = Starter), star factors as above (0 stars = 0), bonus tiers x0.5, rounded half away from zero. `contractBonus` not added yet (contracts step).
-- [x] `CareerEvaluation`: `SongResult.Fans` + `BestIsGold`, `TierResult.Fans`, `CareerEvaluation.TotalFans` (named `TotalFans`, not `BandFans`: it is the save's total) + `UsesFans`, and `FanCount` unlock handling + `RemainingToUnlock` (decided after all tiers are summed). Existing star/completion results are unchanged (NUnit `ExistingStyleCareerIsUnaffected`; in game the Rock save evaluated identically before and after). Sticky strikethrough for songs in `FanCount` tiers: only at gold (the song can still earn fans until then).
+- [x] Put the numbers in one static table (`Assets/Script/Career/CareerFans.cs`, pure) so tuning is a one-file change. Venue multipliers 1 / 2.5 / 6 / 15 / 40 (NotSpecified = Starter), star factors as above (0 stars = 0), bonus tiers x0.5, rounded half away from zero. `contractBonus` added in step 4 (`SongFans(tier, stars, bonusPercent)`, multiplied as `* (100 + bonus) / 100` so +10% gives exact halves).
+- [x] `CareerEvaluation`: `SongResult.Fans` + `BestIsGold`, `TierResult.Fans`, `CareerEvaluation.TotalFans` (named `TotalFans`, not `BandFans`: it is the save's total) + `UsesFans`, and `FanCount` unlock handling + `RemainingToUnlock` (decided after all tiers are summed). Existing star/completion results are unchanged (NUnit `ExistingStyleCareerIsUnaffected`; in game the Rock save evaluated identically before and after). Strikethrough (now `SongResult.Done`, step 4): in a career that uses fans, a song is struck through only when its fans are at the most it can earn, i.e. gold and, if it has a contract with a bonus, that contract met; this applies to every tier of a fan career, including a star-count tier 0 (before step 4 those struck at 5 stars though gold still earned fans). Careers without fans keep the old rule (completion tiers: completed; star tiers: 5 stars).
 - [x] Gold stars: new raw column `CareerSongCompletions.IsGold` (bool; `BandStars` still stores 5 for gold, so star unlocks are untouched). Written by `ScoreContainer.CommitCareerCompletion` (`gameRecord.BandStars == StarGold`) and the simulator; sqlite-net adds the column on start, old rows read as false. Verified against an existing test database.
 - [x] `CareerSongOutcome` (pure + one commit helper): evaluation before/after a commit gives fans gained and newly unlocked tiers; `CareerSongOutcome.Last` carries it to the score screen. `SyncProgress` now returns its evaluation.
 
@@ -154,18 +158,25 @@ bandFans = sum of songFans over all completed songs (bonus tiers included? see o
 A contract is an optional condition attached to a tier (the gig) or a single song, with a fan bonus when met. Failing a contract never blocks progress; you just miss the bonus.
 
 ### Content model
-- [ ] `CareerContract` class: `Type`, `Parameter` (number), `BonusPercent`, optional `Text` override. Field `Contract` on `CareerTier` and `CareerSong` (song overrides tier).
-- [ ] JSON round-trip, copy constructor, preset editor support.
+- [x] `CareerContract` class (`Assets/Script/Career/CareerContract.cs`): `Type` (`CareerContractType`, string enum in JSON), `Parameter` (float), `BonusPercent` (int), optional `Text` override. Field `Contract` on `CareerTier` and `CareerSong` (song overrides tier; a song contract of type `None` exempts the song from its tier's). Rules in `CareerContracts` (pure).
+- [x] JSON round-trip (omitted when unset, old content loads with no contract), copy constructors (deep copy). NUnit `ContractJsonRoundTripAndOldContent`.
+- [ ] Preset editor support: not done (build order step 6). Dev content is hand-written JSON (`scripts/dev/careers/Dev_Contract_Test.34d8752f.json`).
+
+Parameter meanings: `MinStars` 1..5, 6 = gold; `MinAccuracy` percent 0..100; `FullCombo` 0 = every player, N >= 1 = at least N players (1 = any one); `MinDifficulty` a `YARG.Core.Difficulty` value (3 = Hard, 4 = Expert); `NoFailOff` unused; `FullBand` minimum number of human players.
 
 ### Phase A: conditions judged from one song's result (no gameplay changes)
-- [ ] `MinStars` (e.g. 4 stars or better)
-- [ ] `MinAccuracy` (band average note %)
-- [ ] `FullCombo` (any one member / all members)
-- [ ] `MinDifficulty` (every member on Hard or above)
-- [ ] `NoFailOff` ("clean show": no-fail setting must be Off; read `SettingsManager.Settings.NoFail`)
-- [ ] `FullBand` (at least N members playing)
-- [ ] Contract evaluator: pure function `(contract, GameRecord, PlayerScoreRecords) -> met?`. Confirm which stats `PlayerScoreRecord` already carries (percent, notes hit/missed, combo). *Checked: percent, notes hit/missed, `IsFc`, difficulty, instrument; no max combo, no star power, no no-fail flag (see 0.2).*
-- [ ] Store raw outcome on the completion row: `ContractType`, `ContractMet`. Fans use the best row per song, counting the bonus only if that row met the contract.
+All judged by `CareerContracts.IsMet(contract, GameRecord, PlayerScoreRecords, bool? noFailOff)` over every human player of the play (members and sit-ins). Missing facts never meet a contract. NUnit `CareerContractsTests` (met and missed for each, solo, edge cases); in game each type was met and missed through `simulate` on "Dev Contract Test" (2026-11-15).
+- [x] `MinStars` (e.g. 4 stars or better; 6 = gold, judged from `GameRecord.BandStars`)
+- [x] `MinAccuracy` (average of the players' note percent; players with no notes are left out; nobody with notes = not met; old rows without `Percent` use hit/total)
+- [x] `FullCombo` (parameter 0 = every player, N = at least N players; a player with no notes cannot full combo and does not hold back "every player")
+- [x] `MinDifficulty` (every player at or above the parameter; no players = not met)
+- [x] `NoFailOff` ("clean show": read live from `SettingsManager.Settings.NoFail` at commit, see 0.2; unknown = not met)
+- [x] `FullBand` (at least N distinct human players)
+- [x] Contract evaluator: pure, as above. Raw facts: no-fail is carried from the live setting at commit (not stored separately); everything else comes from the `GameRecord`/`PlayerScoreRecord`s being recorded.
+- [x] Store raw outcome on the completion row: `CareerSongCompletions.ContractType` (nullable, null = no contract) and `ContractMet` (sqlite-net adds both columns on start; old rows read null/false; verified on the existing test database). Debug grants and `simulate path=grant` judge the made-up result the same way.
+- [x] **Which row counts for fans:** per song, every completion row is valued at `SongFans(tier, its stars or gold, bonus if that row met the song's current contract)` and the highest value counts; on a tie the row that met the contract counts. So when the best-star row missed the contract and a lower-star row met it, the lower-star row counts if (and only if) its bonus makes it worth more (Large venue, +50%: 5 stars missed = 1,500, 4 stars met = 1,688, counts; at +25%: 1,406, the 5-star row counts). Stars for star unlocks still use the best stars. A row counts as having met the contract only if its stored `ContractType` equals the song's current contract type (content changed to another type: old results earn no bonus; a changed parameter is not re-judged). NUnit `TheResultWorthMoreFansCounts`, `ChangedContractTypeDropsTheOldResult`.
+- [x] Failing a contract never blocks progress (it only withholds the bonus; NUnit `MissingAContractNeverBlocksProgress`).
+- Solo play (open question 7): `FullBand` and `FullCombo` with N >= 2 cannot be met solo; nothing is blocked, the bonus is just out of reach. Authors can give a song its own contract or `None`. No automatic solo alternative.
 
 ### Phase B: conditions that change the session
 - [ ] **Forced modifiers / settings** for the gig (e.g. a `Modifier` flag set, song speed). Needs a hook where modifiers are applied at song start, and must restore the player's own settings afterwards.
@@ -176,9 +187,9 @@ A contract is an optional condition attached to a tier (the gig) or a single son
 - [ ] Decide what quitting mid-playlist does (proposed: finished songs still count as single completions, contract not met).
 
 ### UI
-- [ ] Contract badge + one-line text on tier/song rows ("Clean show: no-fail off, +25% fans").
-- [ ] Contract shown on difficulty select / loading screen so nobody is surprised.
-- [ ] Score screen: contract met / missed line.
+- [x] One-line text on rows (`Menu/Career/CareerContractText.cs`, lang `Menu.Career.Contract.*`): tier header secondary text "13 / 15 · 308 fans · Clean show: no-fail off, +25% fans"; a song with its own contract shows it after the artist; a song exempt from its tier's shows "no contract"; a song whose counted result met its contract shows "contract met". Long lines are cut with an ellipsis in the row, so the selected row's full contract is also shown bold in the left header ("Contract: Crowd pleaser: 4 stars or better, +50% fans"). The fan bonus part is left out for careers that do not use fans.
+- [x] Contract shown on the difficulty (instrument) select, on the line above the song's loading phrase ("Contract: ..."); one guarded line in `DifficultySelectMenu.OnEnable`. Loading screen not touched.
+- [x] Score screen: the existing status pill now reads "+313 fans · Contract met: Clean show: no-fail off (+25% fans)" or "+188 fans · Contract missed: Clean show: no-fail off" (`CareerScoreScreen.StatusLine`, was `FanLine`). Careers without fans but with a contract show only the contract part. A song without a contract shows the fan part only, as before; default careers show no pill.
 
 ---
 
@@ -220,7 +231,7 @@ A contract is an optional condition attached to a tier (the gig) or a single son
 1. **Groundwork** (section 0.1): branch, rebase, carry over debug grant. Done; test tooling (section 2) done too.
 2. **Fans, no bands yet**: first the dev remote's `simulate` command (section 2, "Test tooling"), then `FanCount` unlock + evaluation + header/locked-tier text. Smallest playable slice; works with today's profile-set saves. Done (2026-11-15), see section 2.
 3. **Bands**: tables, save ownership, select/create UI. Done (2026-11-15), see section 1.
-4. **Contracts Phase A** + score screen lines.
+4. **Contracts Phase A** + score screen lines. Done (2026-11-15), see section 3; also fixed the strikethrough leak and made the active band persist.
 5. **Band sheet, ranks, history log.**
 6. **Default career content + preset editor fields.**
 7. **Contracts Phase B**: playlist gigs, then mystery, make-your-own, encore. Add the dev-only "bots count for career credit" switch here so a bot can play through playlist gigs.
@@ -237,7 +248,7 @@ Each step should leave existing careers working and be mergeable on its own.
 4. **Bots as fill-in members?** Currently any bot blocks career credit.
 5. ~~**Do bonus tiers earn fans?**~~ **Decided (step 2):** yes, at half rate (`CareerFans.BONUS_RATE`); their fans count toward the total like any other, and completing them is never required.
 6. ~~**Do existing star-gated careers get fans too**~~ **Decided (step 2):** only careers that opt in (any `FanCount` tier). Others show no fan UI.
-7. **Solo play**: is a one-person band fine, and do `FullBand`-style contracts need a solo-friendly alternative? *One-person bands work (step 3); the contract half is still open.*
+7. **Solo play**: is a one-person band fine, and do `FullBand`-style contracts need a solo-friendly alternative? *One-person bands work (step 3). Contracts (step 4): no automatic alternative; a solo player simply cannot earn a `FullBand`/multi-player `FullCombo` bonus, which never blocks anything. Still open whether content should provide solo variants.*
 
 ---
 

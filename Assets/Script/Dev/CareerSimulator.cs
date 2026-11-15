@@ -10,9 +10,12 @@ using YARG.Core.Engine.Guitar;
 using YARG.Core.Engine.Keys;
 using YARG.Core.Engine.Vocals;
 using YARG.Core.Game;
+using YARG.Core.Song;
+using YARG.Gameplay.HUD;
 using YARG.Menu.ScoreScreen;
 using YARG.Player;
 using YARG.Scores;
+using YARG.Settings;
 using YARG.Settings.Customization;
 
 namespace YARG.Dev
@@ -56,8 +59,36 @@ namespace YARG.Dev
         /// <summary>Whether every player full-combos. Defaults to a perfect accuracy.</summary>
         public bool? FullCombo;
 
+        /// <summary>
+        /// Only these players (profile names) full-combo; the others do not. Overrides
+        /// <see cref="FullCombo"/>.
+        /// </summary>
+        public HashSet<string> FullComboPlayers;
+
         /// <summary>Every player's difficulty. Defaults to each profile's current difficulty.</summary>
         public Difficulty? Difficulty;
+
+        /// <summary>Per-player difficulty by profile name, over <see cref="Difficulty"/>.</summary>
+        public Dictionary<string, Difficulty> PlayerDifficulty;
+
+        /// <summary>
+        /// Who plays: the first N current (non-bot) players, or the named profiles among them. Null:
+        /// every current player.
+        /// </summary>
+        public int? PlayerCount;
+        public List<string> PlayerNames;
+
+        /// <summary>
+        /// Whether no-fail is on for the play. Null: the game's current setting (the score path reads it
+        /// when it commits). Set, the setting is changed for the commit only.
+        /// </summary>
+        public bool? NoFail;
+
+        /// <summary>
+        /// The song is failed or abandoned: like quitting from the pause menu (GameManager.ForceQuitSong),
+        /// nothing is recorded or credited.
+        /// </summary>
+        public bool Failed;
 
         public const int TOTAL_NOTES = 1000;
 
@@ -66,6 +97,31 @@ namespace YARG.Dev
         public int NotesHit => (int) Math.Round(Math.Clamp(Percent, 0f, 1f) * TOTAL_NOTES);
         public int NotesMissed => TOTAL_NOTES - NotesHit;
         public bool IsFullCombo => FullCombo ?? NotesMissed == 0;
+
+        public bool IsFullComboFor(YargPlayer player)
+        {
+            return FullComboPlayers is null ? IsFullCombo : FullComboPlayers.Contains(player.Profile.Name);
+        }
+
+        public Difficulty DifficultyFor(YargPlayer player)
+        {
+            return PlayerDifficulty is not null && PlayerDifficulty.TryGetValue(player.Profile.Name, out var own)
+                ? own
+                : Difficulty ?? player.Profile.CurrentDifficulty;
+        }
+
+        /// <summary>
+        /// The players of this result among <paramref name="current"/> (see <see cref="PlayerCount"/>).
+        /// </summary>
+        public List<YargPlayer> Choose(List<YargPlayer> current)
+        {
+            if (PlayerNames is not null)
+            {
+                return current.Where(player => PlayerNames.Contains(player.Profile.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+            }
+
+            return PlayerCount is { } count ? current.Take(Math.Max(0, count)).ToList() : current;
+        }
     }
 
     /// <summary>
@@ -145,33 +201,130 @@ namespace YARG.Dev
                 return false;
             }
 
-            var players = CareerPlayers();
+            var players = result.Choose(CareerPlayers());
             if (players.Count == 0)
             {
                 error = "no human players are taking part";
                 return false;
             }
 
+            if (result.Failed)
+            {
+                // Quitting a failed song records nothing (GameManager.ForceQuitSong), so nothing reaches
+                // the career either.
+                CareerSongOutcome.Last = null;
+                error = null;
+                return true;
+            }
+
             // The score path decides credit itself (and is checked below); a grant has to decide here.
-            var credit = CareerBands.CurrentCredit(careers);
+            var credit = CareerBands.Credit(careers, CareerBands.ActiveBand(careers)?.Id,
+                players.Select(player => player.Profile.Id), false);
             if (result.Path == SimulationPath.Grant && !credit.Counts)
             {
                 error = $"the result would not count ({credit.Block})";
                 return false;
             }
 
-            return result.Path == SimulationPath.Grant
-                ? Grant(careers, career, tierIndex, songIndex, result, credit, out error)
-                : RecordScore(careers, career, tierIndex, songIndex, result, players, out error);
+            // The score path reads the no-fail setting when it commits.
+            var noFail = SettingsManager.Settings.NoFail;
+            var previousNoFail = noFail.Value;
+            if (result.NoFail is { } on)
+            {
+                noFail.SetValueWithoutNotify(on ? NoFailMode.On : NoFailMode.Off);
+            }
+
+            try
+            {
+                return result.Path == SimulationPath.Grant
+                    ? Grant(careers, career, tierIndex, songIndex, result, players, credit, out error)
+                    : RecordScore(careers, career, tierIndex, songIndex, result, players, out error);
+            }
+            finally
+            {
+                noFail.SetValueWithoutNotify(previousNoFail);
+            }
+        }
+
+        /// <summary>
+        /// The score rows a played song would record for this result (see GameManager.RecordScores).
+        /// </summary>
+        public static (GameRecord record, List<PlayerScoreRecord> players) ScoreRecordsFor(SongEntry entry,
+            SimulatedResult result, List<YargPlayer> players)
+        {
+            var playerEntries = players.Select(player => new PlayerScoreRecord
+            {
+                PlayerId = player.Profile.Id,
+                Instrument = player.Profile.CurrentInstrument,
+                Difficulty = result.DifficultyFor(player),
+                EnginePresetId = player.Profile.EnginePreset,
+                Score = result.BandScore / Math.Max(1, players.Count),
+                Stars = result.BandStars,
+                NotesHit = result.NotesHit,
+                NotesMissed = result.NotesMissed,
+                IsFc = result.IsFullComboFor(player),
+                IsReplay = false,
+                Percent = (float) result.NotesHit / SimulatedResult.TOTAL_NOTES,
+            }).ToList();
+
+            var gameRecord = new GameRecord
+            {
+                Date = DateTime.Now,
+                SongChecksum = entry?.Hash.HashBytes ?? Array.Empty<byte>(),
+                SongName = entry?.Name,
+                SongArtist = entry?.Artist,
+                SongCharter = entry?.Charter,
+                BandScore = result.BandScore,
+                BandStars = result.BandStars,
+                SongSpeed = 1f,
+                PlayedWithReplay = false,
+                HasBots = false,
+            };
+
+            return (gameRecord, playerEntries);
+        }
+
+        /// <summary>
+        /// Whether no-fail would be Off for this result: its own setting, else the game's.
+        /// </summary>
+        public static bool NoFailOff(SimulatedResult result)
+        {
+            return result.NoFail is { } on ? !on : SettingsManager.Settings.NoFail.Value == NoFailMode.Off;
+        }
+
+        /// <summary>
+        /// The completion row this result would add, contract outcome included, without committing it (for
+        /// the score screen preview).
+        /// </summary>
+        public static CareerSongCompletions PreviewRow(CareerPreset career, int tierIndex, int songIndex,
+            SimulatedResult result)
+        {
+            var tier = career.Tiers[tierIndex];
+            var song = tier.Songs[songIndex];
+            var (record, players) = ScoreRecordsFor(song.SongEntry, result, result.Choose(CareerPlayers()));
+            var commit = new CareerSongCompletionCommit();
+            CareerContracts.Apply(commit, CareerContracts.For(tier, song), record, players, NoFailOff(result));
+
+            return new CareerSongCompletions
+            {
+                TierId = tier.Id,
+                TierIndex = tierIndex,
+                CareerSongId = song.Id,
+                SongIndex = songIndex,
+                BandStars = result.BandStars.GetStarCount(),
+                IsGold = result.BandStars == StarAmount.StarGold,
+                ContractType = commit.ContractType,
+                ContractMet = commit.ContractMet,
+            };
         }
 
         private static bool Grant(CareerDatabase careers, CareerPreset career, int tierIndex, int songIndex,
-            SimulatedResult result, CareerCredit credit, out string error)
+            SimulatedResult result, List<YargPlayer> players, CareerCredit credit, out string error)
         {
             var song = career.Tiers[tierIndex].Songs[songIndex];
             var saveId = CareerBands.GetOrCreateSaveId(careers, career, credit);
 
-            CareerSongOutcome.Commit(career, careers, new CareerSongCompletionCommit
+            var commit = new CareerSongCompletionCommit
             {
                 CareerSaveId = saveId,
                 CareerId = career.Id,
@@ -185,7 +338,14 @@ namespace YARG.Dev
                 BandScore = result.BandScore,
                 CompletedAt = DateTime.Now,
                 Source = CareerCompletionSource.DebugGrant,
-            });
+            };
+
+            // Judged from the made-up result as the score path would judge a played one.
+            var (record, playerEntries) = ScoreRecordsFor(song.SongEntry, result, players);
+            CareerContracts.Apply(commit, CareerContracts.For(career.Tiers[tierIndex], song), record, playerEntries,
+                NoFailOff(result));
+
+            CareerSongOutcome.Commit(career, careers, commit);
 
             error = null;
             return true;
@@ -201,36 +361,7 @@ namespace YARG.Dev
                 return false;
             }
 
-            var playerEntries = players.Select(player => new PlayerScoreRecord
-            {
-                PlayerId = player.Profile.Id,
-                Instrument = player.Profile.CurrentInstrument,
-                Difficulty = result.Difficulty ?? player.Profile.CurrentDifficulty,
-                EnginePresetId = player.Profile.EnginePreset,
-                Score = result.BandScore / players.Count,
-                Stars = result.BandStars,
-                NotesHit = result.NotesHit,
-                NotesMissed = result.NotesMissed,
-                IsFc = result.IsFullCombo,
-                IsReplay = false,
-                Percent = (float) result.NotesHit / SimulatedResult.TOTAL_NOTES,
-            }).ToList();
-
-            var gameRecord = new GameRecord
-            {
-                Date = DateTime.Now,
-                SongChecksum = entry.Hash.HashBytes,
-                SongName = entry.Name,
-                SongArtist = entry.Artist,
-                SongCharter = entry.Charter,
-                BandScore = result.BandScore,
-                BandStars = result.BandStars,
-                SongSpeed = 1f,
-                PlayedWithReplay = false,
-                HasBots = false,
-            };
-
-            var before = CountCompletions(careers, career);
+            var (gameRecord, playerEntries) = ScoreRecordsFor(entry, result, players);
 
             // The score path reads the career context of the song that just ended.
             var previous = GlobalVariables.State.CurrentCareer;
@@ -244,8 +375,9 @@ namespace YARG.Dev
                 GlobalVariables.State.CurrentCareer = previous;
             }
 
-            // RecordScore logs and swallows its own failures, so check that a row actually landed.
-            if (CountCompletions(careers, career) <= before)
+            // RecordScore logs and swallows its own failures; a commit always leaves its outcome (and the
+            // score path clears it first), so that tells whether a row actually landed, whichever save.
+            if (CareerSongOutcome.Last is not { } outcome || outcome.CareerSongId != career.Tiers[tierIndex].Songs[songIndex].Id)
             {
                 error = "the score path committed no career completion (see the player log)";
                 return false;
@@ -255,12 +387,6 @@ namespace YARG.Dev
             return true;
         }
 
-        private static int CountCompletions(CareerDatabase careers, CareerPreset career)
-        {
-            var saveId = FindSaveId(career);
-            return saveId > 0 ? careers.GetSongCompletions(saveId).Count : 0;
-        }
-
         /// <summary>
         /// Score screen data for a made-up result, one card per player taking part (bots included,
         /// as after a real song).
@@ -268,12 +394,18 @@ namespace YARG.Dev
         public static ScoreScreenStats ScoreScreenStatsFor(SimulatedResult result)
         {
             var players = PlayerContainer.Players.Where(player => !player.SittingOut).ToList();
+            if (result.PlayerCount is not null || result.PlayerNames is not null)
+            {
+                players = result.Choose(players);
+            }
+
             var cards = players.Select(player => new PlayerScoreCard
             {
                 IsHighScore = false,
                 IsReplay = false,
                 Player = player,
-                Stats = StatsFor(player.Profile.GameMode, result, Math.Max(1, players.Count)),
+                Stats = StatsFor(player.Profile.GameMode, result, result.IsFullComboFor(player),
+                    Math.Max(1, players.Count)),
             }).ToArray();
 
             return new ScoreScreenStats
@@ -284,7 +416,7 @@ namespace YARG.Dev
             };
         }
 
-        private static BaseStats StatsFor(GameMode mode, SimulatedResult result, int playerCount)
+        private static BaseStats StatsFor(GameMode mode, SimulatedResult result, bool fullCombo, int playerCount)
         {
             BaseStats stats;
             switch (mode)
@@ -311,7 +443,7 @@ namespace YARG.Dev
 
             stats.TotalNotes = SimulatedResult.TOTAL_NOTES;
             stats.NotesHit = result.NotesHit;
-            stats.MaxCombo = result.IsFullCombo ? SimulatedResult.TOTAL_NOTES : result.NotesHit / 2;
+            stats.MaxCombo = fullCombo ? SimulatedResult.TOTAL_NOTES : result.NotesHit / 2;
             stats.CommittedScore = result.BandScore / playerCount;
             stats.Stars = Math.Min(result.Stars, 6);
             return stats;

@@ -52,6 +52,10 @@ namespace YARG.Career
         // Not required, only shown if the song can't be found in the library
         public string Description;
 
+        // Optional gig contract for this song; overrides the tier's (type None cancels it).
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public CareerContract Contract;
+
         [NonSerialized]
         public SongEntry SongEntry;
         [NonSerialized]
@@ -75,6 +79,7 @@ namespace YARG.Career
             ShortName = other.ShortName;
             SongTuple = other.SongTuple;
             Description = other.Description;
+            Contract = other.Contract is null ? null : new CareerContract(other.Contract);
             SongEntry = other.SongEntry;
         }
 

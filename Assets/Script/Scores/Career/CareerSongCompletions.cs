@@ -1,5 +1,6 @@
 ﻿using System;
 using SQLite;
+using YARG.Career;
 
 namespace YARG.Scores
 {
@@ -28,6 +29,11 @@ namespace YARG.Scores
         // written before the column existed.
         public bool IsGold { get; set; }
         public int BandScore { get; set; }
+
+        // The contract the play was judged under (null: none) and whether it was met (see
+        // CareerContracts). Null/false on rows written before the columns existed.
+        public CareerContractType? ContractType { get; set; }
+        public bool ContractMet { get; set; }
 
         public DateTime CompletedAt { get; set; }
 

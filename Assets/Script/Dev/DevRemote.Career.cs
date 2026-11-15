@@ -22,8 +22,15 @@ namespace YARG.Dev
     ///   (no tier)                 The career menu's selection: a song, or every song of a tier header.
     ///
     /// What result (simulate, scorescreen):
-    ///   stars=&lt;0..5|gold&gt;  score=&lt;n&gt;  percent=&lt;0..100&gt;  fc=&lt;true|false&gt;
-    ///   difficulty=&lt;Beginner|Easy|Medium|Hard|Expert|ExpertPlus&gt;
+    ///   stars=&lt;0..5|gold&gt;  score=&lt;n&gt;  percent=&lt;0..100&gt;
+    ///   fc=&lt;true|false|names&gt;  true/false for every player, or a comma list of the profiles that
+    ///                        full-combo (the others do not), e.g. fc="Alice,Bob".
+    ///   difficulty=&lt;Beginner|Easy|Medium|Hard|Expert|ExpertPlus|name:difficulty,...&gt;  for every player,
+    ///                        or per profile, e.g. difficulty="Alice:Hard,Bob:Expert" (others keep theirs).
+    ///   players=&lt;n|names&gt;   Who plays: the first n current players, or the named ones (comma list).
+    ///                        Without a band, a different player set is a different save than the menu's.
+    ///   nofail=&lt;on|off&gt;      The no-fail setting for this play only (default: the game's setting).
+    ///   failed=true          The song is failed/abandoned: nothing is recorded or credited.
     ///   path=&lt;score|grant&gt;   score (default): through ScoreContainer.RecordScore like a played song.
     ///                        grant: a completion row only, like the career menu's debug Grant Stars.
     ///   commit=&lt;true|false&gt; scorescreen only: commit the result through the score path first (as after a
@@ -34,7 +41,8 @@ namespace YARG.Dev
     ///   simulate ...     Commit the result for each chosen song as the current (non-bot) players, then
     ///                    refresh the career menu if it shows that career. Reports the career's progress.
     ///   career ...       Report the career's progress: per tier, whether it is open, its star total and
-    ///                    each song's best stars ("-" = never completed, "G" = gold). Careers that use
+    ///                    each song's best stars ("-" = never completed, "G" = gold; then "+" if the
+    ///                    result counted for fans met the song's contract, "x" if not). Careers that use
     ///                    fans also report the save's total fans and each tier's and song's fans.
     ///   scorescreen ...  Open the score screen for one song with the result (see commit=).
     /// </summary>
@@ -42,7 +50,7 @@ namespace YARG.Dev
     {
         private static readonly HashSet<string> ResultOptions = new()
         {
-            "stars", "score", "percent", "fc", "difficulty", "path", "commit",
+            "stars", "score", "percent", "fc", "difficulty", "path", "commit", "players", "nofail", "failed",
         };
 
         private static readonly HashSet<string> TargetOptions = new()
@@ -77,6 +85,11 @@ namespace YARG.Dev
             }
 
             var summary = Summarize(career);
+            if (result.Failed && error is null)
+            {
+                return $"ok failed song: nothing recorded or credited ({targets.Count} song(s)) | {summary}";
+            }
+
             if (committed > 0 && CareerSongOutcome.Last is { } outcome && outcome.CareerId == career.Id)
             {
                 summary = $"last: {DescribeOutcome(outcome)} | {summary}";
@@ -153,12 +166,10 @@ namespace YARG.Dev
                 var snapshot = saveId > 0 && ScoreContainer.Careers is not null
                     ? ScoreContainer.Careers.LoadProgressSnapshot(saveId)
                     : new CareerProgressSnapshot { CareerSaveId = saveId };
-                CareerSongOutcome.Last = CareerSongOutcome.Preview(career, snapshot, new CareerSongCompletions
-                {
-                    CareerSongId = career.Tiers[tierIndex].Songs[songIndex].Id,
-                    BandStars = result.BandStars.GetStarCount(),
-                    IsGold = result.BandStars == StarAmount.StarGold,
-                });
+                CareerSongOutcome.Last = result.Failed
+                    ? null
+                    : CareerSongOutcome.Preview(career, snapshot,
+                        CareerSimulator.PreviewRow(career, tierIndex, songIndex, result));
             }
 
             // What the end of a career song leaves behind (see GameManager.EndSong).
@@ -202,7 +213,8 @@ namespace YARG.Dev
                 text.Append($" stars={tier.StarSum}/{content.Songs.Length * ViewType.STARS_PER_SONG}");
                 text.Append(" best=[");
                 text.Append(string.Join(",", tier.Songs.Select(song =>
-                    !song.Completed ? "-" : song.BestIsGold ? "G" : song.BestStars.ToString())));
+                    (!song.Completed ? "-" : song.BestIsGold ? "G" : song.BestStars.ToString()) +
+                    (!song.HasContract || !song.Completed ? "" : song.ContractMet ? "+" : "x"))));
                 text.Append(']');
                 if (evaluation.UsesFans)
                 {
@@ -227,6 +239,11 @@ namespace YARG.Dev
             var text = outcome.UsesFans
                 ? $"fans {outcome.FansBefore} -> {outcome.FansAfter} (+{outcome.FansGained})"
                 : "career does not use fans";
+            if (outcome.Contract is { } contract)
+            {
+                text += $", contract {contract.Type}({contract.Parameter}, +{contract.BonusPercent}%) " +
+                    (outcome.ContractMet ? "met" : "missed");
+            }
             return outcome.UnlockedTierNames.Count == 0
                 ? text
                 : $"{text}, unlocked {string.Join(", ", outcome.UnlockedTierNames.Select(name => $"'{name}'"))}";
@@ -406,17 +423,58 @@ namespace YARG.Dev
                         }
                         else
                         {
-                            error = "fc must be true or false";
+                            result.FullComboPlayers = new HashSet<string>(SplitList(value), StringComparer.OrdinalIgnoreCase);
                         }
                         break;
                     case "difficulty":
                         if (Enum.TryParse<Difficulty>(value, true, out var difficulty))
                         {
                             result.Difficulty = difficulty;
+                            break;
+                        }
+
+                        result.PlayerDifficulty = new Dictionary<string, Difficulty>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var pair in SplitList(value))
+                        {
+                            var colon = pair.LastIndexOf(':');
+                            if (colon <= 0 || !Enum.TryParse(pair.Substring(colon + 1), true, out difficulty))
+                            {
+                                error = "difficulty must be one of " +
+                                    $"{string.Join(", ", Enum.GetNames(typeof(Difficulty)))}, or name:difficulty,...";
+                                break;
+                            }
+
+                            result.PlayerDifficulty[pair.Substring(0, colon)] = difficulty;
+                        }
+                        break;
+                    case "players":
+                        if (int.TryParse(value, out var count))
+                        {
+                            result.PlayerCount = count;
                         }
                         else
                         {
-                            error = $"difficulty must be one of {string.Join(", ", Enum.GetNames(typeof(Difficulty)))}";
+                            result.PlayerNames = SplitList(value);
+                        }
+                        break;
+                    case "nofail":
+                        if (value.Equals("on", StringComparison.OrdinalIgnoreCase) || value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result.NoFail = true;
+                        }
+                        else if (value.Equals("off", StringComparison.OrdinalIgnoreCase) || value.Equals("false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            result.NoFail = false;
+                        }
+                        else
+                        {
+                            error = "nofail must be on or off";
+                        }
+                        break;
+                    case "failed":
+                        if (!bool.TryParse(value, out result.Failed))
+                        {
+                            error = "failed must be true or false";
                         }
                         break;
                     case "path":
@@ -470,6 +528,14 @@ namespace YARG.Dev
 
             error = null;
             return true;
+        }
+
+        private static List<string> SplitList(string value)
+        {
+            return value.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Trim())
+                .Where(part => part.Length > 0)
+                .ToList();
         }
 
         /// <summary>

@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using YARG.Scores;
 
 namespace YARG.Career
 {
     /// <summary>
     /// What one committed career song changed: fans gained and tiers unlocked, from the evaluations
-    /// before and after the commit. Nothing is stored; the score path keeps the latest one in
+    /// before and after the commit, and whether the play met the song's contract. Nothing is stored; the score path keeps the latest one in
     /// <see cref="Last"/> for the score screen.
     /// </summary>
     public class CareerSongOutcome
@@ -14,6 +15,10 @@ namespace YARG.Career
         public Guid CareerId;
         public Guid CareerSongId;
         public bool UsesFans;
+
+        // The contract the song was played under (null: none) and whether this play met it.
+        public CareerContract Contract;
+        public bool ContractMet;
 
         public int FansBefore;
         public int FansAfter;
@@ -42,6 +47,12 @@ namespace YARG.Career
             var after = career.SyncProgress(careers, commit.CareerSaveId);
 
             Last = after is null ? null : Compare(career, commit.CareerSongId, before, after);
+            if (Last is not null)
+            {
+                Last.Contract = ContractFor(career, commit.TierId, commit.TierIndex, commit.CareerSongId);
+                Last.ContractMet = commit.ContractMet;
+            }
+
             return Last;
         }
 
@@ -60,7 +71,31 @@ namespace YARG.Career
                 TierProgress = snapshot.TierProgress,
             };
 
-            return Compare(career, completion.CareerSongId, before, CareerEvaluation.Evaluate(career, withResult));
+            var outcome = Compare(career, completion.CareerSongId, before, CareerEvaluation.Evaluate(career, withResult));
+            outcome.Contract = ContractFor(career, completion.TierId, completion.TierIndex, completion.CareerSongId);
+            outcome.ContractMet = CareerContracts.RowMet(outcome.Contract, completion);
+            return outcome;
+        }
+
+        private static CareerContract ContractFor(CareerPreset career, Guid tierId, int tierIndex, Guid careerSongId)
+        {
+            if (career.Tiers.Any(tier => tier.Id == tierId))
+            {
+                return CareerContracts.For(career, tierId, tierIndex, careerSongId);
+            }
+
+            foreach (var tier in career.Tiers)
+            {
+                foreach (var song in tier.Songs ?? Array.Empty<CareerSong>())
+                {
+                    if (song.Id == careerSongId)
+                    {
+                        return CareerContracts.For(tier, song);
+                    }
+                }
+            }
+
+            return null;
         }
 
         public static CareerSongOutcome Compare(CareerPreset career, Guid careerSongId, CareerEvaluation before,

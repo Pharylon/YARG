@@ -218,6 +218,14 @@ namespace YARG.Menu.DifficultySelect
             _loadingPhrase.text = RichTextUtils.StripRichTextTags(
                 GlobalVariables.State.CurrentSong.LoadingPhrase, RichTextTags.BadTags);
 
+            // A career song's gig contract, so nobody is surprised by it after the song.
+            if (YARG.Menu.Career.CareerContractText.ForCurrentSong() is { } contract)
+            {
+                _loadingPhrase.text = string.IsNullOrEmpty(_loadingPhrase.text)
+                    ? contract
+                    : $"{contract}\n{_loadingPhrase.text}";
+            }
+
             _sourceIcon.sprite = SongSources.SourceToIcon(GlobalVariables.State.CurrentSong.Source);
             _sourceIcon.gameObject.SetActive(_sourceIcon.sprite != null);
 

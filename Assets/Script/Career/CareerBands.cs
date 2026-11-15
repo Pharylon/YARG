@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using YARG.Player;
 using YARG.Scores;
+using YARG.Settings;
 using YARG.Settings.Customization;
 
 namespace YARG.Career
@@ -14,11 +15,68 @@ namespace YARG.Career
     /// </summary>
     public static class CareerBands
     {
+        private static Guid? _activeBandId;
+        private static bool _activeBandRestored;
+
         /// <summary>
         /// The band careers are played as, or null to play as the current players (profile-set saves).
-        /// Kept for the session only. Each career song carries it in <see cref="CareerContext.BandId"/>.
+        /// Remembered in the settings file across game starts; on the first read it is restored from
+        /// there if that band still exists (and is not deleted), otherwise it starts as null. Each
+        /// career song carries it in <see cref="CareerContext.BandId"/>.
         /// </summary>
-        public static Guid? ActiveBandId { get; set; }
+        public static Guid? ActiveBandId
+        {
+            get
+            {
+                RestoreActiveBand();
+                return _activeBandId;
+            }
+            set
+            {
+                _activeBandRestored = true;
+                if (_activeBandId == value)
+                {
+                    return;
+                }
+
+                _activeBandId = value;
+                RememberActiveBand(value);
+            }
+        }
+
+        private static void RestoreActiveBand()
+        {
+            // Settings and the score database load at startup; until both have, there is nothing to
+            // restore from or check against, so try again on the next read.
+            if (_activeBandRestored || SettingsManager.Settings is null || ScoreContainer.Careers is null)
+            {
+                return;
+            }
+
+            _activeBandRestored = true;
+
+            var remembered = SettingsManager.Settings.CareerActiveBandId;
+            if (remembered is { } id && ScoreContainer.Careers.GetBand(id) is not null)
+            {
+                _activeBandId = id;
+            }
+            else if (remembered is not null)
+            {
+                // Deleted or gone since: forget it.
+                RememberActiveBand(null);
+            }
+        }
+
+        private static void RememberActiveBand(Guid? bandId)
+        {
+            if (SettingsManager.Settings is null || SettingsManager.Settings.CareerActiveBandId == bandId)
+            {
+                return;
+            }
+
+            SettingsManager.Settings.CareerActiveBandId = bandId;
+            SettingsManager.SaveSettings();
+        }
 
         /// <summary>
         /// The active band, or null if none is active or it no longer exists (which also clears it).

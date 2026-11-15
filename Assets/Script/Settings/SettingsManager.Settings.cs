@@ -201,6 +201,9 @@ namespace YARG.Settings
             public Dictionary<CharacterType,CustomCharacterInfo> CustomCharacters = new();
             public List<CustomCharacterInfo> HiddenCharacters = new();
 
+            // The band careers are played as (see YARG.Career.CareerBands.ActiveBandId), null for none.
+            public Guid? CareerActiveBandId;
+
             #endregion
 
             #region General
