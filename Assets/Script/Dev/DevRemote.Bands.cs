@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using TMPro;
 using YARG.Career;
+using YARG.Core;
 using YARG.Core.Game;
 using YARG.Menu;
 using YARG.Menu.Career;
@@ -34,7 +35,11 @@ namespace YARG.Dev
     ///                                     shows); open=true also opens the sheet dialog. Default: active band.
     ///   band history [&lt;band&gt;] [open=true]   The same for the gig history (newest first).
     ///
-    ///   profile create name=.. [player=true]   Add a profile (and, with player=true, a player using it).
+    ///   profile create name=.. [player=true] [bot=true] [instrument=..] [difficulty=..]
+    ///                                     Add a profile (and, with player=true, a player using it); bot=true
+    ///                                     makes a bot profile. instrument/difficulty: what the instrument
+    ///                                     select picks first (e.g. instrument=FiveFretGuitar difficulty=Expert).
+    ///   profile set &lt;profile&gt; [instrument=..] [difficulty=..]   The same for an existing profile.
     ///   player add &lt;profile&gt;                Add a player for an existing profile (no input devices).
     ///   player remove &lt;profile&gt;             Remove that profile's player.
     ///   player sitout &lt;profile&gt; &lt;true|false&gt;
@@ -258,32 +263,83 @@ namespace YARG.Dev
         private static string ProfileCommand(string argument)
         {
             var words = SplitWords(argument);
-            if (words.Count == 0 || words[0] != "create")
+            if (words.Count == 0 || words[0] is not ("create" or "set"))
             {
-                return "error usage: profile create name=.. [player=true]";
+                return "error usage: profile create name=.. [player=true] [bot=true] [instrument=..] [difficulty=..] | " +
+                    "profile set <profile> [instrument=..] [difficulty=..]";
             }
 
             var options = words.Skip(1).Where(word => word.Contains('='))
                 .ToDictionary(word => word.Substring(0, word.IndexOf('=')).ToLowerInvariant(),
                     word => word.Substring(word.IndexOf('=') + 1));
-            if (!options.TryGetValue("name", out var name) || string.IsNullOrWhiteSpace(name))
+
+            YargProfile profile;
+            if (words[0] == "set")
             {
-                return "error profile create needs name=";
+                profile = words.Count > 1 ? FindProfile(words[1]) : null;
+                if (profile is null)
+                {
+                    return $"error no profile '{(words.Count > 1 ? words[1] : "")}'";
+                }
+            }
+            else
+            {
+                if (!options.TryGetValue("name", out var name) || string.IsNullOrWhiteSpace(name))
+                {
+                    return "error profile create needs name=";
+                }
+
+                // As the profile list's "Add Bot" makes them.
+                profile = new YargProfile { Name = name };
+                if (options.TryGetValue("bot", out var bot) && bot == "true")
+                {
+                    profile.IsBot = true;
+                    profile.NoteSpeed = 5;
+                    profile.HighwayLength = 1;
+                    profile.GameMode = GameMode.FiveFretGuitar;
+                }
             }
 
-            var profile = new YargProfile { Name = name };
-            if (!PlayerContainer.AddProfile(profile))
+            // What the instrument/difficulty select picks first (PreferredInstrument, DifficultyFallback).
+            if (options.TryGetValue("instrument", out var instrumentText))
             {
-                return "error could not add the profile";
+                if (!Enum.TryParse<Instrument>(instrumentText, true, out var instrument))
+                {
+                    return $"error unknown instrument '{instrumentText}'";
+                }
+
+                profile.GameMode = instrument.ToNativeGameMode();
+                profile.PreferredInstrument = instrument;
+                profile.CurrentInstrument = instrument;
             }
 
-            if (options.TryGetValue("player", out var player) && player == "true")
+            if (options.TryGetValue("difficulty", out var difficultyText))
             {
-                PlayerContainer.CreatePlayerFromProfile(profile, false);
+                if (!Enum.TryParse<Difficulty>(difficultyText, true, out var difficulty))
+                {
+                    return $"error unknown difficulty '{difficultyText}'";
+                }
+
+                profile.DifficultyFallback = difficulty;
+                profile.CurrentDifficulty = difficulty;
+            }
+
+            if (words[0] == "create")
+            {
+                if (!PlayerContainer.AddProfile(profile))
+                {
+                    return "error could not add the profile";
+                }
+
+                if (options.TryGetValue("player", out var player) && player == "true")
+                {
+                    PlayerContainer.CreatePlayerFromProfile(profile, false);
+                }
             }
 
             RefreshCareerScreens();
-            return $"ok profile '{profile.Name}' {profile.Id} | {DescribePlayers()}";
+            return $"ok profile '{profile.Name}' {profile.Id}{(profile.IsBot ? " bot" : "")} " +
+                $"{profile.GameMode}/{profile.PreferredInstrument}/{profile.DifficultyFallback} | {DescribePlayers()}";
         }
 
         private static string PlayerCommand(string argument)

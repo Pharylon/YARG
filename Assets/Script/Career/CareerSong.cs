@@ -56,6 +56,11 @@ namespace YARG.Career
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public CareerContract Contract;
 
+        // An encore: hidden and not part of the set; played after a show of its tier when the set's
+        // average stars reach CareerTier.EncoreMinStars (see CareerSetlists).
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public bool IsEncore;
+
         [NonSerialized]
         public SongEntry SongEntry;
         [NonSerialized]
@@ -80,6 +85,7 @@ namespace YARG.Career
             SongTuple = other.SongTuple;
             Description = other.Description;
             Contract = other.Contract is null ? null : new CareerContract(other.Contract);
+            IsEncore = other.IsEncore;
             SongEntry = other.SongEntry;
         }
 

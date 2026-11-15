@@ -42,6 +42,9 @@ namespace YARG.Menu.Career
             // How far an animating song row is expanded, from 0 (hidden) to 1 (full height).
             public float Reveal;
 
+            // A row drawn like a song without a star display (e.g. "Play the full set").
+            public bool NoStars;
+
             public readonly bool IsHeader => Kind != CareerRowKind.Song;
         }
 

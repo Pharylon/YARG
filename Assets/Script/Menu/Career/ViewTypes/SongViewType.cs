@@ -31,6 +31,23 @@ namespace YARG.Menu.Career
         /// </summary>
         public CareerContract TierContract { get; set; }
 
+        /// <summary>
+        /// The song's gig is played as a show (see <see cref="CareerShow"/>): clicking the song starts the
+        /// whole set instead of the song alone.
+        /// </summary>
+        public Action StartShow { get; set; }
+
+        /// <summary>
+        /// The song's title and artist are hidden (a mystery setlist's song or an encore not yet played,
+        /// see <see cref="CareerSetlists.IsHidden"/>); the tier tells what to show instead.
+        /// </summary>
+        public CareerTier HiddenBy { get; set; }
+
+        private bool Hidden => HiddenBy is not null;
+
+        // An encore is only ever played after a show's set that earned it, never on its own.
+        public override bool IsClickable => !_song.IsEncore;
+
         private readonly CareerSong _song;
         private readonly SongEntry  _songEntry;
         private readonly Guid  _careerId;
@@ -74,8 +91,8 @@ namespace YARG.Menu.Career
                 Unlocked    = true, // songs are only listed once their tier is unlocked
                 Completed   = _result?.Completed ?? false,
                 BestStars   = _result?.BestStars ?? 0,
-                Artist      = _songEntry?.Artist.ToString() ?? string.Empty,
-                Album       = _songEntry?.Album.ToString() ?? string.Empty,
+                Artist      = Hidden ? string.Empty : _songEntry?.Artist.ToString() ?? string.Empty,
+                Album       = Hidden ? string.Empty : _songEntry?.Album.ToString() ?? string.Empty,
                 LastInGroup = _lastInTier,
                 Reveal      = Reveal,
             };
@@ -83,13 +100,15 @@ namespace YARG.Menu.Career
 
         public override string GetPrimaryText(bool selected)
         {
-            return AddStrikethrough(FormatAs(_songEntry?.Name ?? Localize.Key("Menu.Career.SongMissing"),
-                TextType.Primary, selected));
+            var name = Hidden
+                ? CareerSetlistText.HiddenTitle(_song)
+                : _songEntry?.Name ?? Localize.Key("Menu.Career.SongMissing");
+            return AddStrikethrough(FormatAs(name, TextType.Primary, selected));
         }
 
         public override string GetSecondaryText(bool selected)
         {
-            var detail = DetailLine();
+            var detail = Hidden ? CareerSetlistText.HiddenDetail(HiddenBy, _song) : DetailLine();
             if (ShowFans && _result is { Completed: true })
             {
                 detail = Localize.KeyFormat("Menu.Career.SongFans", detail, _result.Fans.ToString("N0"));
@@ -158,6 +177,17 @@ namespace YARG.Menu.Career
         // can be linked to a committed career completion.
         public override void ViewClick()
         {
+            if (_song.IsEncore)
+            {
+                return;
+            }
+
+            if (StartShow is not null)
+            {
+                StartShow();
+                return;
+            }
+
             if (_songEntry is null)
             {
                 YargLogger.LogError("Career: cannot start song, it was not found in the library.");

@@ -28,12 +28,18 @@ namespace YARG.Menu.Career
             var contract = CareerContractText.Outcome(outcome);
             var fans = FanLine(outcome);
 
-            if (fans is null)
+            var line = fans is null ? contract
+                : contract is null ? fans
+                : Localize.KeyFormat("Menu.Career.HeaderJoin", fans, contract);
+
+            // This result earned the show its encore, which Continue plays next.
+            if (CareerShow.EncoreSongId == context.CareerSongId)
             {
-                return contract;
+                var encore = Localize.Key("Menu.Career.Show.EncoreEarned");
+                line = line is null ? encore : Localize.KeyFormat("Menu.Career.HeaderJoin", line, encore);
             }
 
-            return contract is null ? fans : Localize.KeyFormat("Menu.Career.HeaderJoin", fans, contract);
+            return line;
         }
 
         private static string FanLine(CareerSongOutcome outcome)

@@ -461,6 +461,7 @@ namespace YARG.Settings.Metadata
 
             fields.InsertRange(0, TierWarningFields(tier));
             fields.AddRange(TierFanFields(tier, editable, onInputBlur));
+            fields.AddRange(TierSetlistFields(tier, editable));
 
             int selected = fields.FindIndex(field => field.Label == selectLabel);
             _careerPreview.Show(fields, selected >= 0 ? selected : (int?) null, onInputBlur);
@@ -605,7 +606,8 @@ namespace YARG.Settings.Metadata
                     song.Description = value;
                     Save();
                 }), editable),
-            }.Concat(SongContractFields(state, editable)).ToArray(), selectedIndex, state.SummaryChanged);
+            }.Concat(SongContractFields(state, editable)).Concat(SongSetlistFields(state, editable)).ToArray(),
+                selectedIndex, state.SummaryChanged);
         }
 
         private SearchableDropdownSetting<string> CreateSongFacetSetting(SongFilterState state, SongFacet facet)

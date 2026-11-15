@@ -85,7 +85,17 @@ namespace YARG.Menu.Career
             var career = CareerBands.AllCareers().FirstOrDefault(c => c.Id == context.CareerId);
             var line = Line(CareerContracts.For(career, context.TierId, context.TierIndex, context.CareerSongId),
                 CareerFans.UsesFans(career));
-            return line is null ? null : Localize.KeyFormat("Menu.Career.Contract.Upcoming", line);
+            var contract = line is null ? null : Localize.KeyFormat("Menu.Career.Contract.Upcoming", line);
+
+            // The gig's rules (forced modifiers, minimum speed) go on the same line.
+            var rules = CareerSetlistText.RulesLine(career?.Tiers.FirstOrDefault(tier => tier.Id == context.TierId));
+            if (rules is null)
+            {
+                return contract;
+            }
+
+            rules = Localize.KeyFormat("Menu.Career.Show.Rules", rules);
+            return contract is null ? rules : Localize.KeyFormat("Menu.Career.HeaderJoin", contract, rules);
         }
 
         /// <summary>

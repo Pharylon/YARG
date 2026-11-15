@@ -342,6 +342,12 @@ namespace YARG.Menu.Career
         }
 
         /// <summary>
+        /// <see cref="AddListButton"/> for other career dialogs (the setlist picker).
+        /// </summary>
+        public static ColoredButton AddNavigableListButton(ListDialog dialog, string text, UnityAction handler,
+            bool closeOnClick = true) => AddListButton(dialog, text, handler, closeOnClick);
+
+        /// <summary>
         /// A list button that a controller can reach too: the stock list dialog does not add its list
         /// buttons to the dialog's navigation, so this does.
         /// </summary>

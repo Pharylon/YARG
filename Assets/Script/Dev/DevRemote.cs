@@ -41,6 +41,8 @@ namespace YARG.Dev
     ///                           Bands, test players and driving dialogs (see DevRemote.Bands.cs).
     ///   songs / validate / editor
     ///                           Career content checks and the career preset editor (see DevRemote.Content.cs).
+    ///   career-bots / ready / waitfor / show
+    ///                           Playing songs unattended with a bot (see DevRemote.Play.cs).
     /// </summary>
     public partial class DevRemote : MonoBehaviour
     {
@@ -215,6 +217,27 @@ namespace YARG.Dev
                             break;
                         case "editor":
                             result = EditorCommand(argument);
+                            break;
+                        case "career-bots":
+                            result = CareerBotsCommand(argument);
+                            break;
+                        case "ready":
+                            result = Ready(argument);
+                            break;
+                        case "show":
+                            result = DescribeShow();
+                            break;
+                        case "quitsong":
+                            result = QuitSong();
+                            break;
+                        case "library":
+                            result = LibraryCommand(argument);
+                            break;
+                        case "modifiers":
+                            result = DescribeModifiers();
+                            break;
+                        case "waitfor":
+                            deferred = WaitFor(argument, text => result = text);
                             break;
                         case "wait":
                             deferred = Wait(argument);

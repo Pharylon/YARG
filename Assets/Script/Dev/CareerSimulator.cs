@@ -107,6 +107,12 @@ namespace YARG.Dev
         /// <summary>Per-player instrument by profile name, over <see cref="Instrument"/>.</summary>
         public Dictionary<string, Instrument> PlayerInstrument;
 
+        /// <summary>
+        /// How the song is played (score path): on its own, or as a song of a show
+        /// (<see cref="CareerCompletionSource.FullTierPlaylist"/>, see <see cref="CareerSimulator.TryCommitShow"/>).
+        /// </summary>
+        public CareerCompletionSource Source = CareerCompletionSource.SingleSong;
+
         public float PercentFor(YargPlayer player)
         {
             return PlayerPercent is not null && PlayerPercent.TryGetValue(player.Profile.Name, out var own)
@@ -168,7 +174,7 @@ namespace YARG.Dev
         public static List<YargPlayer> CareerPlayers()
         {
             return PlayerContainer.Players
-                .Where(player => !player.SittingOut && !player.Profile.IsBot)
+                .Where(player => !player.SittingOut && (!player.Profile.IsBot || CareerBotCredit.Enabled))
                 .ToList();
         }
 
@@ -180,7 +186,8 @@ namespace YARG.Dev
         /// <summary>
         /// The context a song started from the career menu carries (see <c>SongViewType.ViewClick</c>).
         /// </summary>
-        public static CareerContext ContextFor(CareerPreset career, int tierIndex, int songIndex)
+        public static CareerContext ContextFor(CareerPreset career, int tierIndex, int songIndex,
+            CareerCompletionSource source = CareerCompletionSource.SingleSong)
         {
             var tier = career.Tiers[tierIndex];
             return new CareerContext
@@ -192,7 +199,78 @@ namespace YARG.Dev
                 CareerSongId = tier.Songs[songIndex].Id,
                 SongIndex = songIndex,
                 BandId = CareerBands.ActiveBandId,
+                Source = source,
             };
+        }
+
+        /// <summary>
+        /// A whole show of a tier played as a set (<see cref="CareerSetlists.IsShow"/>): the result for every
+        /// song of the set in play order, each committed on its own as the score path does after each song
+        /// of a real show (<see cref="CareerCompletionSource.FullTierPlaylist"/>). Returns the songs committed.
+        /// </summary>
+        public static bool TryCommitShow(CareerPreset career, int tierIndex, SimulatedResult result,
+            IReadOnlyCollection<int> picks, out List<int> played, out bool encore, out string error)
+        {
+            played = new List<int>();
+            encore = false;
+            var tier = career.Tiers[tierIndex];
+            if (!CareerSetlists.IsShow(tier))
+            {
+                error = $"tier {tierIndex} is not played as a show (CompletionMode {tier.CompletionMode})";
+                return false;
+            }
+
+            List<int> set;
+            if (picks is not null)
+            {
+                set = CareerSetlists.ShowSongIndexes(tier, picks);
+                if (set is null)
+                {
+                    error = $"picks must be {CareerSetlists.RequiredSongs(tier)} different songs of the set " +
+                        $"[{string.Join(",", CareerSetlists.SetSongIndexes(tier))}]";
+                    return false;
+                }
+            }
+            else if (CareerSetlists.PicksSongs(tier))
+            {
+                error = $"the tier is a make-your-own setlist: give picks= ({CareerSetlists.RequiredSongs(tier)} songs)";
+                return false;
+            }
+            else
+            {
+                set = CareerSetlists.ShowSongIndexes(tier);
+            }
+
+            result.Source = CareerCompletionSource.FullTierPlaylist;
+            var setStars = new List<int>();
+            foreach (var songIndex in set)
+            {
+                if (!TryCommit(career, tierIndex, songIndex, result, out error))
+                {
+                    return false;
+                }
+
+                played.Add(songIndex);
+                setStars.Add(result.Failed ? 0 : Math.Min(result.Stars, 5));
+            }
+
+            // The between-songs decision a real show makes after the set's last song (see CareerShow).
+            encore = !result.Failed && CareerSetlists.EncoreEarned(tier, setStars);
+            if (encore)
+            {
+                foreach (var songIndex in CareerSetlists.EncoreSongIndexes(tier))
+                {
+                    if (!TryCommit(career, tierIndex, songIndex, result, out error))
+                    {
+                        return false;
+                    }
+
+                    played.Add(songIndex);
+                }
+            }
+
+            error = null;
+            return true;
         }
 
         /// <summary>
@@ -395,7 +473,7 @@ namespace YARG.Dev
 
             // The score path reads the career context of the song that just ended.
             var previous = GlobalVariables.State.CurrentCareer;
-            GlobalVariables.State.CurrentCareer = ContextFor(career, tierIndex, songIndex);
+            GlobalVariables.State.CurrentCareer = ContextFor(career, tierIndex, songIndex, result.Source);
             try
             {
                 ScoreContainer.RecordScore(gameRecord, playerEntries);

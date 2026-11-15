@@ -137,7 +137,8 @@ namespace YARG.Career
                     result.Songs.Add(songResult);
                 }
 
-                result.Completed = result.Songs.Count > 0 && result.Songs.All(song => song.Completed);
+                // Every song of the set, or as many as the players pick (encores never count towards it).
+                result.Completed = CareerSetlists.IsComplete(tier, songIndex => result.Songs[songIndex].Completed);
                 result.StarSum = result.Songs.Sum(song => song.BestStars);
                 result.Fans = result.Songs.Sum(song => song.Fans);
                 result.Stars = result.Songs.Count == 0 ? 0 : (float) result.StarSum / result.Songs.Count;

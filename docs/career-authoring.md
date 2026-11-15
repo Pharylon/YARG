@@ -1,8 +1,8 @@
-# Custom careers: fans, venues and contracts
+# Custom careers: fans, venues, contracts and shows
 
 This describes the parts of a career file that go beyond tiers of songs: fan-count unlocks, the fan
-table, the venue fields of a tier and gig contracts. Everything here is optional. A career that uses
-none of it works exactly as before.
+table, the venue fields of a tier, gig contracts, and gigs played as shows (setlists, encores, gig
+rules). Everything here is optional. A career that uses none of it works exactly as before.
 
 ## Where career files live
 
@@ -126,6 +126,45 @@ Each play stores the contract type it was judged under. If you later change a so
 different type, earlier plays no longer earn its bonus; changing only the parameter does not re-judge
 them.
 
+## Shows, setlists and gig rules
+
+These tier fields change how a gig is played. All are optional and can be combined.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `CompletionMode` | `SingleSong` (default), `FullTierPlaylist`, `FullCareerPlaylist` | `FullTierPlaylist`: the gig is played as one **show**. The tier's first row is "Play the full set" (clicking any of its songs does the same): the players pick instruments once, then the songs play one after another with the score screen in between, like a setlist from the music library. Every song counts on its own as soon as it ends, so leaving early (quitting, "End setlist early") keeps the songs already finished; the rest simply were not played. `FullCareerPlaylist` is not supported yet: such a tier is played song by song, and the game warns about it. |
+| `SetlistSize` | whole number | **Make your own setlist**: the tier is complete after this many of its songs are completed, not all of them. In a show tier the players pick this many songs ("Pick your set") and the show plays those. In a single-song tier they just play any of them. Leave it out for "every song". |
+| `Mystery` | `true` / `false` | **Mystery setlist**: each song's title and artist are hidden in the career list and on the instrument select ("Mystery song") until the band has played it once. |
+| `EncoreMinStars` | number, 0 to 5 | **Encore** (show tiers only): when the band's average stars over the songs of the set reach this bar, the tier's encore song(s) are added after the last song of the show. A song that was skipped or not saved counts as 0 stars; gold counts as 5. Mark the encore songs with `"IsEncore": true` on the song. An encore is hidden until it has been played, is never part of the set (not picked, not needed to complete the tier) and cannot be played on its own; its fans count like any song's. |
+| `ForcedModifiers` | modifier names, e.g. `"AllStrums"` or `"AllStrums, NoKicks"` | **Gig rules**: every player gets these modifiers for the gig's songs, on top of their own, as far as their instrument has them (e.g. `NoKicks` only for drums). A forced modifier replaces the player's own ones it conflicts with (All Strums replaces All HOPOs). Names: `AllStrums`, `AllHopos`, `AllTaps`, `HoposToTaps`, `TapsToHopos`, `NoKicks`, `NoDynamics`, `UnpitchedOnly`, `NoVocalPercussion`, `RangeCompress`, `OpensToGreens`. |
+| `MinSongSpeed` | whole number, percent, 100 to 5000 | **Gig rules**: the gig's songs play at least this fast (a faster speed the players chose is kept). Below 100 is ignored: scores below 100% speed are never saved. |
+
+Gig rules apply to that play only. They are never written to the players' profiles, so quitting the song or
+closing the game in the middle of it leaves everyone's own settings as they were. The instrument select shows
+the gig's contract and rules above the song's loading phrase.
+
+```json
+{
+  "Name": "Encore Night",
+  "Id": "5b0e7e57-0000-4000-8000-000000000006",
+  "UnlockType": "FanCount", "UnlockCriteria": 1200, "VenueSize": "Medium",
+  "CompletionMode": "FullTierPlaylist",
+  "SetlistSize": 3,
+  "EncoreMinStars": 4,
+  "ForcedModifiers": "AllStrums",
+  "Songs": [
+    { "Id": "...", "Identifier": "SongId", "SongId": "..." },
+    { "Id": "...", "Identifier": "SongId", "SongId": "..." },
+    { "Id": "...", "Identifier": "SongId", "SongId": "..." },
+    { "Id": "...", "Identifier": "SongId", "SongId": "..." },
+    { "Id": "...", "Identifier": "SongId", "SongId": "...", "IsEncore": true }
+  ]
+}
+```
+
+Here the players pick 3 of the 4 set songs and play them as a show, everyone on All Strums; three 4-star
+results bring out the encore. The tier is complete after 3 songs.
+
 ## Example
 
 A career with two gigs that open together at 300 fans, one of them with a contract, and a song that is
@@ -207,7 +246,13 @@ data folder) for:
   example `FanMultiplier: 0`, or tiers without songs);
 - a contract parameter outside the ranges in the table above, or a negative `BonusPercent`;
 - a negative `FanMultiplier`;
-- two songs (or two tiers) with the same `Id`.
+- two songs (or two tiers) with the same `Id`;
+- `CompletionMode: FullCareerPlaylist` (not supported yet);
+- a `MinSongSpeed` outside 100 to 5000;
+- a `SetlistSize` below 1 or above the number of set songs (encores not counted);
+- an encore song that can never be played (its tier is not `FullTierPlaylist` or has no `EncoreMinStars`
+  from 0 to 5), or an `EncoreMinStars` without encore songs or outside 0 to 5. Encores that can never be
+  played earn no fans when the reachability of later tiers is checked.
 
 The same warnings show in the career preset editor: on the tier's summary row (`[!] ...`) and as the
 first lines of the tier's editor. They are warnings only; the career still loads.
@@ -217,7 +262,9 @@ first lines of the tier's editor. They are warnings only; the career still loads
 The career preset editor (Settings > Presets > Career Presets, on a copied career) has fields for all of
 the above. On a tier: Unlock Criteria (including Fan Count) and Unlock Threshold, Venue Size, Fan
 Multiplier (leave it empty to use the venue size), City, Venue Name, and Contract with its parameter, fan
-bonus and text (leave the text empty for the generated description). On a song: Contract, where
-"From tier" keeps the tier's contract and "No contract" exempts the song. The parameter field's label says
+bonus and text (leave the text empty for the generated description), Session Length (single songs or a
+full tier playlist), Forced Modifiers (names, comma separated; empty for none), Minimum Song Speed (0 for
+none), Mystery Setlist, Setlist Size (0 for every song) and Encore Star Bar (empty for no encore). On a song:
+Contract, where "From tier" keeps the tier's contract and "No contract" exempts the song, and Encore Song. The parameter field's label says
 what the number means for the chosen type. A fan multiplier or parameter that is not a number is ignored
 (the saved value stays).

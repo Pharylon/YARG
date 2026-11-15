@@ -36,6 +36,12 @@ namespace YARG.Career
         public static CareerSongOutcome Last { get; set; }
 
         /// <summary>
+        /// Raised after every completion <see cref="Commit"/> commits (with the outcome, null if the sync
+        /// produced none). A career show listens to follow its songs' results.
+        /// </summary>
+        public static event Action<CareerSongCompletionCommit, CareerSongOutcome> Committed;
+
+        /// <summary>
         /// Commit a song completion, sync tier progress, and remember the outcome in <see cref="Last"/>.
         /// </summary>
         public static CareerSongOutcome Commit(CareerPreset career, CareerDatabase careers,
@@ -53,6 +59,7 @@ namespace YARG.Career
                 Last.ContractMet = commit.ContractMet;
             }
 
+            Committed?.Invoke(commit, Last);
             return Last;
         }
 

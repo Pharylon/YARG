@@ -1,4 +1,5 @@
 using System;
+using YARG.Scores;
 
 namespace YARG.Career
 {
@@ -18,5 +19,9 @@ namespace YARG.Career
         // The band the song is played as (see CareerBands.ActiveBandId), or null to credit the save of
         // the exact set of players who played.
         public Guid? BandId;
+
+        // How the song is played: on its own, or as part of a show (a tier played as a setlist, see
+        // CareerShow). Stored on the completion row.
+        public CareerCompletionSource Source;
     }
 }

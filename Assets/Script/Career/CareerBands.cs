@@ -108,12 +108,13 @@ namespace YARG.Career
         }
 
         /// <summary>
-        /// The human players taking part: not sitting out and not bots.
+        /// The human players taking part: not sitting out and not bots (bots too behind the dev switch,
+        /// see <see cref="CareerBotCredit"/>).
         /// </summary>
         public static List<Guid> CurrentHumanPlayers()
         {
             return PlayerContainer.Players
-                .Where(player => !player.SittingOut && !player.Profile.IsBot)
+                .Where(player => !player.SittingOut && (!player.Profile.IsBot || CareerBotCredit.Enabled))
                 .Select(player => player.Profile.Id)
                 .ToList();
         }

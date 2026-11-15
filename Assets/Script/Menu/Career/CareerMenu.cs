@@ -80,6 +80,16 @@ namespace YARG.Menu.Career
         {
             base.OnEnable();
 
+            // A show never runs behind this menu: one still marked as playing was left early. Gig rules
+            // were for the play only.
+            CareerShow.EndIfRunning();
+            CareerGigSession.Restore();
+
+            // No career song is in progress while this menu shows. Backing out of the instrument select used
+            // to leave the context set, so a quickplay song from the music library afterwards was committed
+            // as this career's song.
+            GlobalVariables.State.CurrentCareer = null;
+
             SetMenuNavigation();
 
             // TODO: Consider whether _career and _sessionCareer should be static
@@ -304,13 +314,23 @@ namespace YARG.Menu.Career
 
                 var reveal = RevealFor(tier.Id);
 
+                // A gig played as a show starts as a whole, from its first row or any of its songs.
+                Action startShow = null;
+                if (CareerSetlists.IsShow(tier))
+                {
+                    var showTierIndex = tierIndex;
+                    startShow = () => StartShow(showTierIndex);
+                    viewList.Add(ShowRow(tier, reveal, startShow));
+                }
+
                 for (var songIndex = 0; songIndex < tier.Songs.Length; songIndex++)
                 {
+                    var songResult = songIndex < result.Songs.Count ? result.Songs[songIndex] : null;
+                    var hidden = CareerSetlists.IsHidden(tier, tier.Songs[songIndex], songResult?.Completed ?? false);
                     viewList.Add(new SongViewType(
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
-                        songIndex == tier.Songs.Length - 1,
-                        songIndex < result.Songs.Count ? result.Songs[songIndex] : null,
-                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract });
+                        songIndex == tier.Songs.Length - 1, songResult,
+                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null });
                 }
             }
 
@@ -366,6 +386,11 @@ namespace YARG.Menu.Career
                 song.Reveal = RevealFor(song.TierId);
             }
 
+            foreach (var show in ViewList.OfType<ShowViewType>())
+            {
+                show.Reveal = RevealFor(show.TierId);
+            }
+
             RefreshViewsObjects();
         }
 
@@ -393,6 +418,12 @@ namespace YARG.Menu.Career
                     if (!SetIndexTo(view => view is SongViewType other && other.Song.Id == song.Song.Id))
                     {
                         SelectTier(song.TierId);
+                    }
+                    break;
+                case ShowViewType show:
+                    if (!SetIndexTo(view => view is ShowViewType other && other.TierId == show.TierId))
+                    {
+                        SelectTier(show.TierId);
                     }
                     break;
             }

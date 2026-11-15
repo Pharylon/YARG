@@ -451,6 +451,30 @@
                 "GigFansCounts": "{0} fans, counts",
                 "GigContractMet": "Contract met",
                 "GigContractMissed": "Contract missed"
+            },
+            "Show": {
+                "Play": "Play the full set",
+                "PlayDetail": "Set of {0}, played one after another",
+                "Tier": "Full set",
+                "Failed": "Cannot start the set: none of its songs are in your library.",
+                "Pick": "Pick {0} of {1}",
+                "Any": "Play any {0} of {1}",
+                "PickRow": "Pick your set",
+                "PickDetail": "Choose {0} of {1} songs, then play them one after another",
+                "PickTitle": "Pick {0} for your set",
+                "PickOn": "[x]  {0}",
+                "PickOff": "[  ]  {0}",
+                "PickNeed": "Pick exactly {0} songs ({1} picked).",
+                "PickStart": "Play the Set",
+                "Encore": "Encore at {0} stars average",
+                "EncoreTitle": "Encore",
+                "EncoreHidden": "Earned by averaging {0} stars over a full set",
+                "EncoreEarned": "Encore! The crowd wants one more",
+                "Mystery": "Mystery setlist",
+                "MysteryTitle": "Mystery song",
+                "MysteryDetail": "Revealed when you play it",
+                "Rules": "Gig rules: {0}",
+                "RuleSpeed": "{0}% speed or faster"
             }
         },
         "Main": {
@@ -2254,6 +2278,11 @@
                     "NegativeMultiplier": "Fan multiplier {0} is negative (no fans)",
                     "DuplicateSongId": "Shares its Id with an earlier song (shared progress)",
                     "DuplicateTierId": "Shares its Id with an earlier tier",
+                    "CareerPlaylist": "Session length Full Career Playlist is not supported yet: its songs are played one by one",
+                    "SongSpeed": "Minimum song speed {0}% is outside 100 to 5000% (below 100% no score is saved)",
+                    "SetlistSize": "Setlist size {0} is outside 1 to {1} (the songs of the set)",
+                    "EncoreNeverPlayed": "Encore that can never be played: the tier needs session length Full Tier Playlist and an encore star bar from 0 to 5",
+                    "EncoreBar": "Encore star bar {0} needs encore songs and a value from 0 to 5",
                     "Song": "Song {0}: {1}",
                     "Range": {
                         "MinStars": "1 to 5 stars, 6 for gold",
@@ -2296,6 +2325,12 @@
                     },
                     "ContractBonus": "Contract Fan Bonus (%)",
                     "ContractText": "Contract Text",
+                    "ForcedModifiers": "Forced Modifiers (names, e.g. AllStrums)",
+                    "MinSongSpeed": "Minimum Song Speed (%, 0 = none)",
+                    "Mystery": "Mystery Setlist",
+                    "SetlistSize": "Setlist Size (0 = every song)",
+                    "EncoreMinStars": "Encore Star Bar (average stars)",
+                    "IsEncore": "Encore Song",
                     "Warning": "Warning"
                 },
                 "Enums": {

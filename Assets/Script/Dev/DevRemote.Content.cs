@@ -63,7 +63,7 @@ namespace YARG.Dev
                     if (song.SongEntry is { } entry)
                     {
                         found++;
-                        text.Append($" | t{t}s{s} {entry.Artist.Original} - {entry.Name.Original}");
+                        text.Append($" | t{t}s{s} {entry.Artist.Original} - {entry.Name.Original} ({entry.SongLengthSeconds:0}s)");
                     }
                     else
                     {

@@ -1,0 +1,155 @@
+{
+  "Id": "5b0e7e57-3c1a-4e2b-9d6f-0a1b2c3d4e5f",
+  "Name": "Dev Show Test",
+  "Type": "Career",
+  "Description": "DEV TEST CAREER, not shipped. Gigs played as shows (FullTierPlaylist) and the other Phase B gig conditions, with short songs for bot play. Installed by scripts/dev/yarg-remote.sh into the isolated test data only.",
+  "Source": "yarg",
+  "Version": 1,
+  "Tiers": [
+    {
+      "Name": "Opening Set",
+      "Id": "5b0e7e57-0000-4000-8000-000000000001",
+      "Description": "Three songs in a row, one show.",
+      "Songs": [
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000001",
+          "SongId": "bbc23ee6-4336-4fb5-990e-e03a9841bb8c",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000002",
+          "SongId": "ef6121fa-9aee-4b96-a644-16fba205d4c8",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000003",
+          "SongId": "11ffcf43-64a5-4caf-9986-d53b78d73e3e",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Starter",
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "FullTierPlaylist",
+      "IsBonus": false,
+      "City": "Springfield",
+      "VenueName": "The Back Room",
+      "Contract": {
+        "Type": "NoFailOff",
+        "Parameter": 0,
+        "BonusPercent": 25
+      }
+    },
+    {
+      "Name": "Single Songs",
+      "Id": "5b0e7e57-0000-4000-8000-000000000002",
+      "Description": "Played one song at a time, as before.",
+      "Songs": [
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000004",
+          "SongId": "a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Small",
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false
+    },
+    {
+      "Name": "Strum Night",
+      "Id": "5b0e7e57-0000-4000-8000-000000000003",
+      "Description": "Gig rules: everyone on All Strums, at least 125% speed.",
+      "Songs": [
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000005",
+          "SongId": "1570dbb7-fbf7-488d-83c4-b8edc8cf3c51",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Small",
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "ForcedModifiers": "AllStrums",
+      "MinSongSpeed": 125
+    },
+    {
+      "Name": "Mystery Gig",
+      "Id": "5b0e7e57-0000-4000-8000-000000000004",
+      "Description": "A show whose songs stay secret until they start.",
+      "Songs": [
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000006",
+          "SongId": "c2ab2b15-edc9-40fe-9828-bd9503f4c09d",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000007",
+          "SongId": "902cb8e9-3e51-4894-b3d9-cdb3726b7ff6",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Small",
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "FullTierPlaylist",
+      "IsBonus": false,
+      "Mystery": true
+    },
+    {
+      "Name": "Pick Your Set",
+      "Id": "5b0e7e57-0000-4000-8000-000000000005",
+      "Description": "Pick one of three songs; one completion finishes the gig.",
+      "Songs": [
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000008",
+          "SongId": "35e9770e-ac25-4339-8ae7-c6abcf89156c",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000009",
+          "SongId": "c1b450e0-a3cc-44b0-b048-ba4550c657bf",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000010",
+          "SongId": "94f4125f-c30a-4807-a69f-4f6b507026c8",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "Small",
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "FullTierPlaylist",
+      "IsBonus": false,
+      "SetlistSize": 1
+    },
+    {
+      "Name": "Encore Night",
+      "Id": "5b0e7e57-0000-4000-8000-000000000006",
+      "Description": "Average 4 stars over the set and the crowd calls you back.",
+      "Songs": [
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000011",
+          "SongId": "07eee719-82c0-4874-aa3e-f55a5cb73723",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "d5e0c0de-0000-4000-8000-000000000012",
+          "SongId": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
+          "Identifier": "SongId",
+          "IsEncore": true
+        }
+      ],
+      "VenueSize": "Small",
+      "UnlockType": "FanCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "FullTierPlaylist",
+      "IsBonus": false,
+      "EncoreMinStars": 4.0
+    }
+  ]
+}

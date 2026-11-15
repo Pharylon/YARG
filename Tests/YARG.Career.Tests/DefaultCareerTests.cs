@@ -56,6 +56,8 @@ namespace YARG.Career.Tests
                     .Select((tier, index) => (tier, index))
                     .Where(t => run.Evaluation.Tiers[t.index].Unlocked && t.index != until)
                     .SelectMany(t => t.tier.Songs.Select(song => (t.tier, song)))
+                    // An encore is only played after a set that earned it (every set song at these stars).
+                    .Where(c => !c.song.IsEncore || CareerSetlists.EncoreEarned(c.tier, new[] { stars }))
                     .Where(c => !run.Played.Contains(c.song.Id))
                     .ToList();
                 if (candidates.Count == 0)

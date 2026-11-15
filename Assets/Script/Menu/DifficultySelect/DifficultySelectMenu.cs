@@ -226,6 +226,14 @@ namespace YARG.Menu.DifficultySelect
                     : $"{contract}\n{_loadingPhrase.text}";
             }
 
+            // A mystery career song stays hidden until it starts.
+            if (YARG.Menu.Career.CareerSetlistText.HideCurrentSong(out var hiddenTitle, out var hiddenArtist))
+            {
+                _songTitleText.text = hiddenTitle;
+                _artistText.text = hiddenArtist;
+                _loadingPhrase.text = YARG.Menu.Career.CareerContractText.ForCurrentSong() ?? string.Empty;
+            }
+
             _sourceIcon.sprite = SongSources.SourceToIcon(GlobalVariables.State.CurrentSong.Source);
             _sourceIcon.gameObject.SetActive(_sourceIcon.sprite != null);
 
@@ -1043,7 +1051,7 @@ namespace YARG.Menu.DifficultySelect
                 // A career run never includes bots - a game played with them cannot commit career
                 // progress at all - so they are forced to sit out and never get a selection screen.
                 while (_playerIndex >= 0 && _playerIndex < PlayerContainer.Players.Count &&
-                       PlayerContainer.Players[_playerIndex].Profile.IsBot)
+                       !YARG.Career.CareerBotCredit.CountsAsHuman(PlayerContainer.Players[_playerIndex].Profile))
                 {
                     PlayerContainer.Players[_playerIndex].SittingOut = true;
                     _playerIndex += add >= 0 ? 1 : -1;
@@ -1099,6 +1107,9 @@ namespace YARG.Menu.DifficultySelect
                 speed = Mathf.Clamp(speed, 0.1f, 50.0f);
                 _songSpeed = speed;
                 GlobalVariables.State.SongSpeed = speed;
+
+                // A career gig's rules (forced modifiers, minimum speed), for this play only.
+                YARG.Career.CareerGigSession.Apply();
 
                 GlobalVariables.Instance.LoadScene(SceneIndex.Gameplay);
                 return;

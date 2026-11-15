@@ -32,6 +32,10 @@ namespace YARG.Dev
     ///                        Without a band, a different player set is a different save than the menu's.
     ///   nofail=&lt;on|off&gt;      The no-fail setting for this play only (default: the game's setting).
     ///   failed=true          The song is failed/abandoned: nothing is recorded or credited.
+    ///   show=true            simulate only: play the target tier as a show (a FullTierPlaylist gig): every song
+    ///                        of its set with this result, in order, each committed as a song of a show, then
+    ///                        the encore if the result's stars reach the tier's encore bar.
+    ///   picks=&lt;n,n,..&gt;       with show=true: the songs picked for a make-your-own setlist (indexes).
     ///   path=&lt;score|grant&gt;   score (default): through ScoreContainer.RecordScore like a played song.
     ///                        grant: a completion row only, like the career menu's debug Grant Stars.
     ///   commit=&lt;true|false&gt; scorescreen only: commit the result through the score path first (as after a
@@ -52,6 +56,7 @@ namespace YARG.Dev
         private static readonly HashSet<string> ResultOptions = new()
         {
             "stars", "score", "percent", "fc", "difficulty", "instrument", "path", "commit", "players", "nofail", "failed",
+            "show", "picks",
         };
 
         private static readonly HashSet<string> TargetOptions = new()
@@ -69,14 +74,29 @@ namespace YARG.Dev
             }
 
             var committed = 0;
-            foreach (var (tierIndex, songIndex) in targets)
+            var showNote = "";
+            if (options.TryGetValue("show", out var showText) && showText == "true")
             {
-                if (!CareerSimulator.TryCommit(career, tierIndex, songIndex, result, out error))
+                // The whole set of the target's tier, as a real show plays it.
+                var showTier = targets[0].tierIndex;
+                var picks = options.TryGetValue("picks", out var picksText)
+                    ? SplitList(picksText).Select(int.Parse).ToList()
+                    : null;
+                CareerSimulator.TryCommitShow(career, showTier, result, picks, out var played, out var encore, out error);
+                committed = played.Count;
+                showNote = $"show t{showTier} played=[{string.Join(",", played)}] encore={encore} | ";
+            }
+            else
+            {
+                foreach (var (tierIndex, songIndex) in targets)
                 {
-                    break;
-                }
+                    if (!CareerSimulator.TryCommit(career, tierIndex, songIndex, result, out error))
+                    {
+                        break;
+                    }
 
-                committed++;
+                    committed++;
+                }
             }
 
             var menu = OpenCareerMenu();
@@ -97,8 +117,8 @@ namespace YARG.Dev
             }
 
             return error is null
-                ? $"ok committed {committed} | {summary}"
-                : $"error committed {committed} of {targets.Count}, then: {error} | {summary}";
+                ? $"ok committed {committed} | {showNote}{summary}"
+                : $"error committed {committed} of {targets.Count}, then: {error} | {showNote}{summary}";
         }
 
         private static string DescribeCareer(string argument)

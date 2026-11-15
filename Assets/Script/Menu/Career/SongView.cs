@@ -322,7 +322,7 @@ namespace YARG.Menu.Career
                 return;
             }
 
-            var showStars = info?.Kind == ViewType.CareerRowKind.Song;
+            var showStars = info?.Kind == ViewType.CareerRowKind.Song && !info.Value.NoStars;
             _starView.gameObject.SetActive(showStars);
 
             if (showStars)

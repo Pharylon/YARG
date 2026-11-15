@@ -257,6 +257,12 @@ namespace YARG.Settings.Metadata
                     FormatNumber(issue.Value)),
                 CareerIssueType.DuplicateSongId => Localize.Key(KEY + "DuplicateSongId"),
                 CareerIssueType.DuplicateTierId => Localize.Key(KEY + "DuplicateTierId"),
+                CareerIssueType.CareerPlaylistUnsupported => Localize.Key(KEY + "CareerPlaylist"),
+                CareerIssueType.SongSpeedOutOfRange => Localize.KeyFormat(KEY + "SongSpeed", FormatNumber(issue.Value)),
+                CareerIssueType.SetlistSizeOutOfRange => Localize.KeyFormat(KEY + "SetlistSize",
+                    FormatNumber(issue.Value), issue.Available),
+                CareerIssueType.EncoreNeverPlayed => Localize.Key(KEY + "EncoreNeverPlayed"),
+                CareerIssueType.EncoreBarInvalid => Localize.KeyFormat(KEY + "EncoreBar", FormatNumber(issue.Value)),
                 _ => issue.Type.ToString(),
             };
 

@@ -113,7 +113,7 @@ namespace YARG.Scores
         public static bool IsBandScoreValid(float songSpeed, IEnumerable<YargPlayer> players)
         {
             var activePlayers = players.Where(player => !player.SittingOut && player.IsActive).ToList();
-            var humanPlayers = activePlayers.Where(player => !player.Profile.IsBot).ToList();
+            var humanPlayers = activePlayers.Where(player => CareerBotCredit.CountsAsHuman(player.Profile)).ToList();
 
             return humanPlayers.Count > 0 &&
                 humanPlayers.All(player => IsSoloScoreValid(songSpeed, player)) &&
@@ -121,7 +121,7 @@ namespace YARG.Scores
         }
 
         public static bool IsSoloScoreValid(float songSpeed, YargPlayer player) =>
-            songSpeed >= 1.0f && !player.Profile.IsBot && player.IsScoreValid;
+            songSpeed >= 1.0f && CareerBotCredit.CountsAsHuman(player.Profile) && player.IsScoreValid;
 
         public static void RecordScore(GameRecord gameRecord, List<PlayerScoreRecord> playerEntries)
         {
@@ -189,15 +189,16 @@ namespace YARG.Scores
                 return;
             }
 
-            // Careers cannot be played with replays or bots.
-            if (gameRecord.PlayedWithReplay || gameRecord.HasBots || playerEntries.Any(entry => entry.IsReplay))
+            // Careers cannot be played with replays or bots (bots only behind the dev switch).
+            var botsCount = CareerBotCredit.BotsCount;
+            if (gameRecord.PlayedWithReplay || gameRecord.HasBots && !botsCount || playerEntries.Any(entry => entry.IsReplay))
             {
                 YargLogger.LogInfo("Career: skipping completion, replay or bot play is not allowed for careers.");
                 return;
             }
 
             var participants = playerEntries.Select(entry => entry.PlayerId).Distinct().ToList();
-            var hasBots = participants.Any(id => PlayerContainer.GetProfileById(id)?.IsBot == true);
+            var hasBots = !botsCount && participants.Any(id => PlayerContainer.GetProfileById(id)?.IsBot == true);
 
             // The active band's save if the song was played as a band (a member must have played),
             // otherwise the save of exactly these players.
@@ -233,7 +234,7 @@ namespace YARG.Scores
                 IsGold = gameRecord.BandStars == StarAmount.StarGold,
                 BandScore = gameRecord.BandScore,
                 CompletedAt = DateTime.Now,
-                Source = CareerCompletionSource.SingleSong,
+                Source = context.Source,
             };
 
             // The no-fail setting is not stored with scores; it cannot change during a valid play

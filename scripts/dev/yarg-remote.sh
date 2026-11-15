@@ -2,7 +2,7 @@
 # Drive a development build of YARG through its DevRemote (see Assets/Script/Dev/DevRemote.cs).
 #
 #   yarg-remote.sh build                 Build Builds/DevLinux with Unity (editor must be closed)
-#   yarg-remote.sh start [--shared-data] [width height]
+#   yarg-remote.sh start [--shared-data] [--career-bots] [width height]
 #                                        Launch the build windowed (default 1600x900). By default the game
 #                                        keeps its data in a separate test folder ($DIR/data), seeded on first
 #                                        use with the profiles, settings and song cache of the dev data folder,
@@ -10,6 +10,11 @@
 #                                        dev data folder itself (~/.config/unity3d/YARC/YARG/dev).
 #                                        The isolated folder also gets the dev/test careers in
 #                                        scripts/dev/careers (e.g. "Dev Fan Test", fan-count unlocks).
+#                                        --career-bots: bots earn career credit (dev switch, see
+#                                        Assets/Script/Career/CareerBotCredit.cs; also "career-bots on").
+#   YARG_REMOTE_TIMEOUT=<s> yarg-remote.sh do ...
+#                                        Wait up to <s> seconds (default 60) for the commands to finish,
+#                                        e.g. with "waitfor scene=Score timeout=400" while a bot plays.
 #   yarg-remote.sh wipe                  Delete the test data folder; the next start seeds it again
 #   yarg-remote.sh do "<cmd>" ...        Run remote commands in order, print the results
 #   yarg-remote.sh shot [file.png]       Save a screenshot, print its path
@@ -17,7 +22,7 @@
 #
 # Remote commands: nav <Up|Down|Left|Right|Green|Red|Yellow|Blue|Orange|Start|Select>,
 #   menu <MainMenu|GameModes|CareerList|Career|...>, back, click <x> <y>, wait <s>,
-#   shot <path>, window <w> <h>, state,
+#   shot <path>, window <w> <h>, state, career-bots [on|off], ready [speed=N], waitfor scene=<name>, show,
 #   simulate / career / scorescreen (career testing, see Assets/Script/Dev/DevRemote.Career.cs), e.g.
 #   simulate career="YARG Setlist Rock" tier=0 song=2 stars=4
 #   band list|create|select|rename|edit|members|delete|adopt|sheet|history, profile create,
@@ -40,7 +45,8 @@ running() { pgrep -f "^$BUILD/YARG " >/dev/null; }
 run() {
     rm -f "$DIR/result.txt"
     printf '%s\n' "$@" > "$DIR/cmd.tmp" && mv "$DIR/cmd.tmp" "$DIR/cmd.txt"
-    for _ in $(seq 600); do
+    # Seconds to wait for the whole command list (raise it for commands that wait for a song to end).
+    for _ in $(seq $(( ${YARG_REMOTE_TIMEOUT:-60} * 10 ))); do
         [ -f "$DIR/result.txt" ] && { cat "$DIR/result.txt"; return 0; }
         running || { echo "error: game is not running" >&2; return 1; }
         sleep 0.1
@@ -83,12 +89,18 @@ case "${1:-}" in
     start)
         shift
         data_args=()
-        if [ "${1:-}" = "--shared-data" ]; then
+        shared=0
+        while [ "${1:-}" = "--shared-data" ] || [ "${1:-}" = "--career-bots" ]; do
+            case "$1" in
+                --shared-data) shared=1;;
+                --career-bots) data_args+=(-career-bots-count);;
+            esac
             shift
-        else
+        done
+        if [ $shared = 0 ]; then
             seed
             install_test_careers
-            data_args=(-persistent-data-path "$DATA")
+            data_args+=(-persistent-data-path "$DATA")
         fi
         mkdir -p "$DIR"; rm -f "$DIR/cmd.txt" "$DIR/result.txt"
         # -download-location is what the YARC Launcher passes: it is where Setlists/ and Venues/ live.
@@ -102,5 +114,5 @@ case "${1:-}" in
     do)   shift; run "$@";;
     shot) out="${2:-$DIR/shot.png}"; run "shot $out" >/dev/null && echo "$out";;
     stop) pkill -f "^$BUILD/YARG " ;;
-    *)    sed -n '2,25p' "$0";;
+    *)    sed -n '2,36p' "$0";;
 esac
