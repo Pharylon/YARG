@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Cysharp.Threading.Tasks;
+using TMPro;
 using UnityEngine.Events;
 using YARG.Career;
 using YARG.Core.Logging;
@@ -61,8 +62,16 @@ namespace YARG.Menu.Career
 
             if (active is not null)
             {
+                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Sheet", active.Name),
+                    () => ShowAfterClose(() => CareerBandSheetDialogs.ShowSheet(active)).Forget());
+                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.History", active.Name),
+                    () => ShowAfterClose(() => CareerBandSheetDialogs.ShowHistory(active)).Forget());
                 AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Rename", active.Name),
                     () => RenameBand(active, onChanged).Forget());
+                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditHometown", active.Name),
+                    () => EditHometown(active, onChanged).Forget());
+                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditGenre", active.Name),
+                    () => EditGenre(active, onChanged).Forget());
                 AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditMembers", active.Name),
                     () => EditMembers(active, onChanged).Forget());
                 AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Delete", active.Name),
@@ -169,6 +178,42 @@ namespace YARG.Menu.Career
             onChanged?.Invoke();
         }
 
+        /// <summary>
+        /// Change the hometown; confirming an empty field clears it.
+        /// </summary>
+        private static async UniTaskVoid EditHometown(CareerBand band, Action onChanged)
+        {
+            var hometown = await AskText(Localize.KeyFormat("Menu.Career.Band.AskEditHometown", band.Name), band.Hometown);
+            if (hometown is null)
+            {
+                return;
+            }
+
+            ScoreContainer.Careers.SetBandHometown(band.Id, hometown.Trim());
+            onChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Change the genre; confirming an empty field clears it.
+        /// </summary>
+        private static async UniTaskVoid EditGenre(CareerBand band, Action onChanged)
+        {
+            var genre = await AskText(Localize.KeyFormat("Menu.Career.Band.AskEditGenre", band.Name), band.Genre);
+            if (genre is null)
+            {
+                return;
+            }
+
+            ScoreContainer.Careers.SetBandGenre(band.Id, genre.Trim());
+            onChanged?.Invoke();
+        }
+
+        private static async UniTaskVoid ShowAfterClose(Action show)
+        {
+            await NextDialog();
+            show();
+        }
+
         private static async UniTaskVoid EditMembers(CareerBand band, Action onChanged)
         {
             var careers = ScoreContainer.Careers;
@@ -214,7 +259,7 @@ namespace YARG.Menu.Career
         /// <summary>
         /// Typed text through the rename dialog. Null if cancelled; empty if confirmed with nothing typed.
         /// </summary>
-        private static async UniTask<string> AskText(string title)
+        private static async UniTask<string> AskText(string title, string initial = null)
         {
             await NextDialog();
 
@@ -222,6 +267,11 @@ namespace YARG.Menu.Career
             var confirmed = false;
 
             var dialog = DialogManager.Instance.ShowRenameDialog(title, value => text = value);
+            if (!string.IsNullOrEmpty(initial) && dialog.GetComponentInChildren<TMP_InputField>() is { } input)
+            {
+                input.text = initial;
+            }
+
             dialog.ClearButtons();
             dialog.AddDialogButton("Menu.Common.Cancel", MenuData.Colors.CancelButton,
                 DialogManager.Instance.ClearDialog);

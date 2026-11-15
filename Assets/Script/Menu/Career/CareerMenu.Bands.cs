@@ -11,6 +11,16 @@ namespace YARG.Menu.Career
     {
         private CareerEvaluation _bandTextEvaluation;
         private string _bandText;
+        private string _bandHometown;
+
+        /// <summary>
+        /// The tier is a "Hometown show": its city is the active band's hometown (text only).
+        /// </summary>
+        private bool IsHometown(CareerTier tier)
+        {
+            BandHeaderText();
+            return tier is not null && CareerBandSheet.IsHometown(tier.City, _bandHometown);
+        }
 
         /// <summary>
         /// "Band: Name", with a warning when no member is among the players (results would not count),
@@ -25,6 +35,7 @@ namespace YARG.Menu.Career
 
             _bandTextEvaluation = _evaluation;
             _bandText = null;
+            _bandHometown = null;
 
             var careers = ScoreContainer.Careers;
             var band = CareerBands.ActiveBand(careers);
@@ -32,6 +43,8 @@ namespace YARG.Menu.Career
             {
                 return null;
             }
+
+            _bandHometown = band.Hometown;
 
             var credit = CareerBands.CurrentCredit(careers);
             _bandText = credit.Block == CareerCreditBlock.NoMemberPlaying

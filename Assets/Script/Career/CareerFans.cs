@@ -4,6 +4,20 @@ using System.Collections.Generic;
 namespace YARG.Career
 {
     /// <summary>
+    /// A band's rank title, derived from its fans (thresholds in <see cref="CareerFans.RankFans"/>), never
+    /// stored. Lowest first: the order is the rank order.
+    /// </summary>
+    public enum CareerRank
+    {
+        GarageBand,
+        LocalAct,
+        ClubRegulars,
+        TouringBand,
+        Headliners,
+        ArenaLegends,
+    }
+
+    /// <summary>
     /// Fan tuning: every number that decides how many fans a song earns lives here, so tuning is a
     /// one-file change. Pure (no UnityEngine), so it is covered by Tests/YARG.Career.Tests.
     ///
@@ -111,6 +125,61 @@ namespace YARG.Career
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Fans a band needs for each <see cref="CareerRank"/>, indexed by the rank. A full run of the
+        /// "Dev Fan Test" career (Starter to Epic, all gold) is worth about 25,000 fans, so the top rank
+        /// takes more than one career.
+        /// </summary>
+        private static readonly int[] RANK_FANS =
+        {
+            0,      // Garage Band
+            500,    // Local Act
+            2_000,  // Club Regulars
+            7_500,  // Touring Band
+            20_000, // Headliners
+            50_000, // Arena Legends
+        };
+
+        /// <summary>
+        /// Fans needed for <paramref name="rank"/>.
+        /// </summary>
+        public static int RankFans(CareerRank rank)
+        {
+            return RANK_FANS[Math.Clamp((int) rank, 0, RANK_FANS.Length - 1)];
+        }
+
+        /// <summary>
+        /// The band's rank title for its fan total: the highest rank whose threshold it has reached.
+        /// </summary>
+        public static CareerRank Rank(int fans)
+        {
+            var rank = CareerRank.GarageBand;
+            for (var i = 1; i < RANK_FANS.Length; i++)
+            {
+                if (fans >= RANK_FANS[i])
+                {
+                    rank = (CareerRank) i;
+                }
+            }
+
+            return rank;
+        }
+
+        /// <summary>
+        /// The next rank and how many more fans it needs, or null at the top rank.
+        /// </summary>
+        public static (CareerRank rank, int fansNeeded)? NextRank(int fans)
+        {
+            var current = Rank(fans);
+            if ((int) current >= RANK_FANS.Length - 1)
+            {
+                return null;
+            }
+
+            var next = current + 1;
+            return (next, RankFans(next) - Math.Max(0, fans));
         }
 
         /// <summary>

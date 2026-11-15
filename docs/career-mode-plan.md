@@ -53,6 +53,7 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
 - **Gold stars.** `GameRecord.BandStars` and `PlayerScoreRecord.Stars` are `StarAmount`, where `StarGold` (6) is distinct from `Star5`. `CareerSongCompletions.BandStars` is an int written with `GetStarCount()`, which maps gold to 5, so the completion row loses gold; it is recoverable only by joining `GameRecords` on `GameRecordId` (0 for `DebugGrant` rows). Add a column (or store the raw `StarAmount`) if fans need gold.
 - **Failed songs.** Nothing is recorded or committed unless `GameManager.EndSong` reaches `RecordScores` with a valid band score; quitting from the pause menu goes through `ForceQuitSong` and records nothing.
 - **Dialogs.** `DialogManager` allows one dialog at a time and throws if a second is shown; queue or defer presentations.
+- **Which row counts for fans (step 5).** `CareerEvaluation.SongResult.CountedCompletionId` is the id of the completion row whose fans count (first of equal rows). The gig history uses it for its "counts" mark. Text-heavy screens can use the stock list dialog with plain text lines (`CareerBandSheetDialogs.AddLine`: a copy of the dialog's title TMP + `ContentSizeFitter` + `RuntimeNavigatable`, and `FollowSelection` to scroll with the controller).
 
 ### 0.3 Testing
 
@@ -71,6 +72,8 @@ Facts later steps rely on. Re-check them after merging `upstream/dev`.
   - Contracts (step 4): `simulate`/`scorescreen` take `fc=true|false|"A,B"`, `difficulty=<d>|"A:Hard,B:Expert"`, `players=<n|"A,B">`, `nofail=on|off`, `failed=true`. `career`/`simulate` mark each song's best stars with `+` (counted result met the contract) or `x` (missed), and print `contract <Type>(<param>, +N%) met|missed` for the last commit. Dev career "Dev Contract Test" (`scripts/dev/careers/Dev_Contract_Test.34d8752f.json`) has every Phase A type on tiers and songs, a song override, a `None` exemption, a `Text` override and a song without contract; all tiers open at 0 fans. `players=` without a band commits to that player set's save (not the one the menu shows); use a band to keep one save.
   - `scorescreen` must be started from the menu scene: run from the score screen, the old screen's `OnDisable` resets the state and the new one comes up empty (dev tool limitation). Continue (`nav Green`) back to the menu first.
   - NUnit: `CareerContractsTests` (judge per type, which row counts, strikethrough rule, JSON, completion row columns on in-memory SQLite). 59 tests in total.
+  - Band identity (step 5, `DevRemote.Bands.cs`): `band sheet [<band>] [open=true]` prints the sheet's raw numbers (`fans= rank= next= careers= gigs= stars= contracts=N/M members=[name:gigs,instruments,accuracy,fc] history=[#rowId:career/tNsN:stars:fans(* = counts):contract(+ met, x missed):rec=gameRecordId]`) and then the text lines the dialog shows; `band history ...` the same for the history; `open=true` also opens the dialog. Default: the active band. `band edit <band> [hometown=..] [genre=..]`. `simulate`/`scorescreen` now also take per-player `percent="A:90,B:75"` and `instrument=<Instrument>|"A:FiveFretGuitar,B:FourLaneDrums"`. The sheet/history dialogs are closed with `press Close` and switch with `press "Gig History"` / `press "Band Sheet"`; `nav Down` moves through the lines and scrolls.
+  - NUnit: `CareerBandSheetTests` (ranks, hometown match, sheet totals and history, which row counts, member records, empty band, removed songs, DB load with reset/uninstalled careers, hometown/genre edits). 71 tests in total.
   - Shared code: `Assets/Script/Dev/CareerSimulator.cs` (`SimulatedResult`, `CareerSimulator.TryCommit`, `ScoreScreenStatsFor`). The career menu's debug Grant Stars uses the same code with `path=grant` (completion row with `Source = DebugGrant`, no score records). Add new result fields (player count, failed song, ...) to `SimulatedResult` and its parser.
 
 ---
@@ -101,7 +104,7 @@ Today a save belongs to "whichever profiles happened to play". A band makes that
 - [x] Band select / create, plain and built from stock pieces, reached from the career list: its first row is "Band: <name>" (or "No band: play as the current players"); the left panel shows hometown, genre, members and band fans. Clicking it opens a list dialog: every band (active one marked), "No band", "New band...", and for the active band "Rename", "Members of", "Delete". New band: rename dialog for name, hometown and genre (both optional), then a member picker (list dialog of `[x]`/`[  ]` toggles over the non-bot profiles, preset to the current human players). Delete uses the stock confirm-delete dialog (type the band's name). Code: `Menu/Career/CareerBandDialogs.cs`, `ViewTypes/BandViewType.cs`. The list dialog's list buttons get runtime navigatables, so a controller can reach them (the stock list dialog does not do this).
 - [x] Active band in the career menu header: second line under the career name, "Band: The Testers · 613 fans" (fans only for fan careers). No band: header unchanged.
 - [x] Migration path: after creating a band, if exactly its members already have profile-set saves, a dialog offers to move them to the band ("Bring It" / "Start Fresh"); `AdoptSave` sets `BandId` on the save. Verified in game (Carol's Rock save moved to "Carol Trio"; afterwards Carol without a band has no Rock save).
-- Not done: band icon/art (the band row has an empty icon box), editing hometown/genre after creation, a dedicated band screen (section 4).
+- Not done: band icon/art (the band row has an empty icon box). Editing hometown/genre and the band sheet: done in step 5 (section 4).
 - ~~Known: the sticky `CareerSong.IsCompleted` strikethrough leaks between band and no-band views.~~ Fixed in step 4 (`SongResult.Done`, NUnit `DoneDoesNotCarryOverToAnotherSave`; in game: Rock solo save shows two struck songs, the same career as The Testers right after shows none).
 
 ---
@@ -195,22 +198,26 @@ All judged by `CareerContracts.IsMet(contract, GameRecord, PlayerScoreRecords, b
 
 ## 4. Band identity
 
+Step 5 (2026-11-15). All of it is derived on demand by `CareerBandSheet` (`Assets/Script/Career/CareerBandSheet.cs`, pure `Build` + a `Load` that only runs three thin queries: the band's active saves' snapshots, `CareerDatabase.GetBandGameRecords`, `GetBandPlayerScores`). No new table, no new column. **Scope:** the band's *active* saves of *installed* careers, the same saves its fans come from; a reset career (soft-deleted save) leaves the sheet and the history. NUnit `CareerBandSheetTests` (ranks, totals, which row counts, member records, empty band, removed songs, DB load against in-memory SQLite incl. reset/uninstalled, hometown/genre edits).
+
 ### Band sheet (new screen)
-- [ ] Name, hometown, genre, founded date, members.
-- [ ] Fan total and **rank title** derived from fans (Garage Band, Local Act, Club Regulars, Touring Band, Headliners, Arena Legends). Thresholds in the same tuning file as the fan table.
-- [ ] Careers played, gigs played, total stars, contracts met.
+- [x] Name (dialog title), hometown, genre, founded date (`CreatedAt`), members. UI: `Menu/Career/CareerBandSheetDialogs.cs`, the stock list dialog with plain text lines in its scrolling list (copies of the dialog's title text, each with a `RuntimeNavigatable` so a controller can move through them; the dialog follows the selection, which the stock list dialog does not). Reached from the band dialog ("Band sheet: X", "Gig history of X" for the active band); the sheet has "Gig History" / the history has "Band Sheet" buttons to switch. No new scene or prefab.
+- [x] Fan total and **rank title** derived from fans: `CareerRank` + `CareerFans.Rank/NextRank/RankFans` in `CareerFans.cs`. Thresholds 0 / 500 / 2,000 / 7,500 / 20,000 / 50,000 (Garage Band, Local Act, Club Regulars, Touring Band, Headliners, Arena Legends; a full gold run of "Dev Fan Test" is about 25,000). Sheet line: "Local Act · 600 fans · 1,400 more fans to Club Regulars". The band row in the career list also shows it: "... · 600 fans (Local Act)".
+- [x] Careers played (saves with at least one gig), gigs played (every completion row, replays included), total stars (best stars per song summed over all careers, gold = 5, bonus tiers included), contracts met ("N of M": stored `ContractMet` over plays that had a contract; the raw outcome of each play, not re-judged against changed content).
 
 ### Per-member records
-- [ ] Derived from each member's `PlayerScoreRecord`s linked to the band's completion rows (via `GameRecordId`): gigs played, instruments played, average accuracy, best streak, full combos.
-- [ ] "Showmanship" (star power use) only if that stat is already recorded per player; otherwise defer. *Not recorded per player in the database (only in replays), so defer.*
-- [ ] Decide whether stats need their own cached table or can be queried on demand (start with on-demand).
+- [x] Derived from each current member's `PlayerScoreRecord`s on the game records of the band's completion rows: gigs played (gigs with a score row of theirs), instruments played (with counts, most played first), average accuracy (mean of `GetPercent()` over their gigs with notes), full combos (gigs with notes). Sit-ins are not listed; former members are not listed. Debug grants (`GameRecordId` 0) have no score rows, so they count as band gigs but not member gigs.
+- **Best streak: left out.** Max combo is not stored per player (only in replays, see 0.2). Would need a new raw column on `PlayerScores` (upstream table) or reading replay files.
+- [ ] "Showmanship" (star power use): deferred, not recorded per player in the database (only in replays).
+- [x] Decided: on demand, no cached table. One sheet load = one snapshot per active save + two joins.
 
 ### Gig history log
-- [ ] Chronological list from `CareerSongCompletions` joined to `GameRecord`: date, venue/tier, song, stars, fans gained, contract result.
-- [ ] Note that only the **best** row counts for fans, but history shows every play.
+- [x] List from `CareerSongCompletions` joined to `GameRecord`, **newest first** (as the History menu): song and artist (from the game record; from the library for grants), date, career, tier (venue, city), "Hometown show" tag, stars ("gold stars" for gold), the fans that result is worth (contract bonus included when the row met the song's current contract, same valuation as the evaluation), contract met/missed (stored outcome; condition text when the content still has that contract type).
+- [x] Every play is listed; the row that counts for fans is marked "counts" (`SongResult.CountedCompletionId`, set by `CareerEvaluation.ApplyBestFans`; the first of equal rows), with a one-line note at the top. Fan careers only.
 
 ### Flavor
-- [ ] Hometown text hook: tiers whose `City` matches the band's hometown show a "Hometown show" tag (text only; bonus fans optional).
+- [x] Hometown text hook: `CareerBandSheet.IsHometown(city, hometown)` (both set, trimmed, case-insensitive). Tier header rows get "Hometown show · ..." (any career with `City`), the selected tier's venue line in the career header gets "· Hometown show" (fan careers, where that line exists), and history rows show it. No bonus fans.
+- [x] Editing hometown and genre after creation: "Hometown of X..." / "Genre of X..." in the band dialog (rename dialog prefilled with the current value; confirming an empty field clears it). `CareerDatabase.SetBandHometown/SetBandGenre`.
 
 ### Deferred within this section
 - Convenience perks (roadie skip token, manager reveals a mystery song). Revisit once playlist gigs exist.
@@ -232,7 +239,7 @@ All judged by `CareerContracts.IsMet(contract, GameRecord, PlayerScoreRecords, b
 2. **Fans, no bands yet**: first the dev remote's `simulate` command (section 2, "Test tooling"), then `FanCount` unlock + evaluation + header/locked-tier text. Smallest playable slice; works with today's profile-set saves. Done (2026-11-15), see section 2.
 3. **Bands**: tables, save ownership, select/create UI. Done (2026-11-15), see section 1.
 4. **Contracts Phase A** + score screen lines. Done (2026-11-15), see section 3; also fixed the strikethrough leak and made the active band persist.
-5. **Band sheet, ranks, history log.**
+5. **Band sheet, ranks, history log.** Done (2026-11-15), see section 4.
 6. **Default career content + preset editor fields.**
 7. **Contracts Phase B**: playlist gigs, then mystery, make-your-own, encore. Add the dev-only "bots count for career credit" switch here so a bot can play through playlist gigs.
 

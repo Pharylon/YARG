@@ -39,6 +39,11 @@ namespace YARG.Menu.Career
         /// </summary>
         public bool ShowFans { get; set; }
 
+        /// <summary>
+        /// The tier's city is the active band's hometown: the header says "Hometown show" (text only).
+        /// </summary>
+        public bool HometownShow { get; set; }
+
         // A locked tier is still selectable so the list can be browsed, but it starts nothing.
         public override bool IsClickable => !IsLocked;
 
@@ -101,6 +106,11 @@ namespace YARG.Menu.Career
             if (CareerContractText.Line(_tier.Contract, ShowFans) is { } contract)
             {
                 text = Localize.KeyFormat("Menu.Career.HeaderJoin", text, contract);
+            }
+
+            if (HometownShow)
+            {
+                text = Localize.KeyFormat("Menu.Career.HeaderJoin", Localize.Key("Menu.Career.Hometown"), text);
             }
 
             return FormatAs(text, TextType.Secondary, selected);

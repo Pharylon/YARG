@@ -29,6 +29,10 @@ namespace YARG.Dev
     ///   band members &lt;band&gt; members=a,b   Set the members.
     ///   band delete &lt;band&gt;               Soft-delete (clears it if active).
     ///   band adopt &lt;band&gt; career=..       Hand the current players' profile-set save of that career to the band.
+    ///   band edit &lt;band&gt; [hometown=..] [genre=..]   Change hometown and/or genre (empty value clears).
+    ///   band sheet [&lt;band&gt;] [open=true]     Print the band sheet (raw numbers, then the lines the sheet
+    ///                                     shows); open=true also opens the sheet dialog. Default: active band.
+    ///   band history [&lt;band&gt;] [open=true]   The same for the gig history (newest first).
     ///
     ///   profile create name=.. [player=true]   Add a profile (and, with player=true, a player using it).
     ///   player add &lt;profile&gt;                Add a player for an existing profile (no input devices).
@@ -55,7 +59,7 @@ namespace YARG.Dev
             var words = SplitWords(argument);
             if (words.Count == 0)
             {
-                return "error usage: band <list|create|select|rename|members|delete|adopt> ...";
+                return "error usage: band <list|create|select|rename|edit|members|delete|adopt|sheet|history> ...";
             }
 
             var sub = words[0].ToLowerInvariant();
@@ -65,7 +69,15 @@ namespace YARG.Dev
                     word => word.Substring(word.IndexOf('=') + 1));
 
             CareerBand band = null;
-            if (sub is "select" or "rename" or "members" or "delete" or "adopt")
+            if (sub is "sheet" or "history" && positional.Count == 0)
+            {
+                band = CareerBands.ActiveBand(careers);
+                if (band is null)
+                {
+                    return $"error no active band; usage: band {sub} [<band>] [open=true]";
+                }
+            }
+            else if (sub is "select" or "rename" or "members" or "delete" or "adopt" or "edit" or "sheet" or "history")
             {
                 if (positional.Count == 0)
                 {
@@ -126,6 +138,55 @@ namespace YARG.Dev
                     CareerBands.ActiveBandId = band.Id;
                     RefreshCareerScreens();
                     return $"ok active band: {DescribeBand(careers, band)}";
+
+                case "edit":
+                    if (!options.ContainsKey("hometown") && !options.ContainsKey("genre"))
+                    {
+                        return "error band edit needs hometown= and/or genre= (empty to clear)";
+                    }
+
+                    if (options.TryGetValue("hometown", out var hometown))
+                    {
+                        careers.SetBandHometown(band.Id, hometown.Trim());
+                    }
+
+                    if (options.TryGetValue("genre", out var genre))
+                    {
+                        careers.SetBandGenre(band.Id, genre.Trim());
+                    }
+
+                    RefreshCareerScreens();
+                    return $"ok {DescribeBand(careers, careers.GetBand(band.Id))}";
+
+                case "sheet":
+                case "history":
+                {
+                    var open = options.TryGetValue("open", out var openText) && openText == "true";
+                    if (open)
+                    {
+                        if (DialogManager.Instance.IsDialogShowing)
+                        {
+                            return "error a dialog is already open";
+                        }
+
+                        if (sub == "sheet")
+                        {
+                            CareerBandSheetDialogs.ShowSheet(band);
+                        }
+                        else
+                        {
+                            CareerBandSheetDialogs.ShowHistory(band);
+                        }
+                    }
+
+                    var sheet = CareerBandSheet.Load(careers, band.Id, CareerBands.AllCareers());
+                    var lines = sub == "sheet"
+                        ? CareerBandSheetDialogs.SheetLines(careers, band, sheet)
+                        : CareerBandSheetDialogs.HistoryLines(band, sheet);
+                    var stats = sub == "sheet" ? DescribeSheet(sheet) + " || " : string.Empty;
+                    return $"ok {(open ? "opened, " : "")}{stats}" +
+                        string.Join(" || ", lines.Select(line => Plain(line).Replace("\n", " / ")));
+                }
 
                 case "rename":
                     if (!options.TryGetValue("to", out var newName) || string.IsNullOrWhiteSpace(newName))
@@ -308,6 +369,26 @@ namespace YARG.Dev
                 $"members=[{string.Join(",", CareerBands.MemberNames(careers, band.Id))}] " +
                 $"saves=[{string.Join(",", saves.Select(save => save.Id))}] " +
                 $"fans={CareerBands.BandFans(careers, band.Id, CareerBands.AllCareers())}";
+        }
+
+        /// <summary>
+        /// The sheet's raw numbers, for checking against <c>career</c> and the database.
+        /// </summary>
+        private static string DescribeSheet(CareerBandSheet sheet)
+        {
+            var next = sheet.NextRank is { } rank ? $"{rank.rank}(+{rank.fansNeeded})" : "top";
+            var members = sheet.Members.Select(member =>
+                $"{PlayerContainer.GetProfileById(member.ProfileId)?.Name ?? member.ProfileId.ToString()}:" +
+                $"gigs={member.Gigs},instruments=[{string.Join(",", member.Instruments.Select(i => $"{i.instrument}x{i.gigs}"))}]," +
+                $"accuracy={(member.AverageAccuracy is { } accuracy ? (accuracy * 100f).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) : "none")}," +
+                $"fc={member.FullCombos}");
+            var gigs = sheet.History.Select(gig =>
+                $"#{gig.Row.Id}:{gig.Career.Name}/t{gig.Row.TierIndex}s{gig.Row.SongIndex}:" +
+                $"{(gig.Gold ? "G" : gig.Stars.ToString())}:{(gig.UsesFans ? gig.Fans + (gig.Counts ? "*" : "") : "-")}:" +
+                $"{(gig.ContractType is { } type ? type + (gig.ContractMet ? "+" : "x") : "none")}:rec={gig.Row.GameRecordId}");
+            return $"fans={sheet.Fans} rank={sheet.Rank} next={next} careers={sheet.CareersPlayed} " +
+                $"gigs={sheet.GigsPlayed} stars={sheet.TotalStars} contracts={sheet.ContractsMet}/{sheet.ContractGigs} " +
+                $"members=[{string.Join(" ", members)}] history=[{string.Join(" ", gigs)}]";
         }
 
         private static CareerBand FindBand(CareerDatabase careers, string reference)

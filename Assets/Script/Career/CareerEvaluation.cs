@@ -31,6 +31,8 @@ namespace YARG.Career
             // careers: its fans are at the most it can earn (gold, and the contract met if it has a
             // bonus). Other careers: what its tier's unlock type counts is maxed (completed, or 5 stars).
             public bool Done;
+            // Id of the completion row whose fans count (the first of equal ones); 0 if not completed.
+            public int CountedCompletionId;
         }
 
         public class TierResult
@@ -225,6 +227,7 @@ namespace YARG.Career
                 {
                     songResult.Fans = fans;
                     songResult.ContractMet = met;
+                    songResult.CountedCompletionId = row.Id;
                 }
             }
 

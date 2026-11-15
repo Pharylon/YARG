@@ -36,7 +36,7 @@ namespace YARG.Menu.Career
         }
 
         /// <summary>
-        /// "Hometown · Genre · Members: A, B · 1,234 fans", leaving out what is not set.
+        /// "Hometown · Genre · Members: A, B · 1,234 fans (Local Act)", leaving out what is not set.
         /// </summary>
         public static string Describe(CareerDatabase careers, CareerBand band)
         {
@@ -57,7 +57,8 @@ namespace YARG.Menu.Career
                 : Localize.List(members)));
 
             var fans = CareerBands.BandFans(careers, band.Id, CareerBands.AllCareers());
-            parts.Add(Localize.KeyFormat("Menu.Career.HeaderFans", fans.ToString("N0")));
+            parts.Add(Localize.KeyFormat("Menu.Career.Band.FansRank", fans.ToString("N0"),
+                CareerBandSheetDialogs.RankName(CareerFans.Rank(fans))));
 
             return string.Join("  ·  ", parts);
         }

@@ -54,7 +54,12 @@ namespace YARG.Menu.Career
                     ? fans
                     : Localize.KeyFormat("Menu.Career.HeaderJoin", subtitle, fans);
 
-                var venue = VenueText(SelectedTier());
+                var venue = CareerBandSheetDialogs.VenueText(SelectedTier());
+                if (!string.IsNullOrEmpty(venue) && IsHometown(SelectedTier()))
+                {
+                    venue = Localize.KeyFormat("Menu.Career.HeaderJoin", venue, Localize.Key("Menu.Career.Hometown"));
+                }
+
                 if (!string.IsNullOrEmpty(venue))
                 {
                     description = $"<b>{venue}</b>\n\n{description}";
@@ -89,22 +94,6 @@ namespace YARG.Menu.Career
                     CareerContracts.For(_career.Tiers[song.TierIndex], song.Song),
                 _ => null,
             };
-        }
-
-        /// <summary>
-        /// "Venue, City", either one alone, or null if the tier names neither.
-        /// </summary>
-        private static string VenueText(CareerTier tier)
-        {
-            var venue = tier?.VenueName;
-            var city = tier?.City;
-
-            if (string.IsNullOrWhiteSpace(venue))
-            {
-                return string.IsNullOrWhiteSpace(city) ? null : city;
-            }
-
-            return string.IsNullOrWhiteSpace(city) ? venue : Localize.KeyFormat("Menu.Career.Venue", venue, city);
         }
     }
 }

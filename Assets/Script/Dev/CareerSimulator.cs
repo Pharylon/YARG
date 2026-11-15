@@ -98,9 +98,39 @@ namespace YARG.Dev
         public int NotesMissed => TOTAL_NOTES - NotesHit;
         public bool IsFullCombo => FullCombo ?? NotesMissed == 0;
 
+        /// <summary>Per-player accuracy (0 to 1) by profile name, over <see cref="Percent"/>.</summary>
+        public Dictionary<string, float> PlayerPercent;
+
+        /// <summary>Every player's instrument. Defaults to each profile's current instrument.</summary>
+        public Instrument? Instrument;
+
+        /// <summary>Per-player instrument by profile name, over <see cref="Instrument"/>.</summary>
+        public Dictionary<string, Instrument> PlayerInstrument;
+
+        public float PercentFor(YargPlayer player)
+        {
+            return PlayerPercent is not null && PlayerPercent.TryGetValue(player.Profile.Name, out var own)
+                ? Math.Clamp(own, 0f, 1f)
+                : Math.Clamp(Percent, 0f, 1f);
+        }
+
+        public int NotesHitFor(YargPlayer player) => (int) Math.Round(PercentFor(player) * TOTAL_NOTES);
+
+        public Instrument InstrumentFor(YargPlayer player)
+        {
+            return PlayerInstrument is not null && PlayerInstrument.TryGetValue(player.Profile.Name, out var own)
+                ? own
+                : Instrument ?? player.Profile.CurrentInstrument;
+        }
+
         public bool IsFullComboFor(YargPlayer player)
         {
-            return FullComboPlayers is null ? IsFullCombo : FullComboPlayers.Contains(player.Profile.Name);
+            if (FullComboPlayers is not null)
+            {
+                return FullComboPlayers.Contains(player.Profile.Name);
+            }
+
+            return FullCombo ?? NotesHitFor(player) == TOTAL_NOTES;
         }
 
         public Difficulty DifficultyFor(YargPlayer player)
@@ -255,16 +285,16 @@ namespace YARG.Dev
             var playerEntries = players.Select(player => new PlayerScoreRecord
             {
                 PlayerId = player.Profile.Id,
-                Instrument = player.Profile.CurrentInstrument,
+                Instrument = result.InstrumentFor(player),
                 Difficulty = result.DifficultyFor(player),
                 EnginePresetId = player.Profile.EnginePreset,
                 Score = result.BandScore / Math.Max(1, players.Count),
                 Stars = result.BandStars,
-                NotesHit = result.NotesHit,
-                NotesMissed = result.NotesMissed,
+                NotesHit = result.NotesHitFor(player),
+                NotesMissed = SimulatedResult.TOTAL_NOTES - result.NotesHitFor(player),
                 IsFc = result.IsFullComboFor(player),
                 IsReplay = false,
-                Percent = (float) result.NotesHit / SimulatedResult.TOTAL_NOTES,
+                Percent = (float) result.NotesHitFor(player) / SimulatedResult.TOTAL_NOTES,
             }).ToList();
 
             var gameRecord = new GameRecord

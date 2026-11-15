@@ -22,7 +22,8 @@ namespace YARG.Dev
     ///   (no tier)                 The career menu's selection: a song, or every song of a tier header.
     ///
     /// What result (simulate, scorescreen):
-    ///   stars=&lt;0..5|gold&gt;  score=&lt;n&gt;  percent=&lt;0..100&gt;
+    ///   stars=&lt;0..5|gold&gt;  score=&lt;n&gt;  percent=&lt;0..100|name:percent,...&gt;
+    ///   instrument=&lt;Instrument|name:Instrument,...&gt;  (default: each profile's current instrument)
     ///   fc=&lt;true|false|names&gt;  true/false for every player, or a comma list of the profiles that
     ///                        full-combo (the others do not), e.g. fc="Alice,Bob".
     ///   difficulty=&lt;Beginner|Easy|Medium|Hard|Expert|ExpertPlus|name:difficulty,...&gt;  for every player,
@@ -50,7 +51,7 @@ namespace YARG.Dev
     {
         private static readonly HashSet<string> ResultOptions = new()
         {
-            "stars", "score", "percent", "fc", "difficulty", "path", "commit", "players", "nofail", "failed",
+            "stars", "score", "percent", "fc", "difficulty", "instrument", "path", "commit", "players", "nofail", "failed",
         };
 
         private static readonly HashSet<string> TargetOptions = new()
@@ -410,10 +411,42 @@ namespace YARG.Dev
                             out var percent) && percent is >= 0f and <= 100f)
                         {
                             result.Percent = percent / 100f;
+                            break;
                         }
-                        else
+
+                        result.PlayerPercent = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var pair in SplitList(value))
                         {
-                            error = "percent must be 0..100";
+                            var colon = pair.LastIndexOf(':');
+                            if (colon <= 0 || !float.TryParse(pair.Substring(colon + 1).TrimEnd('%'), NumberStyles.Float,
+                                    CultureInfo.InvariantCulture, out percent) || percent is < 0f or > 100f)
+                            {
+                                error = "percent must be 0..100, or name:percent,...";
+                                break;
+                            }
+
+                            result.PlayerPercent[pair.Substring(0, colon)] = percent / 100f;
+                        }
+                        break;
+                    case "instrument":
+                        if (Enum.TryParse<Instrument>(value, true, out var instrument))
+                        {
+                            result.Instrument = instrument;
+                            break;
+                        }
+
+                        result.PlayerInstrument = new Dictionary<string, Instrument>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var pair in SplitList(value))
+                        {
+                            var colon = pair.LastIndexOf(':');
+                            if (colon <= 0 || !Enum.TryParse(pair.Substring(colon + 1), true, out instrument))
+                            {
+                                error = "instrument must be an Instrument name (FiveFretGuitar, FourLaneDrums, Vocals, ...), " +
+                                    "or name:instrument,...";
+                                break;
+                            }
+
+                            result.PlayerInstrument[pair.Substring(0, colon)] = instrument;
                         }
                         break;
                     case "fc":

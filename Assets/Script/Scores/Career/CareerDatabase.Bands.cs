@@ -41,6 +41,16 @@ namespace YARG.Scores
             _db.Execute("UPDATE Bands SET Name = ? WHERE Id = ?", name, bandId);
         }
 
+        public void SetBandHometown(Guid bandId, string hometown)
+        {
+            _db.Execute("UPDATE Bands SET Hometown = ? WHERE Id = ?", hometown ?? string.Empty, bandId);
+        }
+
+        public void SetBandGenre(Guid bandId, string genre)
+        {
+            _db.Execute("UPDATE Bands SET Genre = ? WHERE Id = ?", genre ?? string.Empty, bandId);
+        }
+
         /// <summary>
         /// Soft delete: the band stops being listed and its saves stop being reachable, but nothing is
         /// removed.
@@ -179,6 +189,37 @@ namespace YARG.Scores
 
             _db.Execute("UPDATE CareerSaves SET BandId = ? WHERE Id = ?", bandId, careerSaveId);
             return true;
+        }
+
+        #endregion
+
+        #region Band records
+
+        /// <summary>
+        /// The game records (score history) behind the completion rows of the band's active saves.
+        /// Completions without one (debug grants) have none.
+        /// </summary>
+        public List<GameRecord> GetBandGameRecords(Guid bandId)
+        {
+            return _db.Query<GameRecord>(
+                @"SELECT DISTINCT g.* FROM GameRecords g
+                  INNER JOIN CareerSongCompletions c ON c.GameRecordId = g.Id
+                  INNER JOIN CareerSaves s ON s.Id = c.CareerSaveId
+                  WHERE s.BandId = ? AND s.IsDeleted = 0",
+                bandId);
+        }
+
+        /// <summary>
+        /// Every player's score row of those game records (members and sit-ins alike).
+        /// </summary>
+        public List<PlayerScoreRecord> GetBandPlayerScores(Guid bandId)
+        {
+            return _db.Query<PlayerScoreRecord>(
+                @"SELECT DISTINCT p.* FROM PlayerScores p
+                  INNER JOIN CareerSongCompletions c ON c.GameRecordId = p.GameRecordId
+                  INNER JOIN CareerSaves s ON s.Id = c.CareerSaveId
+                  WHERE s.BandId = ? AND s.IsDeleted = 0 AND c.GameRecordId > 0",
+                bandId);
         }
 
         #endregion

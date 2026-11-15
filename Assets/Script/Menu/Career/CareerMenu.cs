@@ -274,7 +274,7 @@ namespace YARG.Menu.Career
 
                 if (result.Unlocked)
                 {
-                    viewList.Add(new TierViewType(tier, result, collapsed, ToggleTier) { ShowFans = _evaluation.UsesFans });
+                    viewList.Add(new TierViewType(tier, result, collapsed, ToggleTier) { ShowFans = _evaluation.UsesFans, HometownShow = IsHometown(tier) });
                 }
                 else
                 {
@@ -286,7 +286,7 @@ namespace YARG.Menu.Career
                         continue;
                     }
 
-                    viewList.Add(new TierViewType(tier, result) { ShowFans = _evaluation.UsesFans });
+                    viewList.Add(new TierViewType(tier, result) { ShowFans = _evaluation.UsesFans, HometownShow = IsHometown(tier) });
 
                     // Fan-count tiers unlock against total fans, in any order, so every one is listed.
                     if (tier.UnlockType == UnlockType.FanCount)
