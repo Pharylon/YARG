@@ -47,6 +47,17 @@ namespace YARG.Menu.Career
         private bool Hidden => HiddenBy is not null;
 
         /// <summary>
+        /// The icon of the song's source (YARG, Rock Band, Guitar Hero, ...), as in the music library.
+        /// None for a song that is hidden or not in the library.
+        /// </summary>
+#nullable enable
+        public override UnityEngine.Sprite? GetIcon()
+#nullable disable
+        {
+            return Hidden || _songEntry is null ? null : YARG.Song.SongSources.SourceToIcon(_songEntry.Source);
+        }
+
+        /// <summary>
         /// The players of the save's best result of this song (instrument, difficulty, percent), shown
         /// next to the stars like the music library's score display.
         /// </summary>

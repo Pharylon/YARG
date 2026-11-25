@@ -184,10 +184,10 @@ namespace YARG.Career.Tests
                 new[] { Record(1), Record(2), Record(3) },
                 Array.Empty<PlayerScoreRecord>());
 
-            // Fans: gold 250 * 1.25 * 1.2 = 375; 4 stars 250 * 0.75 * 1.2 = 225. The star career shows none.
-            Assert.That(sheet.Fans, Is.EqualTo(375 + 225));
-            Assert.That(sheet.Rank, Is.EqualTo(CareerRank.LocalAct));
-            Assert.That(sheet.NextRank, Is.EqualTo((CareerRank.ClubRegulars, 2_000 - 600)));
+            // Fans: gold 250 * 1.25 * 1.2 = 375; 4 stars 250 * 0.75 * 1.2 = 225. The star career's 5-star song: 1,500.
+            Assert.That(sheet.Fans, Is.EqualTo(375 + 225 + 1500));
+            Assert.That(sheet.Rank, Is.EqualTo(CareerRank.ClubRegulars));
+            Assert.That(sheet.NextRank, Is.EqualTo((CareerRank.TouringBand, 7_500 - 2_100)));
 
             Assert.That(sheet.CareersPlayed, Is.EqualTo(2), "a save without gigs is not a career played");
             Assert.That(sheet.GigsPlayed, Is.EqualTo(4), "every play counts, replays included");
@@ -206,7 +206,8 @@ namespace YARG.Career.Tests
             Assert.That(history[gold].Counts, Is.True);
             Assert.That(history[other].Fans, Is.EqualTo(225));
             Assert.That(history[other].Counts, Is.True);
-            Assert.That(history[grant].UsesFans, Is.False);
+            Assert.That(history[grant].UsesFans, Is.True);
+            Assert.That(history[grant].Fans, Is.EqualTo(1500));
             Assert.That(history[grant].Record, Is.Null);
             Assert.That(history[gold].Record?.Id, Is.EqualTo(2));
             Assert.That(history[gold].Tier, Is.SameAs(fans.Tiers[0]));
@@ -398,7 +399,8 @@ namespace YARG.Career.Tests
             Assert.That(sheet.GigsPlayed, Is.EqualTo(3));
             Assert.That(sheet.CareersPlayed, Is.EqualTo(2));
             Assert.That(sheet.TotalStars, Is.EqualTo(5 + 3));
-            Assert.That(sheet.Fans, Is.EqualTo(250));
+            // 250 from the fan career plus the star career's 750: every career earns fans.
+            Assert.That(sheet.Fans, Is.EqualTo(250 + 750));
             Assert.That(sheet.History.All(gig => gig.Record is not null), Is.True);
 
             var alice = sheet.Members.Single(member => member.ProfileId == Alice);
@@ -413,7 +415,7 @@ namespace YARG.Career.Tests
             _careers.SoftDeleteSave(fanSave);
             sheet = CareerBandSheet.Load(_careers, band.Id, all);
             Assert.That(sheet.GigsPlayed, Is.EqualTo(1));
-            Assert.That(sheet.Fans, Is.EqualTo(0));
+            Assert.That(sheet.Fans, Is.EqualTo(750), "the star career's fans remain");
             Assert.That(CareerBandSheet.Load(_careers, band.Id, new[] { fans }).GigsPlayed, Is.EqualTo(0));
         }
 

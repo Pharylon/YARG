@@ -46,12 +46,10 @@ namespace YARG.Menu.Career
         [Header("Song Row")]
         [SerializeField]
         private StarView _starView;
-        // Prefab assets. When set (and _starView is not wired), song rows get the star display and the
-        // music library's instrument/difficulty display on their right edge, built in code.
+        // Prefab asset. When set (and _starView is not wired), song rows get the star display on
+        // their right edge, built in code.
         [SerializeField]
         private StarView _starViewPrefab;
-        [SerializeField]
-        private MusicLibrary.InstrumentDifficultyView _instrumentDifficultyPrefab;
         [SerializeField]
         private Vector2 _starViewSize = new(136f, 25f);
         [SerializeField]
@@ -103,15 +101,26 @@ namespace YARG.Menu.Career
         private int _defaultInfoPadding;
         private int _defaultInfoPaddingRight;
 
+        // The secondary column: beside the name on a song row, pushed to the right edge on a gig header.
+        private TextMeshProUGUI _secondaryLabel;
+        private LayoutElement _secondaryLayout;
+        private float _defaultSecondaryWidth;
+        private TextAlignmentOptions _defaultSecondaryAlignment;
+
+        // Between a gig header's progress text and the right edge of its box.
+        private const int HEADER_RIGHT_PADDING = 24;
+
         // The stars and score displays on a song row's right edge.
         private RectTransform _scoreRoot;
-        private readonly List<MusicLibrary.InstrumentDifficultyView> _scoreViews = new();
         private float _scoreWidth;
 
-        // More players than this show only the first ones.
-        private const int MAX_SCORE_VIEWS = 5;
-        // Width of a score display without its percent text (several players share the row).
-        private const float COMPACT_SCORE_WIDTH = 54f;
+        // Share of a song row's text width the song name column takes (a longer name takes what it
+        // needs and pushes the artist over).
+        private const float SONG_NAME_COLUMN = 0.5f;
+        // What the artist always keeps, however long the song name is.
+        private const float MIN_ARTIST_WIDTH = 90f;
+        // More than any row is wide: the column that has it takes whatever the others leave.
+        private const float REST_OF_ROW = 5000f;
 
         private RectTransform _groupFrame;
         private Image _borderTop;
@@ -137,6 +146,17 @@ namespace YARG.Menu.Career
                 if (_primaryLayout != null)
                 {
                     _defaultPrimaryWidth = _primaryLayout.preferredWidth;
+                }
+            }
+
+            if (_secondaryTextContainer != null &&
+                _secondaryTextContainer.TryGetComponent(out _secondaryLabel))
+            {
+                _defaultSecondaryAlignment = _secondaryLabel.alignment;
+                _secondaryLayout = _secondaryLabel.GetComponent<LayoutElement>();
+                if (_secondaryLayout != null)
+                {
+                    _defaultSecondaryWidth = _secondaryLayout.preferredWidth;
                 }
             }
 
@@ -271,15 +291,13 @@ namespace YARG.Menu.Career
                 // Assigned rather than mutated in place so the layout group is marked dirty.
                 // Song text stops short of the stars and scores on the right.
                 var padding = _infoLayout.padding;
-                var right = _defaultInfoPaddingRight + (isSong ? Mathf.CeilToInt(_scoreWidth) : 0);
+                var right = _defaultInfoPaddingRight +
+                    (isSong ? Mathf.CeilToInt(_scoreWidth) : isTierHeader ? HEADER_RIGHT_PADDING : 0);
                 _infoLayout.padding = new RectOffset(_defaultInfoPadding + indent, right, padding.top,
                     padding.bottom);
             }
 
-            if (_primaryLayout != null && _defaultPrimaryWidth > 0)
-            {
-                _primaryLayout.preferredWidth = _defaultPrimaryWidth - indent;
-            }
+            LayoutColumns(isTierHeader, isSong, indent);
 
             var grouped = isTierHeader || isSong;
             var sideInset = grouped ? _groupSideInset : 0f;
@@ -305,9 +323,72 @@ namespace YARG.Menu.Career
             _borderBottom.enabled = lastInGroup;
         }
 
+        /// <summary>
+        /// Splits the row between its two texts. A gig header: the progress ("20 / 25 · 814 fans") keeps
+        /// exactly what it needs at the right edge and the name gets the rest. A song: the name is never
+        /// cut off; its column is a fixed share of the row so the artists line up, a longer name takes
+        /// what it needs, and the artist gets the rest (and is the one that is cut short).
+        /// </summary>
+        private void LayoutColumns(bool isTierHeader, bool isSong, int indent)
+        {
+            if (_primaryLabel == null || _primaryLayout == null || _secondaryLabel == null ||
+                _secondaryLayout == null || _infoLayout == null)
+            {
+                return;
+            }
+
+            if (isTierHeader)
+            {
+                var needed = Mathf.Ceil(_secondaryLabel.GetPreferredValues(_secondaryLabel.text).x) + 2f;
+                Column(_secondaryLayout, needed, needed);
+                Column(_primaryLayout, 0f, REST_OF_ROW);
+                _secondaryLabel.alignment = TextAlignmentOptions.Right;
+                return;
+            }
+
+            _secondaryLabel.alignment = _defaultSecondaryAlignment;
+            if (!isSong)
+            {
+                Column(_primaryLayout, -1f, _defaultPrimaryWidth - indent);
+                Column(_secondaryLayout, -1f, _defaultSecondaryWidth);
+                return;
+            }
+
+            // What the two texts share: the row less its padding, the icon and the gaps.
+            var padding = _infoLayout.padding;
+            var width = ((RectTransform) _infoLayout.transform).rect.width - padding.left - padding.right;
+            var columns = 2;
+            foreach (RectTransform child in _infoLayout.transform)
+            {
+                if (child == _primaryLabel.rectTransform || child == _secondaryLabel.rectTransform ||
+                    !child.gameObject.activeSelf)
+                {
+                    continue;
+                }
+
+                columns++;
+                width -= child.TryGetComponent<LayoutElement>(out var element) ? Mathf.Max(0f, element.minWidth) : 0f;
+            }
+
+            width -= _infoLayout.spacing * (columns - 1);
+
+            var name = Mathf.Ceil(_primaryLabel.GetPreferredValues(_primaryLabel.text).x) + 2f;
+            name = Mathf.Max(name, width * SONG_NAME_COLUMN);
+            name = Mathf.Max(0f, Mathf.Min(name, width - MIN_ARTIST_WIDTH));
+            Column(_primaryLayout, name, name);
+            Column(_secondaryLayout, 0f, REST_OF_ROW);
+        }
+
+        private static void Column(LayoutElement element, float minWidth, float preferredWidth)
+        {
+            element.minWidth = minWidth;
+            element.preferredWidth = preferredWidth;
+            element.flexibleWidth = -1f;
+        }
+
         private void CreateScoreRoot()
         {
-            if (_rect == null || _starView != null || _starViewPrefab == null && _instrumentDifficultyPrefab == null)
+            if (_rect == null || _starView != null || _starViewPrefab == null)
             {
                 return;
             }
@@ -363,39 +444,6 @@ namespace YARG.Menu.Career
             if (_starViewPrefab != null)
             {
                 right += _starViewSize.x + _scoreSpacing;
-            }
-
-            var scores = info.Value.Scores;
-            var count = _instrumentDifficultyPrefab == null ? 0 : Mathf.Min(scores?.Count ?? 0, MAX_SCORE_VIEWS);
-            var compact = count > 1;
-
-            // Listed left to right in the order the players are stored, so placed from the last one.
-            for (var i = count - 1; i >= 0; i--)
-            {
-                while (_scoreViews.Count <= i)
-                {
-                    _scoreViews.Add(Instantiate(_instrumentDifficultyPrefab, _scoreRoot));
-                }
-
-                var view = _scoreViews[i];
-                view.gameObject.SetActive(true);
-                view.SetInfo(scores[i]);
-
-                var rect = (RectTransform) view.transform;
-                var percent = view.GetComponentInChildren<TextMeshProUGUI>(true);
-                if (percent != null)
-                {
-                    percent.gameObject.SetActive(!compact);
-                }
-
-                var size = new Vector2(compact ? COMPACT_SCORE_WIDTH : rect.sizeDelta.x, rect.sizeDelta.y);
-                PlaceFromRight(rect, right, size);
-                right += size.x + (compact ? _scoreSpacing * 0.4f : _scoreSpacing);
-            }
-
-            for (var i = count; i < _scoreViews.Count; i++)
-            {
-                _scoreViews[i].gameObject.SetActive(false);
             }
 
             _scoreWidth = right;

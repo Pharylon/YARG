@@ -473,8 +473,8 @@ namespace YARG.Career.Tests
 
             var evaluation = Evaluate(career, Row(stars.Songs[0], 5), Row(stars.Songs[1], 4), Row(completion.Songs[0], 1));
 
-            Assert.That(evaluation.UsesFans, Is.False);
-            Assert.That(evaluation.Tiers[0].Songs[0].Done, Is.True, "5 stars, contract irrelevant without fans");
+            Assert.That(evaluation.FanGated, Is.False);
+            Assert.That(evaluation.Tiers[0].Songs[0].Done, Is.True, "5 stars, contract irrelevant without fan-count unlocks");
             Assert.That(evaluation.Tiers[0].Songs[1].Done, Is.False);
             Assert.That(evaluation.Tiers[1].Songs[0].Done, Is.True, "completed");
         }

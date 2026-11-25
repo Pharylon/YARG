@@ -249,7 +249,7 @@ namespace YARG.Career
                 }
 
                 var contract = CareerContracts.For(tier, song);
-                total += Math.Max(0, CareerFans.SongFans(tier, CareerFans.GOLD_STARS, contract?.BonusPercent ?? 0));
+                total += Math.Max(0, CareerFans.SongFans(tier, song, CareerFans.GOLD_STARS, contract?.BonusPercent ?? 0));
             }
 
             return total;

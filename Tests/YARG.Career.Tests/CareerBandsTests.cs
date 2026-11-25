@@ -127,7 +127,7 @@ namespace YARG.Career.Tests
         }
 
         [Test]
-        public void BandFansSumOverFanCareersOnly()
+        public void BandFansSumOverEveryCareer()
         {
             var fanCareer = FanCareer(out var fanSong);
             var otherFanCareer = FanCareer(out var otherFanSong);
@@ -137,11 +137,11 @@ namespace YARG.Career.Tests
             {
                 Evaluate(fanCareer, fanSong, 5),           // Small venue, 5 stars: 250
                 Evaluate(otherFanCareer, otherFanSong, 3), // Small venue, 3 stars: 125
-                Evaluate(starCareer, starSong, 5),         // not a fan career: not counted
+                Evaluate(starCareer, starSong, 5),         // no fan-count unlocks, still counted: 1,500
                 null,
             });
 
-            Assert.That(total, Is.EqualTo(250 + 125));
+            Assert.That(total, Is.EqualTo(250 + 125 + 1500));
             Assert.That(CareerFans.BandFans(Array.Empty<CareerEvaluation>()), Is.EqualTo(0));
         }
 
@@ -298,11 +298,11 @@ namespace YARG.Career.Tests
             Complete(_careers.GetOrCreateSave(fanCareer.Id, fanCareer.Version, new[] { Alice }), fanCareer, fanSong, 5);
 
             var careers = new[] { fanCareer, starCareer };
-            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(250));
+            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(250 + 1500));
 
             // A reset save no longer counts.
             _careers.SoftDeleteSave(_careers.FindActiveSaveForBand(fanCareer.Id, band.Id).Id);
-            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(0));
+            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(1500));
         }
 
         #endregion

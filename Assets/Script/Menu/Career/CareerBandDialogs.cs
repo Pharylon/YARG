@@ -274,14 +274,16 @@ namespace YARG.Menu.Career
         }
 
         /// <summary>
-        /// Pick band members from the existing (non-bot) profiles. Null if cancelled; never empty.
+        /// Pick band members from the existing profiles (bots only for test bands, see CareerBotCredit). Null if cancelled; never empty.
         /// </summary>
         private static async UniTask<List<Guid>> PickMembers(string title, IEnumerable<Guid> initial,
             string confirmKey)
         {
             await NextDialog();
 
-            var profiles = PlayerContainer.Profiles.Where(profile => !profile.IsBot).ToList();
+            // Bots only where they are allowed as members (test bands, never in release builds).
+            var profiles = PlayerContainer.Profiles
+                .Where(profile => !profile.IsBot || CareerBotCredit.BOT_MEMBERS_ALLOWED).ToList();
             var chosen = new HashSet<Guid>(initial.Where(id => profiles.Any(profile => profile.Id == id)));
             var confirmed = false;
 

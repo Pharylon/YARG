@@ -60,9 +60,10 @@ namespace YARG.Career
         public int CareerSaveId;
         public List<TierResult> Tiers = new();
 
-        // Whether the career opts in to fans (CareerFans.UsesFans). Fans are computed either way, but
-        // only shown for careers that use them.
+        // Fans are earned and shown in every career (CareerFans.UsesFans).
         public bool UsesFans;
+        // The career has fan-count unlocks (CareerFans.FanGated): a song is done at its top fans.
+        public bool FanGated;
         // The save's fans: every song's best result, bonus tiers included (at their reduced rate).
         public int TotalFans;
 
@@ -72,6 +73,7 @@ namespace YARG.Career
             {
                 CareerSaveId = snapshot.CareerSaveId,
                 UsesFans = CareerFans.UsesFans(career),
+                FanGated = CareerFans.FanGated(career),
             };
 
             // Best stars per song: max BandStars across all committed completions for that song.
@@ -135,12 +137,12 @@ namespace YARG.Career
                     songResult.HasContract = contract is not null;
                     if (songResult.Completed)
                     {
-                        ApplyBestFans(songResult, tier, contract, rowsBySong[song.Id]);
+                        ApplyBestFans(songResult, tier, song, contract, rowsBySong[song.Id]);
                     }
 
-                    songResult.Done = evaluation.UsesFans
+                    songResult.Done = evaluation.FanGated
                         ? songResult.Completed && songResult.Fans >=
-                            CareerFans.SongFans(tier, CareerFans.GOLD_STARS, contract?.BonusPercent ?? 0)
+                            CareerFans.SongFans(tier, song, CareerFans.GOLD_STARS, contract?.BonusPercent ?? 0)
                         : tier.UnlockType == UnlockType.CompletionCount && songResult.Completed
                             || tier.UnlockType == UnlockType.StarCount && songResult.BestStars >= 5;
 
@@ -224,14 +226,14 @@ namespace YARG.Career
         /// result that met the contract counts instead of a better one that missed it whenever it is worth
         /// more fans; on a tie, the one that met the contract counts.
         /// </summary>
-        private static void ApplyBestFans(SongResult songResult, CareerTier tier, CareerContract contract,
-            List<CareerSongCompletions> rows)
+        private static void ApplyBestFans(SongResult songResult, CareerTier tier, CareerSong song,
+            CareerContract contract, List<CareerSongCompletions> rows)
         {
             songResult.Fans = -1;
             foreach (var row in rows)
             {
                 var met = CareerContracts.RowMet(contract, row);
-                var fans = CareerFans.SongFans(tier, row.IsGold ? CareerFans.GOLD_STARS : row.BandStars,
+                var fans = CareerFans.SongFans(tier, song, row.IsGold ? CareerFans.GOLD_STARS : row.BandStars,
                     met ? contract.BonusPercent : 0);
 
                 songResult.ContractEverMet |= met;

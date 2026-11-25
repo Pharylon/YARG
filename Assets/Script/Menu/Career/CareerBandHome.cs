@@ -80,6 +80,31 @@ namespace YARG.Menu.Career
         private float _shownAt;
         private System.Guid? _shownBand;
 
+        // What each band had when a home screen last showed it. Kept for the session (the menu scene is
+        // rebuilt after every song), so coming back with more shows the gain arriving.
+        private static readonly Dictionary<System.Guid, (int stars, int fans)> _seen = new();
+
+        // The gain animation: what the band had before, and when the new stars start to arrive.
+        private bool _gaining;
+        private int _starsBefore;
+        private int _fansBefore;
+        private float _rankFractionBefore;
+        private float _gainAt;
+        // Per icon: its turn among the new ones (0, 1, ...), or -1 for one the band already had.
+        private readonly List<int> _starTurn = new();
+        private readonly List<int> _fanTurn = new();
+        private int _newStars;
+        private int _newFans;
+
+        // The scene is still fading in when the menu first shows.
+        private const float GAIN_DELAY_SECONDS = 0.7f;
+        private const float GAIN_STAR_STEP = 0.24f;
+        private const float GAIN_FAN_STEP = 0.14f;
+        // The longest either run of new icons may take, however many there are.
+        private const float GAIN_RUN_SECONDS = 3f;
+        private const float GAIN_MIN_COUNT_SECONDS = 0.6f;
+        private const float FAN_POP_SECONDS = 0.3f;
+
         public static CareerBandHome Create(RectTransform parent, Art art, float bottomInset)
         {
             var root = new GameObject("Band Home", typeof(RectTransform), typeof(LayoutElement));
@@ -197,13 +222,14 @@ namespace YARG.Menu.Career
             _tagline.text = string.Join("  ·  ", places);
 
             _rank.text = CareerBandSheetDialogs.RankName(sheet.Rank).ToUpperInvariant();
+            var rankFloor = CareerFans.RankFans(sheet.Rank);
+            var rankSpan = 0;
             if (sheet.NextRank is { } next)
             {
                 _nextRank.text = Localize.KeyFormat("Menu.Career.Sheet.NextRank", next.fansNeeded.ToString("N0"),
                     CareerBandSheetDialogs.RankName(next.rank));
-                var floor = CareerFans.RankFans(sheet.Rank);
-                var span = Mathf.Max(1, sheet.Fans + next.fansNeeded - floor);
-                _rankFraction = Mathf.Clamp01((sheet.Fans - floor) / (float) span);
+                rankSpan = Mathf.Max(1, sheet.Fans + next.fansNeeded - rankFloor);
+                _rankFraction = Mathf.Clamp01((sheet.Fans - rankFloor) / (float) rankSpan);
             }
             else
             {
@@ -218,8 +244,28 @@ namespace YARG.Menu.Career
             _totalStars = Mathf.Max(0, sheet.TotalStars);
             _totalFans = Mathf.Max(0, sheet.Fans);
 
-            if (changed)
+            // The band earned something since a home screen last showed it (a song was played): what
+            // it had is there at once, and the new stars and fans arrive one at a time.
+            var gained = _seen.TryGetValue(band.Id, out var before) &&
+                _totalStars >= before.stars && _totalFans >= before.fans &&
+                (_totalStars > before.stars || _totalFans > before.fans);
+            _seen[band.Id] = (_totalStars, _totalFans);
+
+            if (gained)
             {
+                _gaining = true;
+                _starsBefore = before.stars;
+                _fansBefore = before.fans;
+                // On the bar of the rank the band has now: a band that just ranked up starts it empty.
+                _rankFractionBefore = rankSpan > 0
+                    ? Mathf.Clamp01((before.fans - rankFloor) / (float) rankSpan)
+                    : _rankFraction;
+                _gainAt = Time.unscaledTime + GAIN_DELAY_SECONDS;
+                _laidOutSize = Vector2.zero;
+            }
+            else if (changed)
+            {
+                _gaining = false;
                 _shownAt = Time.unscaledTime;
                 _laidOutSize = Vector2.zero;
             }
@@ -235,8 +281,13 @@ namespace YARG.Menu.Career
 
         private void OnEnable()
         {
-            // Coming back to the screen replays the entrance.
+            // Coming back to the screen replays the entrance. A gain that was set up while the menu was
+            // still hidden (it is filled in before it is shown) starts now instead.
             _shownAt = Time.unscaledTime;
+            if (_gaining)
+            {
+                _gainAt = Time.unscaledTime + GAIN_DELAY_SECONDS;
+            }
         }
 
         private void Update()
@@ -367,6 +418,62 @@ namespace YARG.Menu.Career
             Place(_extras, centerX, y + extrasHeight / 2f, width * 0.9f, extrasHeight);
             Place(_notice.rectTransform, centerX, y + 1.6f * unit, width * 0.9f, 3.2f * unit);
             _notice.fontSize = 2.2f * unit;
+
+            MarkNewIcons();
+        }
+
+        /// <summary>
+        /// For the gain animation: which medals and which fans of the layout are the new ones, and in
+        /// what order they arrive. The row and the crowd are laid out for the new totals, so the new
+        /// ones are the last of their kind (a new gold medal replaces the hundred it stands for, so the
+        /// medals after it are new as well).
+        /// </summary>
+        private void MarkNewIcons()
+        {
+            _starTurn.Clear();
+            _fanTurn.Clear();
+            _newStars = 0;
+            _newFans = 0;
+
+            for (var i = 0; i < _starLayout.Count; i++)
+            {
+                _starTurn.Add(-1);
+            }
+
+            for (var i = 0; i < _crowdLayout.Count; i++)
+            {
+                _fanTurn.Add(-1);
+            }
+
+            if (!_gaining)
+            {
+                return;
+            }
+
+            var (goldBefore, regularBefore) = CareerBandHomeLayout.SplitStars(_starsBefore);
+            var golds = new List<int>();
+            var regulars = new List<int>();
+            for (var i = 0; i < _starLayout.Count; i++)
+            {
+                (_starLayout[i].Gold ? golds : regulars).Add(i);
+            }
+
+            var keptRegulars = golds.Count > goldBefore ? 0 : Mathf.Min(regularBefore, regulars.Count);
+            for (var i = Mathf.Min(goldBefore, golds.Count); i < golds.Count; i++)
+            {
+                _starTurn[golds[i]] = _newStars++;
+            }
+
+            for (var i = keptRegulars; i < regulars.Count; i++)
+            {
+                _starTurn[regulars[i]] = _newStars++;
+            }
+
+            var crowdBefore = Mathf.Min(CareerBandHomeLayout.CrowdSize(_fansBefore), _crowdLayout.Count);
+            for (var i = crowdBefore; i < _crowdLayout.Count; i++)
+            {
+                _fanTurn[i] = _newFans++;
+            }
         }
 
         private static void Place(RectTransform rect, float centerX, float centerFromTop, float width, float height)
@@ -398,6 +505,12 @@ namespace YARG.Menu.Career
         /// </summary>
         private void Animate()
         {
+            if (_gaining)
+            {
+                AnimateGain();
+                return;
+            }
+
             var elapsed = Time.unscaledTime - _shownAt;
 
             var counted = EaseOut(Mathf.Clamp01(elapsed / COUNT_SECONDS));
@@ -425,8 +538,73 @@ namespace YARG.Menu.Career
                 var rise = EaseOut(Mathf.Clamp01((elapsed - delay) / 0.5f));
                 var phase = i * 1.618f;
                 var bounce = Mathf.Abs(Mathf.Sin(Time.unscaledTime * (2.6f + (i % 5) * 0.35f) + phase)) * fan.Size * 0.045f;
+                _fans[i].rectTransform.localScale = Vector3.one;
                 _fans[i].rectTransform.anchoredPosition =
                     new Vector2(fan.X, fan.Y - (1f - rise) * (fan.Y + fan.Size * 1.2f) + bounce * rise);
+            }
+        }
+
+        /// <summary>
+        /// After a song: what the band had is in place, then the new medals pop in one at a time, then
+        /// the new fans join the crowd one at a time, the numbers and the rank bar climbing with them.
+        /// </summary>
+        private void AnimateGain()
+        {
+            var elapsed = Mathf.Max(0f, Time.unscaledTime - _gainAt);
+
+            // Medals
+            var starStep = _newStars <= 1 ? 0f : Mathf.Min(GAIN_STAR_STEP, GAIN_RUN_SECONDS / (_newStars - 1));
+            var starSeconds = _newStars == 0 ? 0f : (_newStars - 1) * starStep + STAR_POP_SECONDS;
+            for (var i = 0; i < _starLayout.Count && i < _stars.Count; i++)
+            {
+                var scale = 1f;
+                if (_starTurn[i] >= 0)
+                {
+                    var t = Mathf.Clamp01((elapsed - _starTurn[i] * starStep) / STAR_POP_SECONDS);
+                    scale = t <= 0f ? 0f : EaseOutBack(t);
+                }
+
+                _stars[i].rectTransform.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            var starCountSeconds = _totalStars > _starsBefore ? Mathf.Max(starSeconds, GAIN_MIN_COUNT_SECONDS) : 0f;
+            var starsCounted = starCountSeconds <= 0f ? 1f : Mathf.Clamp01(elapsed / starCountSeconds);
+            _starCount.text = Localize.KeyFormat("Menu.Career.Home.Stars",
+                Mathf.RoundToInt(Mathf.Lerp(_starsBefore, _totalStars, starsCounted)).ToString("N0"));
+
+            // Fans, once the medals are in
+            var fanElapsed = elapsed - starCountSeconds - (starCountSeconds > 0f ? 0.2f : 0f);
+            var fanStep = _newFans <= 1 ? 0f : Mathf.Min(GAIN_FAN_STEP, GAIN_RUN_SECONDS / (_newFans - 1));
+            var fanSeconds = _newFans == 0 ? 0f : (_newFans - 1) * fanStep + FAN_POP_SECONDS;
+            for (var i = 0; i < _crowdLayout.Count && i < _fans.Count; i++)
+            {
+                var fan = _crowdLayout[i];
+                var scale = 1f;
+                if (_fanTurn[i] >= 0)
+                {
+                    var t = Mathf.Clamp01((fanElapsed - _fanTurn[i] * fanStep) / FAN_POP_SECONDS);
+                    scale = t <= 0f ? 0f : EaseOutBack(t);
+                }
+
+                var phase = i * 1.618f;
+                var bounce = Mathf.Abs(Mathf.Sin(Time.unscaledTime * (2.6f + (i % 5) * 0.35f) + phase)) * fan.Size * 0.045f;
+                var rect = _fans[i].rectTransform;
+                rect.localScale = new Vector3(scale, scale, 1f);
+                rect.anchoredPosition = new Vector2(fan.X, fan.Y + bounce);
+            }
+
+            var fanCountSeconds = _totalFans > _fansBefore ? Mathf.Max(fanSeconds, GAIN_MIN_COUNT_SECONDS) : 0f;
+            var fansCounted = fanCountSeconds <= 0f ? 1f : EaseOut(Mathf.Clamp01(fanElapsed / fanCountSeconds));
+            _fanCount.text = Localize.KeyFormat("Menu.Career.Home.Fans",
+                Mathf.RoundToInt(Mathf.Lerp(_fansBefore, _totalFans, fansCounted)).ToString("N0"));
+            _barFill.sizeDelta = new Vector2(
+                _barBack.sizeDelta.x * Mathf.Lerp(_rankFractionBefore, _rankFraction, fansCounted), 0f);
+
+            // Done: hand over to the idle state of the entrance animation (everything in, crowd bouncing).
+            if (fanElapsed > fanCountSeconds + 0.1f)
+            {
+                _gaining = false;
+                _shownAt = Time.unscaledTime - 60f;
             }
         }
 

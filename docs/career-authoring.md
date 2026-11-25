@@ -31,9 +31,8 @@ Fan-count tiers count the save's **total** fans, earned anywhere in the career (
 not the tiers before them. So several tiers with the same or nearby thresholds open together and the
 players choose which gig to play. Mixing unlock types in one career works.
 
-A career **uses fans** as soon as any of its tiers has `"UnlockType": "FanCount"`. Only then does the game
-show fan numbers (career header, tier rows, song rows, score screen, band sheet). There is no other
-switch.
+Every career earns and shows fans (career header, tier rows, song rows, score screen, band sheet),
+whether or not it has fan-count unlocks.
 
 ## How many fans a song earns
 
@@ -41,16 +40,38 @@ For each song only its **best** result counts: of all the plays of that song in 
 the most fans. Replaying a song can raise its fans but never adds a second share.
 
 ```
-fans = 100 x venue multiplier x star factor
+fans = 100 x multiplier x star factor
        x 0.5                          (bonus tiers only)
        x (100 + contract bonus) / 100 (only if that result met the song's contract)
 ```
 
 rounded to the nearest whole fan (halves round up).
 
+The multiplier is the first of these that applies to the song's tier:
+
+1. the tier's `FanMultiplier`, if set;
+2. the tier's `VenueSize`, if set to anything but `NotSpecified` (table below);
+3. otherwise the **song's difficulty**: harder songs earn more.
+
+So a setlist that sets neither gets fans from how hard its songs are, and a setlist that wants its own
+amounts sets a venue size or a multiplier on the tier.
+
+| Song difficulty (band rating, 0 to 6) | multiplier | fans at 5 stars |
+|---|---|---|
+| 0 | 1 | 100 |
+| 1 | 1.5 | 150 |
+| 2 | 2.5 | 250 |
+| 3 | 4 | 400 |
+| 4 | 6 | 600 |
+| 5 | 10 | 1,000 |
+| 6 | 15 | 1,500 |
+
+The rating is the chart's band difficulty; a chart without one uses the hardest of its guitar, bass,
+drums, keys and vocals ratings, and a song with no rating at all (or not in the library) counts as 2.
+
 | `VenueSize` | venue multiplier | fans at 5 stars |
 |---|---|---|
-| `NotSpecified`, `Starter` | 1 | 100 |
+| `Starter` | 1 | 100 |
 | `Small` | 2.5 | 250 |
 | `Medium` | 6 | 600 |
 | `Large` | 15 | 1,500 |

@@ -194,7 +194,7 @@ namespace YARG.Career
             {
                 var contract = CareerContracts.For(tier, song);
                 var met = CareerContracts.RowMet(contract, row);
-                gig.Fans = CareerFans.SongFans(tier, row.IsGold ? CareerFans.GOLD_STARS : row.BandStars,
+                gig.Fans = CareerFans.SongFans(tier, song, row.IsGold ? CareerFans.GOLD_STARS : row.BandStars,
                     met ? contract.BonusPercent : 0);
                 gig.Counts = counted.Contains(row.Id);
             }

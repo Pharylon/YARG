@@ -76,6 +76,33 @@ namespace YARG.Career.Tests
             Assert.That(CareerFans.SongFans(Tier(1, venue: venue), stars), Is.EqualTo(expected));
         }
 
+        [TestCase(-1, 100)]
+        [TestCase(0, 100)]
+        [TestCase(1, 150)]
+        [TestCase(2, 250)]
+        [TestCase(3, 400)]
+        [TestCase(4, 600)]
+        [TestCase(5, 1000)]
+        [TestCase(6, 1500)]
+        [TestCase(9, 1500)]
+        public void HarderSongsAreWorthMore(int intensity, int expected)
+        {
+            Assert.That(CareerFans.BASE_FANS * CareerFans.DifficultyMultiplier(intensity), Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void SetlistAmountOverridesSongDifficulty()
+        {
+            // A song that is not in the library counts as the default difficulty.
+            var song = new CareerSong();
+            var byDifficulty = (int) (CareerFans.BASE_FANS * CareerFans.DifficultyMultiplier(CareerFans.DEFAULT_INTENSITY));
+
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.NotSpecified), song, 5, 0), Is.EqualTo(byDifficulty));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Large), song, 5, 0), Is.EqualTo(1500));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.NotSpecified, multiplier: 3f), song, 5, 0), Is.EqualTo(300));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Large, multiplier: 3f), song, 5, 0), Is.EqualTo(300));
+        }
+
         [Test]
         public void FanMultiplierOverridesVenueSize()
         {
@@ -194,7 +221,7 @@ namespace YARG.Career.Tests
                 Completion(bonus.Songs[0], 5),
                 Completion(bonus.Songs[1], 5));
 
-            Assert.That(evaluation.UsesFans, Is.False);
+            Assert.That(evaluation.FanGated, Is.False);
             Assert.That(evaluation.Tiers.Select(t => t.Unlocked), Is.EqualTo(new[] { true, true, false, false }));
             Assert.That(evaluation.Tiers.Select(t => t.StarSum), Is.EqualTo(new[] { 8, 10, 0, 0 }));
             // Bonus stars do not count toward the next tier.

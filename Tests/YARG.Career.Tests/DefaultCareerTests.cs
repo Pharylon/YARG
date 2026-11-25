@@ -244,7 +244,10 @@ namespace YARG.Career.Tests
                     tier.City is null && tier.VenueName is null), Is.True);
                 Assert.That(career.Tiers.SelectMany(tier => tier.Songs).All(song => song.Id == song.SongId &&
                     song.Contract is null), Is.True);
-                Assert.That(CareerFans.UsesFans(career), Is.False);
+                // Fans from song difficulty (no venue sizes, no fan-count unlocks), shown like any career's.
+                Assert.That(career.Tiers.All(tier => tier.VenueSize == VenueSize.NotSpecified), Is.True);
+                Assert.That(CareerFans.FanGated(career), Is.False);
+                Assert.That(CareerFans.UsesFans(career), Is.True);
             }
 
             Assert.That(CareerPreset.YargRock.Tiers.Select(tier => tier.Id.ToString()[..8]), Is.EqualTo(new[]
