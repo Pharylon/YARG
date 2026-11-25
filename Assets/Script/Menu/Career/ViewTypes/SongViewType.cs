@@ -194,8 +194,7 @@ namespace YARG.Menu.Career
                 return;
             }
 
-            GlobalVariables.State.CurrentSong = _songEntry;
-            GlobalVariables.State.CurrentCareer = new CareerContext
+            GlobalVariables.State.SetPlaybackSong(_songEntry, new CareerContext
             {
                 CareerId = _careerId,
                 TierId = _tierId,
@@ -204,7 +203,7 @@ namespace YARG.Menu.Career
                 CareerSongId = _song.Id,
                 SongIndex = _songIndex,
                 BandId = CareerBands.ActiveBandId,
-            };
+            });
 
             _onPlay?.Invoke();
 

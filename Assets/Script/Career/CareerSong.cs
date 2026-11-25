@@ -42,7 +42,7 @@ namespace YARG.Career
         public Guid?        SongId;
         [JsonConverter(typeof(JsonHashWrapperConverter))]
         public HashWrapper? SongHash;
-        public string?      ShortName;
+        public string       ShortName;
         public SongTuple?   SongTuple;
 
         // Which identifier this particular instance is using
@@ -65,11 +65,6 @@ namespace YARG.Career
         public SongEntry SongEntry;
         [NonSerialized]
         public CareerTier Parent;
-        // Should be set when song can no longer improve unlock criteria
-        // e.g. if next tier criteria is completion, when song has been finished, or if next tier criteria is
-        // stars, when player has achieved 5 stars on this song
-        [NonSerialized]
-        public bool IsCompleted;
 
         public CareerSong()
         {
@@ -164,7 +159,6 @@ namespace YARG.Career
                     }
 
                     throw new ArgumentException("Song does not have a valid RBSongId");
-                    break;
                 case CareerSongIdentifier.SongTuple:
                     return new CareerSong(new SongTuple
                     {

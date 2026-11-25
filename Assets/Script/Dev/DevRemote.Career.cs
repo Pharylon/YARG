@@ -195,8 +195,7 @@ namespace YARG.Dev
 
             // What the end of a career song leaves behind (see GameManager.EndSong).
             GlobalVariables.State = PersistentState.Default;
-            GlobalVariables.State.CurrentSong = song;
-            GlobalVariables.State.CurrentCareer = CareerSimulator.ContextFor(career, tierIndex, songIndex);
+            GlobalVariables.State.SetPlaybackSong(song, CareerSimulator.ContextFor(career, tierIndex, songIndex));
             GlobalVariables.State.ScoreScreenStats = CareerSimulator.ScoreScreenStatsFor(result);
 
             GlobalVariables.Instance.LoadScene(SceneIndex.Score);

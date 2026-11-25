@@ -11,17 +11,17 @@ namespace Editor
     {
         public static void BuildLinux()
         {
-            Build("Builds/DevLinux/YARG", BuildOptions.Development);
+            Build("Builds/DevLinux/YARG", BuildOptions.Development, "YARG_DEV_BUILD");
         }
 
         // Non-development build for playtesting on another machine:
         //   Unity -batchmode -quit -projectPath . -executeMethod Editor.DevBuild.BuildLinuxPlaytest
         public static void BuildLinuxPlaytest()
         {
-            Build("Builds/PlaytestLinux/YARG", BuildOptions.None);
+            Build("Builds/PlaytestLinux/YARG", BuildOptions.None, "YARG_TEST_BUILD");
         }
 
-        private static void Build(string location, BuildOptions buildOptions)
+        private static void Build(string location, BuildOptions buildOptions, string buildType)
         {
             var options = new BuildPlayerOptions
             {
@@ -29,9 +29,9 @@ namespace Editor
                 locationPathName = location,
                 target = BuildTarget.StandaloneLinux64,
                 options = buildOptions,
-                // Marks this as a test build: it uses the "dev" data folder and the dev asset
-                // catalog instead of sharing the release ones.
-                extraScriptingDefines = new[] { "YARG_TEST_BUILD" },
+                // The build type picks the data folder and asset catalog: YARG_DEV_BUILD uses "dev";
+                // YARG_TEST_BUILD uses "testing", which starts as a copy of the nightly or release data.
+                extraScriptingDefines = new[] { buildType },
             };
 
             var report = BuildPipeline.BuildPlayer(options);

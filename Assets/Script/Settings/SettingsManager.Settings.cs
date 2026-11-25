@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
@@ -160,6 +160,53 @@ namespace YARG.Settings
         }
     }
 
+    public enum VenueEntrySource
+    {
+        // None means "the user did not select a venue", i.e. random rotation
+        None,
+        Addressable,
+        LocalFile,
+        LauncherFile
+    }
+
+    public struct VenueSelectionInfo : IEquatable<VenueSelectionInfo>
+    {
+        public VenueEntrySource Source;
+        // Addressables primary key, or a path relative to the source's root folder.
+        public string           Identifier;
+
+        // Identifiers are paths or Addressables keys, whose casing is not stable across platforms
+        // and hand-authored venue hints, so compare them case-insensitively.
+        public bool Equals(VenueSelectionInfo other)
+        {
+            return Source == other.Source
+                && string.Equals(Identifier, other.Identifier, StringComparison.OrdinalIgnoreCase);
+        }
+
+#nullable enable
+        public override bool Equals(object? obj)
+#nullable disable
+        {
+            return obj is VenueSelectionInfo other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Source,
+                Identifier == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(Identifier));
+        }
+
+        public static bool operator == (VenueSelectionInfo left, VenueSelectionInfo right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator != (VenueSelectionInfo left, VenueSelectionInfo right)
+        {
+            return !left.Equals(right);
+        }
+    }
+
     public static partial class SettingsManager
     {
         public class SettingContainer
@@ -203,6 +250,11 @@ namespace YARG.Settings
 
             // The band careers are played as (see YARG.Career.CareerBands.ActiveBandId), null for none.
             public Guid? CareerActiveBandId;
+
+            public VenueSelectionInfo PinnedVenue;
+            public List<VenueSelectionInfo> HiddenVenues = new();
+            // Opt-in random rotation for venues tagged "venue-no-random".
+            public List<VenueSelectionInfo> IncludedVenues = new();
 
             #endregion
 
@@ -277,7 +329,6 @@ namespace YARG.Settings
             public ToggleSetting ShowActiveBots { get; } = new(false, ShowActiveBotsCallback);
 
             public ToggleSetting ReconnectProfiles  { get; } = new(true);
-            public ToggleSetting AutoCreateProfiles { get; } = new(true);
 
             public ToggleSetting ReduceNoteSpeedByDifficulty { get; } = new(true);
 
@@ -1180,7 +1231,7 @@ namespace YARG.Settings
             {
                 foreach (var player in PlayerContainer.Players)
                 {
-                    foreach (var mic in player.Bindings.Microphones)
+                    foreach (var mic in player.DeviceInfo.Microphones)
                     {
                         mic.SetMonitoringLevel(volume);
                     }
@@ -1191,7 +1242,7 @@ namespace YARG.Settings
             {
                 foreach (var player in PlayerContainer.Players)
                 {
-                    foreach (var mic in player.Bindings.Microphones)
+                    foreach (var mic in player.DeviceInfo.Microphones)
                     {
                         mic.SetReverbLevel(wet);
                     }

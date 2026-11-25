@@ -33,6 +33,9 @@ namespace YARG.Career
             public bool Done;
             // Id of the completion row whose fans count (the first of equal ones); 0 if not completed.
             public int CountedCompletionId;
+            // Set when the song can no longer improve unlock criteria for its tier
+            // (e.g. finished for CompletionCount, or 5+ stars for StarCount).
+            public bool CriteriaSatisfied;
         }
 
         public class TierResult
@@ -46,6 +49,8 @@ namespace YARG.Career
             public float Stars;
             // Sum of the tier's songs' best stars (used for StarCount unlocks)
             public int StarSum;
+            // Number of the tier's songs that have been completed (used for CompletionCount display)
+            public int CompletedSongs;
             public int RemainingToUnlock;
             // Sum of the tier's songs' fans
             public int Fans;
@@ -112,13 +117,18 @@ namespace YARG.Career
                 for (var songIndex = 0; songIndex < tier.Songs.Length; songIndex++)
                 {
                     var song = tier.Songs[songIndex];
+                    var completed = bestStarsBySong.ContainsKey(song.Id);
+                    var bestStars = bestStarsBySong.GetValueOrDefault(song.Id);
                     var songResult = new SongResult
                     {
                         CareerSongId = song.Id,
                         SongIndex = songIndex,
-                        Completed = bestStarsBySong.ContainsKey(song.Id),
-                        BestStars = bestStarsBySong.GetValueOrDefault(song.Id),
+                        Completed = completed,
+                        BestStars = bestStars,
                         BestIsGold = goldSongs.Contains(song.Id),
+                        CriteriaSatisfied =
+                            tier.UnlockType == UnlockType.CompletionCount && completed ||
+                            tier.UnlockType == UnlockType.StarCount && bestStars >= 5,
                     };
 
                     var contract = CareerContracts.For(tier, song);
@@ -141,6 +151,7 @@ namespace YARG.Career
                 result.Completed = CareerSetlists.IsComplete(tier, songIndex => result.Songs[songIndex].Completed);
                 result.StarSum = result.Songs.Sum(song => song.BestStars);
                 result.Fans = result.Songs.Sum(song => song.Fans);
+                result.CompletedSongs = result.Songs.Count(song => song.Completed);
                 result.Stars = result.Songs.Count == 0 ? 0 : (float) result.StarSum / result.Songs.Count;
 
                 // The first tier is always unlocked. Otherwise, the previous *regular* tier must meet

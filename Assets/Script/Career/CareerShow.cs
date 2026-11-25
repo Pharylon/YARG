@@ -114,8 +114,7 @@ namespace YARG.Career
                 return false;
             }
 
-            GlobalVariables.State.CurrentSong = first;
-            GlobalVariables.State.CurrentCareer = ContextFor(0);
+            GlobalVariables.State.SetPlaybackSong(first, ContextFor(0));
 
             YargLogger.LogFormatInfo<string, int>("Career show started: '{0}', {1} songs.", tier.Name, show.SongIndexes.Count);
             error = null;
@@ -223,6 +222,15 @@ namespace YARG.Career
                     tier.Name, (float) setStars.Average());
             }
         }
+
+        /// <summary>
+        /// The career context of the show's current song, or null when no show is running. Whoever moves
+        /// the setlist on passes this to <c>SetPlaybackSong</c>, which otherwise clears the career context.
+        /// </summary>
+        public static CareerContext CurrentContext =>
+            _show is not null && Setlist.IsPlaying && Setlist.Index >= 0 && Setlist.Index < _show.SongIndexes.Count
+                ? ContextFor(Setlist.Index)
+                : null;
 
         private static CareerContext ContextFor(int position)
         {
