@@ -34,7 +34,7 @@
 #   editor open career="YARG Setlist Headliner"   editor set "Fan Multiplier" 3
 set -u
 REPO="$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)"
-BUILD="$REPO/Builds/DevLinux"
+BUILD="${YARG_BUILD:-$REPO/Builds/DevLinux}"
 DIR="${YARG_REMOTE_DIR:-${XDG_RUNTIME_DIR:-/tmp}/yarg-dev-remote}"
 DATA="$DIR/data"
 SEED="${YARG_SEED_DATA:-$HOME/.config/unity3d/YARC/YARG/dev}"
