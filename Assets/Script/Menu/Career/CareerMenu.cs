@@ -10,6 +10,7 @@ using UnityEngine.UI;
 using UnityEngine.Video;
 using YARG.Audio;
 using YARG.Career;
+using YARG.Core.Audio;
 using YARG.Core.IO;
 using YARG.Core.Input;
 using YARG.Core.Logging;
@@ -21,6 +22,7 @@ using YARG.Menu.Navigation;
 using YARG.Menu.Persistent;
 using YARG.Player;
 using YARG.Scores;
+using YARG.Settings;
 
 namespace YARG.Menu.Career
 {
@@ -66,6 +68,18 @@ namespace YARG.Menu.Career
         [SerializeField]
         private RawImage _videoTexture;
 
+        // The band's home screen on the left (see CareerMenu.Home.cs).
+        [SerializeField]
+        private Sprite _bandFallbackSprite;
+        [SerializeField]
+        private Sprite _starSprite;
+        [SerializeField]
+        private Sprite _goldStarSprite;
+        [SerializeField]
+        private Sprite[] _fanSprites;
+        [SerializeField]
+        private float _bandHomeBottomInset = 82f;
+
         private VideoPlayer   _videoPlayer;
         private VideoPlayerSampleConsumer _videoPlayerConsumer;
         private RenderTexture _renderTex;
@@ -89,6 +103,11 @@ namespace YARG.Menu.Career
             // to leave the context set, so a quickplay song from the music library afterwards was committed
             // as this career's song.
             GlobalVariables.State.CurrentCareer = null;
+
+            // The preview of the highlighted song starts at once on entering, as in the music library.
+            StemSettings.ApplySettings = SettingsManager.Settings.ApplyVolumesInMusicLibrary.Value;
+            _previewSong = null;
+            _previewDelay = 0;
 
             SetMenuNavigation();
 
@@ -124,6 +143,9 @@ namespace YARG.Menu.Career
 
             base.OnDisable();
 
+            StopPreview();
+            StemSettings.ApplySettings = true;
+
             StopVideo();
 
             Navigator.Instance.PopScheme();
@@ -152,8 +174,8 @@ namespace YARG.Menu.Career
                         SetWrapAroundState(!ctx.IsRepeat);
                         SelectedIndex++;
                     }),
-                new NavigationScheme.Entry(MenuAction.Green, "Menu.Common.Confirm",
-                    () => CurrentSelection?.ViewClick()),
+                new NavigationScheme.Entry(MenuAction.Green, "Menu.Common.Confirm", Confirm),
+                new NavigationScheme.Entry(MenuAction.Orange, "Menu.Career.ToggleGig", ToggleSelectedTier),
                 new NavigationScheme.Entry(MenuAction.Yellow, "Menu.Career.Reset",
                     () => { }, // a tap does nothing, only holding resets
                     holdSeconds: RESET_HOLD_SECONDS,
@@ -288,23 +310,9 @@ namespace YARG.Menu.Career
                 }
                 else
                 {
-                    // Don't show bonus tier unless there are no more non-bonus tiers to unlock
-                    // TODO: This doesn't actually do what it says in the case where there are multiple bonus tiers
-                    //  after the last non-bonus tier
-                    if (tier.IsBonus && tierIndex < _career.Tiers.Count - 1)
-                    {
-                        continue;
-                    }
-
-                    viewList.Add(new TierViewType(tier, result) { ShowFans = _evaluation.UsesFans, HometownShow = IsHometown(tier) });
-
-                    // Fan-count tiers unlock against total fans, in any order, so every one is listed.
-                    if (tier.UnlockType == UnlockType.FanCount)
-                    {
-                        continue;
-                    }
-
-                    break;
+                    // Gigs the band has not unlocked are not listed at all: a new career shows only
+                    // its first gig, and each unlock (announced when it happens) adds its gig.
+                    continue;
                 }
 
                 if (collapsed)
@@ -330,7 +338,7 @@ namespace YARG.Menu.Career
                     viewList.Add(new SongViewType(
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
                         songIndex == tier.Songs.Length - 1, songResult,
-                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null });
+                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
                 }
             }
 
@@ -466,13 +474,12 @@ namespace YARG.Menu.Career
 
         public void Initialize(CareerPreset career, CareerEvaluation evaluation)
         {
+            // Compared with the session's career, not this instance's: the menu is rebuilt when the
+            // menu scene reloads after a song, and must come back as it was left.
             if (_sessionCareer?.Id != career.Id)
             {
                 _expandedTier = CurrentTierId(evaluation);
-            }
 
-            if (_career is null || _career.Id != career.Id)
-            {
                 // Row order is per-career (it depends on which tiers are unlocked), so the previous
                 // career's index would select an unrelated song. The remembered position only needs to
                 // survive within one career, to return to the song that was just played.
@@ -531,6 +538,7 @@ namespace YARG.Menu.Career
         {
             _evaluation = evaluation;
             _careerSaveId = evaluation?.CareerSaveId ?? 0;
+            LoadBandScores();
             UpdateHeader();
         }
 
@@ -732,15 +740,14 @@ namespace YARG.Menu.Career
 
             _loadedBackground = texture;
             _bgImage.texture = texture;
-            _bgImage.enabled = texture != null;
 
-            if (texture != null)
-            {
-                // Decoded textures come out flipped.
-                _bgImage.uvRect = new Rect(0, 0, 1, -1);
-            }
+            // Decoded textures come out flipped.
+            _bgImage.uvRect = texture != null ? new Rect(0, 0, 1, -1) : new Rect(0, 0, 1, 1);
 
-            _bgImage.gameObject.SetActive(texture != null);
+            // Without art of its own the career keeps the panel's plain tinted backdrop, the same one
+            // the band's home screen sits on in the career list.
+            _bgImage.enabled = true;
+            _bgImage.gameObject.SetActive(true);
         }
 
         private UniTask<bool> PlayVideo(string path)

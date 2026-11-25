@@ -21,7 +21,7 @@
 #   yarg-remote.sh stop                  Close the game
 #
 # Remote commands: nav <Up|Down|Left|Right|Green|Red|Yellow|Blue|Orange|Start|Select>,
-#   menu <MainMenu|GameModes|CareerList|Career|...>, back, click <x> <y>, wait <s>,
+#   menu <MainMenu|GameModes|CareerList|Career|...>, back, click <x> <y>, hover <x> <y>, wait <s>,
 #   shot <path>, window <w> <h>, state, career-bots [on|off], ready [speed=N], waitfor scene=<name>, show,
 #   simulate / career / scorescreen (career testing, see Assets/Script/Dev/DevRemote.Career.cs), e.g.
 #   simulate career="YARG Setlist Rock" tier=0 song=2 stars=4

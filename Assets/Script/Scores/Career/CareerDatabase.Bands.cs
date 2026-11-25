@@ -222,6 +222,19 @@ namespace YARG.Scores
                 bandId);
         }
 
+        /// <summary>
+        /// Every player's score row behind the completion rows of one save (none for debug grants).
+        /// </summary>
+        public List<PlayerScoreRecord> GetSavePlayerScores(int careerSaveId)
+        {
+            return _db.Query<PlayerScoreRecord>(
+                @"SELECT DISTINCT p.* FROM PlayerScores p
+                  INNER JOIN CareerSongCompletions c ON c.GameRecordId = p.GameRecordId
+                  WHERE c.CareerSaveId = ? AND c.GameRecordId > 0
+                  ORDER BY p.Id",
+                careerSaveId);
+        }
+
         #endregion
     }
 }

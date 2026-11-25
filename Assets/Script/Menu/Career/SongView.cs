@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -45,6 +46,18 @@ namespace YARG.Menu.Career
         [Header("Song Row")]
         [SerializeField]
         private StarView _starView;
+        // Prefab assets. When set (and _starView is not wired), song rows get the star display and the
+        // music library's instrument/difficulty display on their right edge, built in code.
+        [SerializeField]
+        private StarView _starViewPrefab;
+        [SerializeField]
+        private MusicLibrary.InstrumentDifficultyView _instrumentDifficultyPrefab;
+        [SerializeField]
+        private Vector2 _starViewSize = new(136f, 25f);
+        [SerializeField]
+        private float _scoreRightMargin = 20f;
+        [SerializeField]
+        private float _scoreSpacing = 10f;
 
         [Space]
         [Header("Row Heights")]
@@ -88,6 +101,17 @@ namespace YARG.Menu.Career
         private LayoutElement _primaryLayout;
         private float _defaultPrimaryWidth;
         private int _defaultInfoPadding;
+        private int _defaultInfoPaddingRight;
+
+        // The stars and score displays on a song row's right edge.
+        private RectTransform _scoreRoot;
+        private readonly List<MusicLibrary.InstrumentDifficultyView> _scoreViews = new();
+        private float _scoreWidth;
+
+        // More players than this show only the first ones.
+        private const int MAX_SCORE_VIEWS = 5;
+        // Width of a score display without its percent text (several players share the row).
+        private const float COMPACT_SCORE_WIDTH = 54f;
 
         private RectTransform _groupFrame;
         private Image _borderTop;
@@ -119,7 +143,10 @@ namespace YARG.Menu.Career
             if (_infoLayout != null)
             {
                 _defaultInfoPadding = _infoLayout.padding.left;
+                _defaultInfoPaddingRight = _infoLayout.padding.right;
             }
+
+            CreateScoreRoot();
 
             CreateGroupFrame();
 
@@ -128,17 +155,36 @@ namespace YARG.Menu.Career
         }
 
         /// <summary>
-        /// Clicking a tier header does what Confirm does on it: expand or collapse the tier.
+        /// Clicking a tier header expands or collapses the tier. In the career menu, clicking any
+        /// other row selects it and does what Confirm does on it, as in the music library: a song
+        /// goes on to be played.
         /// </summary>
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (eventData.button != PointerEventData.InputButton.Left || !Showing)
+            if (eventData.button != PointerEventData.InputButton.Left || !Showing || ViewType is null)
             {
                 return;
             }
 
-            var kind = ViewType?.GetCareerInfo()?.Kind;
-            if (kind == ViewType.CareerRowKind.TierHeader)
+            // Selected first, so the menu remembers this row as the one that was played. The rows are
+            // not parented to the menu, and the same row object is listed elsewhere (dialogs), so the
+            // menu is asked whether the row is one of its own.
+            // Selecting scrolls the list, which hands this pooled object another row: the clicked row
+            // is kept aside first.
+            var row = ViewType;
+            var menu = FindAnyObjectByType<CareerMenu>();
+            if (menu != null && menu.Select(row))
+            {
+                if (row.IsClickable)
+                {
+                    row.ViewClick();
+                }
+
+                return;
+            }
+
+            // Rows listed elsewhere keep their own buttons.
+            if (ViewType.GetCareerInfo()?.Kind == ViewType.CareerRowKind.TierHeader)
             {
                 OnClick();
             }
@@ -182,6 +228,9 @@ namespace YARG.Menu.Career
                 _revealMask.enabled = reveal < 1f;
             }
 
+            // Before the grouping, which reserves the width the stars and scores take.
+            PopulateScores(info);
+
             ApplyTierGrouping(isTierHeader, isSong, info?.LastInGroup ?? false, topGap);
 
             SetActive(_songExtrasContainer, isSong);
@@ -220,8 +269,10 @@ namespace YARG.Menu.Career
             if (_infoLayout != null)
             {
                 // Assigned rather than mutated in place so the layout group is marked dirty.
+                // Song text stops short of the stars and scores on the right.
                 var padding = _infoLayout.padding;
-                _infoLayout.padding = new RectOffset(_defaultInfoPadding + indent, padding.right, padding.top,
+                var right = _defaultInfoPaddingRight + (isSong ? Mathf.CeilToInt(_scoreWidth) : 0);
+                _infoLayout.padding = new RectOffset(_defaultInfoPadding + indent, right, padding.top,
                     padding.bottom);
             }
 
@@ -252,6 +303,102 @@ namespace YARG.Menu.Career
 
             _borderTop.enabled = isTierHeader;
             _borderBottom.enabled = lastInGroup;
+        }
+
+        private void CreateScoreRoot()
+        {
+            if (_rect == null || _starView != null || _starViewPrefab == null && _instrumentDifficultyPrefab == null)
+            {
+                return;
+            }
+
+            var root = new GameObject("Song Scores", typeof(RectTransform));
+            _scoreRoot = root.GetComponent<RectTransform>();
+            _scoreRoot.SetParent(_contentRoot != null ? _contentRoot : _rect, false);
+            _scoreRoot.anchorMin = new Vector2(1, 0);
+            _scoreRoot.anchorMax = new Vector2(1, 1);
+            _scoreRoot.pivot = new Vector2(1, 0.5f);
+            _scoreRoot.offsetMin = Vector2.zero;
+            _scoreRoot.offsetMax = Vector2.zero;
+
+            if (_starViewPrefab != null)
+            {
+                _starView = Instantiate(_starViewPrefab, _scoreRoot);
+                PlaceFromRight((RectTransform) _starView.transform, _scoreRightMargin, _starViewSize);
+            }
+        }
+
+        /// <summary>
+        /// Anchors the child to the right edge of the score area, vertically centered.
+        /// </summary>
+        private static void PlaceFromRight(RectTransform child, float right, Vector2 size)
+        {
+            child.anchorMin = new Vector2(1, 0.5f);
+            child.anchorMax = new Vector2(1, 0.5f);
+            child.pivot = new Vector2(1, 0.5f);
+            child.sizeDelta = size;
+            child.anchoredPosition = new Vector2(-right, 0);
+        }
+
+        /// <summary>
+        /// Song rows: one instrument/difficulty display per player of the best result, to the left of
+        /// the stars. A single player also shows the percent, as in the music library.
+        /// </summary>
+        private void PopulateScores(ViewType.CareerInfo? info)
+        {
+            _scoreWidth = 0f;
+            if (_scoreRoot == null)
+            {
+                return;
+            }
+
+            var isSong = info?.Kind == ViewType.CareerRowKind.Song && !info.Value.NoStars;
+            _scoreRoot.gameObject.SetActive(isSong);
+            if (!isSong)
+            {
+                return;
+            }
+
+            var right = _scoreRightMargin;
+            if (_starViewPrefab != null)
+            {
+                right += _starViewSize.x + _scoreSpacing;
+            }
+
+            var scores = info.Value.Scores;
+            var count = _instrumentDifficultyPrefab == null ? 0 : Mathf.Min(scores?.Count ?? 0, MAX_SCORE_VIEWS);
+            var compact = count > 1;
+
+            // Listed left to right in the order the players are stored, so placed from the last one.
+            for (var i = count - 1; i >= 0; i--)
+            {
+                while (_scoreViews.Count <= i)
+                {
+                    _scoreViews.Add(Instantiate(_instrumentDifficultyPrefab, _scoreRoot));
+                }
+
+                var view = _scoreViews[i];
+                view.gameObject.SetActive(true);
+                view.SetInfo(scores[i]);
+
+                var rect = (RectTransform) view.transform;
+                var percent = view.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (percent != null)
+                {
+                    percent.gameObject.SetActive(!compact);
+                }
+
+                var size = new Vector2(compact ? COMPACT_SCORE_WIDTH : rect.sizeDelta.x, rect.sizeDelta.y);
+                PlaceFromRight(rect, right, size);
+                right += size.x + (compact ? _scoreSpacing * 0.4f : _scoreSpacing);
+            }
+
+            for (var i = count; i < _scoreViews.Count; i++)
+            {
+                _scoreViews[i].gameObject.SetActive(false);
+            }
+
+            _scoreWidth = right;
         }
 
         private void CreateGroupFrame()
@@ -327,7 +474,14 @@ namespace YARG.Menu.Career
 
             if (showStars)
             {
-                _starView.SetStars(info.Value.BestStars);
+                if (info.Value.BestIsGold)
+                {
+                    _starView.SetStars(ViewType.STARS_PER_SONG, StarView.StarType.Gold);
+                }
+                else
+                {
+                    _starView.SetStars(info.Value.BestStars);
+                }
             }
         }
 

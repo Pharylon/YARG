@@ -24,71 +24,59 @@ namespace YARG.Menu.Career
     public static class CareerBandDialogs
     {
         /// <summary>
-        /// The band list: choose the active band (or none), make a new one, or manage the active one.
+        /// What can be done with one band: its sheet and history, its details, its members, deleting it.
         /// <paramref name="onChanged"/> runs after anything changed.
         /// </summary>
-        public static void ShowBands(Action onChanged)
+        public static void ShowManage(CareerBand band, Action onChanged)
         {
-            var careers = ScoreContainer.Careers;
-            if (careers is null || DialogManager.Instance.IsDialogShowing)
+            if (band is null || ScoreContainer.Careers is null || DialogManager.Instance.IsDialogShowing)
             {
                 return;
             }
 
-            var active = CareerBands.ActiveBand(careers);
-            var dialog = DialogManager.Instance.ShowList(Localize.Key("Menu.Career.Band.Title"));
+            var dialog = DialogManager.Instance.ShowList(band.Name);
             dialog.ClearButtons();
 
-            foreach (var band in careers.GetBands())
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Sheet", band.Name),
+                () => ShowAfterClose(() => CareerBandSheetDialogs.ShowSheet(band)).Forget());
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.History", band.Name),
+                () => ShowAfterClose(() => CareerBandSheetDialogs.ShowHistory(band)).Forget());
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Rename", band.Name),
+                () => RenameBand(band, onChanged).Forget());
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditHometown", band.Name),
+                () => EditHometown(band, onChanged).Forget());
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditGenre", band.Name),
+                () => EditGenre(band, onChanged).Forget());
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditMembers", band.Name),
+                () => EditMembers(band, onChanged).Forget());
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.ChooseIcon", band.Name),
+                () => CareerIcons.ChooseBandIcon(band, onChanged));
+            if (CareerIcons.HasBandIcon(band.Id))
             {
-                var members = CareerBands.MemberNames(careers, band.Id);
-                var text = Localize.KeyFormat("Menu.Career.Band.ListEntry", band.Name,
-                    members.Count == 0 ? Localize.Key("Menu.Career.Band.NoMembers") : Localize.List(members));
-                if (band.Id == active?.Id)
+                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.RemoveIcon", band.Name), () =>
                 {
-                    text = Localize.KeyFormat("Menu.Career.Band.ActiveEntry", text);
-                }
-
-                var id = band.Id;
-                AddListButton(dialog, text, () => Select(id, onChanged));
+                    CareerIcons.RemoveBandIcon(band);
+                    onChanged?.Invoke();
+                });
             }
 
-            AddListButton(dialog, active is null
-                    ? Localize.KeyFormat("Menu.Career.Band.ActiveEntry", Localize.Key("Menu.Career.Band.NoBand"))
-                    : Localize.Key("Menu.Career.Band.NoBand"),
-                () => Select(null, onChanged));
-
-            AddListButton(dialog, Localize.Key("Menu.Career.Band.New"), () => CreateBand(onChanged).Forget());
-
-            if (active is not null)
-            {
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Sheet", active.Name),
-                    () => ShowAfterClose(() => CareerBandSheetDialogs.ShowSheet(active)).Forget());
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.History", active.Name),
-                    () => ShowAfterClose(() => CareerBandSheetDialogs.ShowHistory(active)).Forget());
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Rename", active.Name),
-                    () => RenameBand(active, onChanged).Forget());
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditHometown", active.Name),
-                    () => EditHometown(active, onChanged).Forget());
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditGenre", active.Name),
-                    () => EditGenre(active, onChanged).Forget());
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditMembers", active.Name),
-                    () => EditMembers(active, onChanged).Forget());
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Delete", active.Name),
-                    () => DeleteBand(active, onChanged).Forget());
-            }
+            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Delete", band.Name),
+                () => DeleteBand(band, onChanged).Forget());
 
             dialog.AddDialogButton("Menu.Common.Close", MenuData.Colors.CancelButton,
                 DialogManager.Instance.ClearDialog);
         }
 
-        private static void Select(Guid? bandId, Action onChanged)
+        /// <summary>
+        /// Asks for a new band's name, hometown, genre and members, creates it and makes it the active
+        /// band. <paramref name="onChanged"/> runs once it exists (and again if progress is adopted).
+        /// </summary>
+        public static void CreateBand(Action onChanged)
         {
-            CareerBands.ActiveBandId = bandId;
-            onChanged?.Invoke();
+            CreateBandAsync(onChanged).Forget();
         }
 
-        private static async UniTaskVoid CreateBand(Action onChanged)
+        private static async UniTaskVoid CreateBandAsync(Action onChanged)
         {
             var name = await AskText(Localize.Key("Menu.Career.Band.AskName"));
             if (string.IsNullOrWhiteSpace(name))

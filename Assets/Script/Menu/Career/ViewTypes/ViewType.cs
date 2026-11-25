@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using YARG.Menu.ListMenu;
 
 namespace YARG.Menu.Career
@@ -21,6 +22,11 @@ namespace YARG.Menu.Career
             public bool Unlocked;
             public bool Completed;
             public int BestStars;
+            // The best result was gold (BestStars is 5 then).
+            public bool BestIsGold;
+            // Song rows: who played the save's best result, on what and how well (one entry per
+            // player; empty when never played or the result has no score record).
+            public IReadOnlyList<MusicLibrary.ViewType.ScoreInfo> Scores;
             public int EarnedStars;
             public int AvailableStars;
 
@@ -54,6 +60,25 @@ namespace YARG.Menu.Career
         }
 
         public virtual bool IsClickable => true;
+
+        public enum RowIcon
+        {
+            None,
+            Person,
+            Bot,
+        }
+
+        // Career list rows (see CareerView): an icon of its own, the text on the right edge of a
+        // button row, and the state of the row's connect button (null: no button).
+        public virtual RowIcon CareerIcon => RowIcon.None;
+
+        // A picture of its own (a band icon, a profile picture), drawn in place of CareerIcon.
+        // Decoded image textures are upside down, so the row flips it.
+        public virtual UnityEngine.Sprite CustomIcon => null;
+
+        public virtual string GetSideText(bool selected) => null;
+
+        public virtual bool? ConnectedState => null;
 
         public virtual void ViewClick()
         {

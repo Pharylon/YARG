@@ -89,6 +89,8 @@ MonoBehaviour:
   _tierStarsText: {fileID: 0}
   _totalStarsText: {fileID: 0}
   _starView: {fileID: 0}
+  _starViewPrefab: {fileID: 2470621721023489253, guid: 8a14b88e9f52a4e41818129ae6aff258, type: 3}
+  _instrumentDifficultyPrefab: {fileID: 4906556586326073703, guid: 2757d4382315f8a46a8a0c2e76c0f881, type: 3}
   _headerRowHeight: 70
   _songRowHeight: 55
   _primaryLabel: {fileID: 5639062864036469802}

@@ -7,14 +7,15 @@ using YARG.Scores;
 namespace YARG.Menu.Career
 {
     /// <summary>
-    /// The first row of the career list: who careers are played as (the active band, or the current
-    /// players), opening the band choices when clicked.
+    /// The first row of the career list's last step: the band the careers are played as. Confirming
+    /// it goes back to choose another band.
     /// </summary>
     public class BandViewType : ViewType
     {
         public override BackgroundType Background => BackgroundType.Category;
 
         private readonly Action _onBandChanged;
+        private readonly Guid? _bandId;
         private readonly string _primary;
         private readonly string _secondary;
 
@@ -31,6 +32,7 @@ namespace YARG.Menu.Career
                 return;
             }
 
+            _bandId = band.Id;
             _primary = Localize.KeyFormat("Menu.Career.HeaderBand", band.Name);
             _secondary = Describe(careers, band);
         }
@@ -73,9 +75,13 @@ namespace YARG.Menu.Career
             return FormatAs(_secondary, TextType.Secondary, selected);
         }
 
+        public override RowIcon CareerIcon => _bandId is null ? RowIcon.None : RowIcon.Person;
+
+        public override UnityEngine.Sprite CustomIcon => _bandId is { } id ? CareerIcons.BandIcon(id) : null;
+
         public override void ViewClick()
         {
-            CareerBandDialogs.ShowBands(_onBandChanged);
+            _onBandChanged?.Invoke();
         }
     }
 }

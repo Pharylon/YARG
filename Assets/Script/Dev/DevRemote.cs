@@ -173,6 +173,10 @@ namespace YARG.Dev
                         case "click":
                             result = Click(argument);
                             break;
+                        case "hover":
+                            // Moves the pointer over <x> <y> without pressing.
+                            result = Click(argument, true);
+                            break;
                         case "window":
                             result = SetWindow(argument);
                             break;
@@ -320,7 +324,7 @@ namespace YARG.Dev
             return "ok";
         }
 
-        private static string Click(string argument)
+        private static string Click(string argument, bool hoverOnly = false)
         {
             var parts = argument.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length != 2 ||
@@ -357,6 +361,14 @@ namespace YARG.Dev
             pointer.pointerPressRaycast = hits[0];
 
             ExecuteEvents.ExecuteHierarchy(target, pointer, ExecuteEvents.pointerEnterHandler);
+            if (hoverOnly)
+            {
+                var moved = ExecuteEvents.ExecuteHierarchy(target, pointer, ExecuteEvents.pointerMoveHandler);
+                return moved != null
+                    ? $"ok hovered '{moved.name}' (hit '{target.name}')"
+                    : $"error '{target.name}' has no move handler";
+            }
+
             ExecuteEvents.ExecuteHierarchy(target, pointer, ExecuteEvents.pointerDownHandler);
             ExecuteEvents.ExecuteHierarchy(target, pointer, ExecuteEvents.pointerUpHandler);
             var handler = ExecuteEvents.ExecuteHierarchy(target, pointer, ExecuteEvents.pointerClickHandler);

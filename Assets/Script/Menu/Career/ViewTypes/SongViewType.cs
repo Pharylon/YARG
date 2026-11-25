@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cysharp.Text;
 using YARG.Career;
 using YARG.Core.Logging;
@@ -44,6 +45,20 @@ namespace YARG.Menu.Career
         public CareerTier HiddenBy { get; set; }
 
         private bool Hidden => HiddenBy is not null;
+
+        /// <summary>
+        /// The players of the save's best result of this song (instrument, difficulty, percent), shown
+        /// next to the stars like the music library's score display.
+        /// </summary>
+        public IReadOnlyList<MusicLibrary.ViewType.ScoreInfo> BandScores { get; set; }
+
+        public SongEntry SongEntry => _songEntry;
+
+        /// <summary>
+        /// Whether highlighting the row may play the song's preview (never for a hidden song, which
+        /// the audio would give away).
+        /// </summary>
+        public bool CanPreview => !Hidden && _songEntry is not null;
 
         // An encore is only ever played after a show's set that earned it, never on its own.
         public override bool IsClickable => !_song.IsEncore;
@@ -91,6 +106,8 @@ namespace YARG.Menu.Career
                 Unlocked    = true, // songs are only listed once their tier is unlocked
                 Completed   = _result?.Completed ?? false,
                 BestStars   = _result?.BestStars ?? 0,
+                BestIsGold  = _result?.BestIsGold ?? false,
+                Scores      = BandScores,
                 Artist      = Hidden ? string.Empty : _songEntry?.Artist.ToString() ?? string.Empty,
                 Album       = Hidden ? string.Empty : _songEntry?.Album.ToString() ?? string.Empty,
                 LastInGroup = _lastInTier,
