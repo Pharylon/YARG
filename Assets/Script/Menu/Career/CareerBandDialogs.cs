@@ -69,7 +69,7 @@ namespace YARG.Menu.Career
 
         /// <summary>
         /// Asks for a new band's name, hometown, genre and members, creates it and makes it the active
-        /// band. <paramref name="onChanged"/> runs once it exists (and again if progress is adopted).
+        /// band. <paramref name="onChanged"/> runs once it exists.
         /// </summary>
         public static void CreateBand(Action onChanged)
         {
@@ -108,49 +108,6 @@ namespace YARG.Menu.Career
             CareerBands.ActiveBandId = band.Id;
             YargLogger.LogFormatInfo("Career: created band '{0}'.", band.Name);
             ToastManager.ToastSuccess(Localize.KeyFormat("Menu.Career.Band.Created", band.Name));
-            onChanged?.Invoke();
-
-            await OfferAdoption(band, members, onChanged);
-        }
-
-        /// <summary>
-        /// If the new band's members already have careers going as exactly this group (profile-set
-        /// saves), offer to carry that progress over to the band.
-        /// </summary>
-        private static async UniTask OfferAdoption(CareerBand band, List<Guid> members, Action onChanged)
-        {
-            var careers = ScoreContainer.Careers;
-            var saves = CareerBands.AllCareers()
-                .Select(career => careers.FindActiveSaveForProfiles(career.Id, members))
-                .Where(save => save is not null)
-                .ToList();
-            if (saves.Count == 0)
-            {
-                return;
-            }
-
-            await NextDialog();
-
-            var adopt = false;
-            var dialog = DialogManager.Instance.ShowMessage(Localize.Key("Menu.Career.Band.AdoptTitle"),
-                Localize.KeyFormat("Menu.Career.Band.AdoptMessage", saves.Count, band.Name));
-            dialog.ClearButtons();
-            dialog.AddDialogButton("Menu.Career.Band.AdoptNo", MenuData.Colors.CancelButton,
-                DialogManager.Instance.ClearDialog);
-            dialog.AddDialogButton("Menu.Career.Band.AdoptYes", MenuData.Colors.ConfirmButton, () =>
-            {
-                adopt = true;
-                DialogManager.Instance.ClearDialog();
-            });
-
-            await dialog.WaitUntilClosed();
-            if (!adopt)
-            {
-                return;
-            }
-
-            var adopted = saves.Count(save => careers.AdoptSave(save.Id, band.Id));
-            ToastManager.ToastSuccess(Localize.KeyFormat("Menu.Career.Band.Adopted", adopted));
             onChanged?.Invoke();
         }
 

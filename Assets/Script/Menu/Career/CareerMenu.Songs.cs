@@ -136,10 +136,6 @@ namespace YARG.Menu.Career
             }
 
             ToastManager.ToastInformation(Localize.Key("Menu.Career.NoNextSong"));
-            if (_expandedTier != tier.Id)
-            {
-                ToggleTier(tier);
-            }
         }
 
         /// <summary>
@@ -206,6 +202,7 @@ namespace YARG.Menu.Career
 
         private void OnDestroy()
         {
+            ClearGigPictures();
             _previewPlayer.Dispose();
         }
     }

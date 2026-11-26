@@ -76,6 +76,13 @@ seed() {
 install_test_careers() {
     mkdir -p "$DATA/custom/careers"
     cp "$REPO"/scripts/dev/careers/*.json "$DATA/custom/careers/" 2>/dev/null || true
+    # Setlists installed in the seed data folder (e.g. by scripts/dev/make-setlists.py) come along too:
+    # they are content, not progress.
+    cp "$SEED"/custom/careers/*.json "$DATA/custom/careers/" 2>/dev/null || true
+    # ... with their content folders (gig pictures).
+    for content in "$SEED"/custom/careers/*/; do
+        [ -d "$content" ] && cp -r "$content" "$DATA/custom/careers/"
+    done
 }
 
 case "${1:-}" in

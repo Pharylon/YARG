@@ -92,7 +92,11 @@ namespace YARG.Menu.Career
 
         protected override void OnEnable()
         {
+            // Before the list measures its viewport.
+            EnsureGigMap();
+
             base.OnEnable();
+            UpdateGigMap();
 
             // A show never runs behind this menu: one still marked as playing was left early. Gig rules
             // were for the play only.
@@ -175,7 +179,8 @@ namespace YARG.Menu.Career
                         SelectedIndex++;
                     }),
                 new NavigationScheme.Entry(MenuAction.Green, "Menu.Common.Confirm", Confirm),
-                new NavigationScheme.Entry(MenuAction.Orange, "Menu.Career.ToggleGig", ToggleSelectedTier),
+                new NavigationScheme.Entry(MenuAction.Left, "Menu.Career.ChangeGig", () => StepGig(-1)),
+                new NavigationScheme.Entry(MenuAction.Right, "Menu.Career.ChangeGig", () => StepGig(1)),
                 new NavigationScheme.Entry(MenuAction.Yellow, "Menu.Career.Reset",
                     () => { }, // a tap does nothing, only holding resets
                     holdSeconds: RESET_HOLD_SECONDS,
@@ -297,16 +302,25 @@ namespace YARG.Menu.Career
 
             _evaluation ??= Evaluate(_career, _careerSaveId);
 
+            // The gigs are on the map; the list is the selected gig's songs.
+            var selectedGig = SelectedGig();
+            UpdateGigMap();
+
             for (var tierIndex = 0; tierIndex < _career.Tiers.Count; tierIndex++)
             {
                 var tier = _career.Tiers[tierIndex];
                 var result = _evaluation.Tiers[tierIndex];
 
-                var collapsed = tier.Id != _expandedTier && tier.Id != _collapsingTier;
+                if (tier.Id != selectedGig)
+                {
+                    continue;
+                }
+
+                const bool collapsed = false;
 
                 if (result.Unlocked)
                 {
-                    viewList.Add(new TierViewType(tier, result, collapsed, ToggleTier) { ShowFans = _evaluation.UsesFans, HometownShow = IsHometown(tier) });
+                    // No header row: the map names the gig and shows its progress, fans and rules.
                 }
                 else
                 {
@@ -340,6 +354,12 @@ namespace YARG.Menu.Career
                         songIndex == tier.Songs.Length - 1, songResult,
                         OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
                 }
+            }
+
+            // The first row closes the top of the box the gig's rows are drawn in.
+            if (viewList.Count > 0)
+            {
+                viewList[0].FirstInGroup = true;
             }
 
             return viewList;
@@ -496,6 +516,7 @@ namespace YARG.Menu.Career
 
             RequestViewListUpdate();
             StartBackgroundLoad(career);
+            LoadGigPictures(career);
             CheckUnlocks();
         }
 
@@ -595,15 +616,15 @@ namespace YARG.Menu.Career
                 return;
             }
 
-            var names = fresh.Select(progress => TierName(progress.TierId)).ToList();
-            var tier = _career.Tiers.FirstOrDefault(t => t.Id == fresh.First().TierId);
-
             foreach (var progress in fresh)
             {
                 careers.MarkUnlockSeen(_careerSaveId, progress.TierId);
             }
 
-            _ = HandleUnlockDisplay(names, tier);
+            // No dialog: the gigs open up on the map, once the new stars and fans are in (see
+            // CareerMenu.Map.cs). HandleUnlockDisplay below is what used to announce them.
+            _freshUnlocks.AddRange(fresh.Select(progress => progress.TierId));
+            UpdateGigMap();
         }
 
         private string TierName(Guid tierId)

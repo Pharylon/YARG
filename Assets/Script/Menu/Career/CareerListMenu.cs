@@ -457,6 +457,10 @@ namespace YARG.Menu.Career
             }
 
             UpdateAnthem(band);
+
+            // On the band picker the panel previews the highlighted band (its music only starts once
+            // the band is picked).
+            band ??= (CurrentSelection as BandChoiceViewType)?.Band;
             if (band is null)
             {
                 ShowBandHome(null);
@@ -521,7 +525,15 @@ namespace YARG.Menu.Career
             // What is in the way, if anything: no band mate connected, or a connected player without
             // a controller.
             string notice = null;
-            if (!MemberConnected(ScoreContainer.Careers.GetBandMembers(band.Id)))
+            if (_step == Step.Bands)
+            {
+                // Who is in the band, while choosing one.
+                var members = CareerBands.MemberNames(ScoreContainer.Careers, band.Id);
+                notice = Localize.KeyFormat("Menu.Career.Band.Members", members.Count == 0
+                    ? Localize.Key("Menu.Career.Band.NoMembers")
+                    : Localize.List(members));
+            }
+            else if (!MemberConnected(ScoreContainer.Careers.GetBandMembers(band.Id)))
             {
                 notice = Localize.Key("Menu.Career.Lineup.NeedMemberShort");
             }

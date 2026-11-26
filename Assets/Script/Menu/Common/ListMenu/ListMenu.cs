@@ -23,6 +23,11 @@ namespace YARG.Menu.ListMenu
         [Space]
         [SerializeField]
         private Transform _viewObjectParent;
+
+        /// <summary>
+        /// What the rows are children of. The rect it sits in is the list's viewport.
+        /// </summary>
+        protected Transform ViewObjectParent => _viewObjectParent;
         [SerializeField]
         private Scrollbar _scrollbar;
 

@@ -19,7 +19,19 @@ namespace YARG.Menu.Career
         private bool IsHometown(CareerTier tier)
         {
             BandHeaderText();
-            return tier is not null && CareerBandSheet.IsHometown(tier.City, _bandHometown);
+            return tier is not null &&
+                (IsOpeningGig(tier) || CareerBandSheet.IsHometown(tier.City, _bandHometown));
+        }
+
+        /// <summary>
+        /// A setlist's first gig is always played in the band's hometown, when it has one: wherever
+        /// the setlist puts that gig, the band starts out at home.
+        /// </summary>
+        private bool IsOpeningGig(CareerTier tier)
+        {
+            BandHeaderText();
+            return !string.IsNullOrWhiteSpace(_bandHometown) && _career is { Tiers: { Count: > 0 } } &&
+                ReferenceEquals(_career.Tiers[0], tier);
         }
 
         /// <summary>

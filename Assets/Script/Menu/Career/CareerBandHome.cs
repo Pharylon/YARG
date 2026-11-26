@@ -279,6 +279,11 @@ namespace YARG.Menu.Career
             gameObject.SetActive(false);
         }
 
+        /// <summary>
+        /// The new stars and fans of a just-played song are still arriving.
+        /// </summary>
+        public bool IsGaining => _gaining && isActiveAndEnabled;
+
         private void OnEnable()
         {
             // Coming back to the screen replays the entrance. A gain that was set up while the menu was

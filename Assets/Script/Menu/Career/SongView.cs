@@ -297,6 +297,9 @@ namespace YARG.Menu.Career
                     padding.bottom);
             }
 
+            _columnsHeader = isTierHeader;
+            _columnsSong = isSong;
+            _columnsIndent = indent;
             LayoutColumns(isTierHeader, isSong, indent);
 
             var grouped = isTierHeader || isSong;
@@ -319,7 +322,7 @@ namespace YARG.Menu.Career
 
             SetInsets(_groupFrame, sideInset, topGap);
 
-            _borderTop.enabled = isTierHeader;
+            _borderTop.enabled = isTierHeader || (ViewType?.FirstInGroup ?? false);
             _borderBottom.enabled = lastInGroup;
         }
 
@@ -356,7 +359,8 @@ namespace YARG.Menu.Career
 
             // What the two texts share: the row less its padding, the icon and the gaps.
             var padding = _infoLayout.padding;
-            var width = ((RectTransform) _infoLayout.transform).rect.width - padding.left - padding.right;
+            _columnsWidth = ((RectTransform) _infoLayout.transform).rect.width;
+            var width = _columnsWidth - padding.left - padding.right;
             var columns = 2;
             foreach (RectTransform child in _infoLayout.transform)
             {
@@ -377,6 +381,30 @@ namespace YARG.Menu.Career
             name = Mathf.Max(0f, Mathf.Min(name, width - MIN_ARTIST_WIDTH));
             Column(_primaryLayout, name, name);
             Column(_secondaryLayout, 0f, REST_OF_ROW);
+        }
+
+        // What the columns were last laid out for, and the row width they were worked out from.
+        private bool _columnsHeader;
+        private bool _columnsSong;
+        private int _columnsIndent;
+        private float _columnsWidth;
+
+        /// <summary>
+        /// A song row's columns depend on the row's width, which is not final when a row is first
+        /// shown (a new row still has its prefab's width): they are worked out again once it changes.
+        /// </summary>
+        private void Update()
+        {
+            if (!Showing || !_columnsSong || _infoLayout == null)
+            {
+                return;
+            }
+
+            var width = ((RectTransform) _infoLayout.transform).rect.width;
+            if (Mathf.Abs(width - _columnsWidth) > 0.5f)
+            {
+                LayoutColumns(_columnsHeader, _columnsSong, _columnsIndent);
+            }
         }
 
         private static void Column(LayoutElement element, float minWidth, float preferredWidth)

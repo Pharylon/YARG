@@ -44,10 +44,9 @@ namespace YARG.Menu.Career
             var subtitle = BandHeaderText();
 
             // The selected row's contract, so it is known before the song is picked.
-            string homeNotice = null;
             if (CareerContractText.Line(SelectedContract(), _evaluation?.UsesFans ?? false) is { } contract)
             {
-                homeNotice = Localize.KeyFormat("Menu.Career.Contract.Upcoming", contract);
+
                 description = $"<b>{Localize.KeyFormat("Menu.Career.Contract.Upcoming", contract)}</b>\n\n{description}";
             }
 
@@ -66,7 +65,7 @@ namespace YARG.Menu.Career
 
                 if (!string.IsNullOrEmpty(venue))
                 {
-                    homeNotice ??= venue;
+
                     description = $"<b>{venue}</b>\n\n{description}";
                 }
             }
@@ -79,7 +78,8 @@ namespace YARG.Menu.Career
             SetText(_careerNameText, name);
             SetText(_careerDescriptionText, description);
 
-            ShowBandHome(homeNotice);
+            // The selected gig's venue, contract and rules are on the map side of the screen.
+            ShowBandHome(null);
 
             _title ??= new CareerHeaderTitle(this);
             _title.ShowName(_career.Name);

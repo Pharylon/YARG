@@ -54,6 +54,12 @@ namespace YARG.Menu.Career
             public readonly bool IsHeader => Kind != CareerRowKind.Song;
         }
 
+        /// <summary>
+        /// The row is the first of its gig's box (there is no header row above it): it draws the
+        /// box's top edge.
+        /// </summary>
+        public bool FirstInGroup { get; set; }
+
         public virtual CareerInfo? GetCareerInfo()
         {
             return null;
