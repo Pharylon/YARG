@@ -89,8 +89,19 @@ MonoBehaviour:
   _tierStarsText: {fileID: 0}
   _totalStarsText: {fileID: 0}
   _starView: {fileID: 0}
+  _starViewPrefab: {fileID: 2470621721023489253, guid: 8a14b88e9f52a4e41818129ae6aff258, type: 3}
   _headerRowHeight: 70
   _songRowHeight: 55
+  _primaryLabel: {fileID: 5639062864036469802}
+  _infoLayout: {fileID: 7016887342658807789}
+  _backgroundsRoot: {fileID: 4441476168024791490}
+  _contentRoot: {fileID: 3533599584200465650}
+  _groupBorderColor: {r: 1, g: 1, b: 1, a: 0.35}
+  _groupBorderWidth: 2
+  _groupSideInset: 8
+  _groupSpacing: 16
+  _tierHeaderFontSize: 36
+  _songIndent: 40
 --- !u!1 &425044748247620466
 GameObject:
   m_ObjectHideFlags: 0

@@ -22,6 +22,10 @@ namespace YARG.Scores
         // "New career" is a soft delete: progress history is preserved for comparison, the save just stops being active.
         public bool IsDeleted { get; set; }
 
+        // The band that owns this save. Null for a save owned by the set of profiles in CareerSaveProfiles.
+        [Indexed]
+        public Guid? BandId { get; set; }
+
         public bool IsCompleted => CompletedAt.HasValue;
     }
 }

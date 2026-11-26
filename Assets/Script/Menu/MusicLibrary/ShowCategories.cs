@@ -290,7 +290,7 @@ namespace YARG.Menu.MusicLibrary
 
         private static Func<SongEntry, bool> GetActiveFilterPredicate()
         {
-            var predicate = FiltersMenu.ActiveFilterPredicate;
+            var predicate = MusicLibraryMenu.EffectiveFilter;
             if (predicate == null)
             {
                 return null;

@@ -20,7 +20,7 @@ using Object = UnityEngine.Object;
 
 namespace YARG.Settings.Metadata
 {
-    public class CareerPresetSubTab : PresetSubTab<CareerPreset>
+    public partial class CareerPresetSubTab : PresetSubTab<CareerPreset>
     {
         private const string CAREER_EDITOR_KEY = "Settings.PresetSetting.CareerEditor";
 
@@ -351,12 +351,12 @@ namespace YARG.Settings.Metadata
 
         private static string FormatSessionLength(CareerCompletionMode value) => FormatEnumValue(value);
 
-        private static string FormatTierDetails(CareerTier tier)
+        private string FormatTierDetails(CareerTier tier)
         {
             string bonus = tier.IsBonus ? EditorText("BonusSummary") : string.Empty;
             return Localize.KeyFormat(CAREER_EDITOR_KEY + ".TierDetails", bonus, tier.UnlockCriteria,
                 FormatEnumValue(tier.UnlockType), FormatSessionLength(tier.CompletionMode),
-                FormatEnumValue(tier.VenueSize));
+                FormatEnumValue(tier.VenueSize)) + TierWarningSummary(tier);
         }
 
         private static string FormatSongSummary(CareerSong song, int songIndex, out string detailsTitle)
@@ -394,7 +394,7 @@ namespace YARG.Settings.Metadata
                     songName, FormatEnumValue(song.Identifier));
         }
 
-        private void ShowEditTierDialog(CareerTier tier, Action onInputBlur = null)
+        private void ShowEditTierDialog(CareerTier tier, Action onInputBlur = null, string selectLabel = null)
         {
             bool editable = !ReadOnlyFields;
             bool isFirstTier = _presetRef?.Tiers.Count > 0 && ReferenceEquals(_presetRef.Tiers[0], tier);
@@ -459,7 +459,12 @@ namespace YARG.Settings.Metadata
                 }), editable, !isFirstTier && tier.CompletionBonus != CompletionBonusType.None),
             });
 
-            _careerPreview.Show(fields, onInputBlur: onInputBlur);
+            fields.InsertRange(0, TierWarningFields(tier));
+            fields.AddRange(TierFanFields(tier, editable, onInputBlur));
+            fields.AddRange(TierSetlistFields(tier, editable));
+
+            int selected = fields.FindIndex(field => field.Label == selectLabel);
+            _careerPreview.Show(fields, selected >= 0 ? selected : (int?) null, onInputBlur);
         }
 
 
@@ -601,7 +606,8 @@ namespace YARG.Settings.Metadata
                     song.Description = value;
                     Save();
                 }), editable),
-            }, selectedIndex, state.SummaryChanged);
+            }.Concat(SongContractFields(state, editable)).Concat(SongSetlistFields(state, editable)).ToArray(),
+                selectedIndex, state.SummaryChanged);
         }
 
         private SearchableDropdownSetting<string> CreateSongFacetSetting(SongFilterState state, SongFacet facet)

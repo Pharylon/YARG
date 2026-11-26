@@ -195,7 +195,7 @@ namespace YARG.Gameplay.HUD
                 return;
             }
 
-            GlobalVariables.State.SetPlaybackSong(nextSong);
+            GlobalVariables.State.SetPlaybackSong(nextSong, YARG.Career.CareerShow.CurrentContext);
             GlobalVariables.Instance.LoadScene(SceneIndex.Gameplay);
         }
     }

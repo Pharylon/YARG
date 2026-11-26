@@ -52,6 +52,15 @@ namespace YARG.Career
         // Not required, only shown if the song can't be found in the library
         public string Description;
 
+        // Optional gig contract for this song; overrides the tier's (type None cancels it).
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public CareerContract Contract;
+
+        // An encore: hidden and not part of the set; played after a show of its tier when the set's
+        // average stars reach CareerTier.EncoreMinStars (see CareerSetlists).
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public bool IsEncore;
+
         [NonSerialized]
         public SongEntry SongEntry;
         [NonSerialized]
@@ -70,6 +79,8 @@ namespace YARG.Career
             ShortName = other.ShortName;
             SongTuple = other.SongTuple;
             Description = other.Description;
+            Contract = other.Contract is null ? null : new CareerContract(other.Contract);
+            IsEncore = other.IsEncore;
             SongEntry = other.SongEntry;
         }
 

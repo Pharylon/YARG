@@ -158,6 +158,12 @@ namespace YARG.Menu.MusicLibrary
                 return;
             }
 
+            // The library is open to pick a song for someone else (see MusicLibraryMenu.Retail.cs).
+            if (MusicLibraryMenu.TryPick(SongEntry))
+            {
+                return;
+            }
+
             // Reset library's main index so we don't return to the index set by play a show
             MusicLibraryMenu.ResetMainLibraryIndex();
             MusicLibraryMenu.SetReload(MusicLibraryReloadState.Partial);

@@ -122,8 +122,7 @@ namespace YARG.Menu.MusicLibrary
                 : (int) recommendationSetting.Value;
             recommendationSetting.SetValueWithoutNotify(recommendationCount);
 
-            var recommendations = RecommendedSongs.GetRecommendedSongs(
-                YARG.Menu.Filters.FiltersMenu.ActiveFilterPredicate, recommendationCount);
+            var recommendations = RecommendedSongs.GetRecommendedSongs(EffectiveFilter, recommendationCount);
             _recommendedSongs = recommendations.Length > 0 ? recommendations : null;
         }
 
@@ -152,7 +151,9 @@ namespace YARG.Menu.MusicLibrary
                 foreach (var hash in SelectedPlaylist.SongHashes)
                 {
                     // Get the first song with the specified hash
-                    if (SongContainer.SongsByHash.TryGetValue(hash, out var song))
+                    // Retail mode: a playlist lists only its unlocked songs, like the library.
+                    if (SongContainer.SongsByHash.TryGetValue(hash, out var song) &&
+                        (!RetailFilterActive || YARG.Career.RetailMode.IsUnlocked(song[0])))
                     {
                         songs[count++] = song[0];
                     }
@@ -173,7 +174,7 @@ namespace YARG.Menu.MusicLibrary
             _currentSearch = currentSearch;
             _searchField.UpdateSearchText();
 
-            var predicate = YARG.Menu.Filters.FiltersMenu.ActiveFilterPredicate;
+            var predicate = EffectiveFilter;
             bool inLibrary = !PlaylistMode && MenuState == MenuState.Library;
             bool shouldApplyFilters = inLibrary && predicate != null;
             bool shouldShowFilteredCounts = inLibrary && (_searchField.IsSearching || predicate != null);
@@ -184,6 +185,13 @@ namespace YARG.Menu.MusicLibrary
             if (shouldShowFilteredCounts)
             {
                 var baseList = SongContainer.GetSortedCategory(SettingsManager.Settings.LibrarySort);
+
+                // The total a search or the filters narrow down from: in retail mode, the unlocked songs.
+                if (RetailFilterActive)
+                {
+                    baseList = ApplyFilterPredicate(baseList, YARG.Career.RetailMode.IsUnlocked);
+                }
+
                 _totalSongCountUnfiltered = CountSongs(baseList);
             }
             else

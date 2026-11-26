@@ -141,6 +141,11 @@ namespace YARG.Menu.ScoreScreen
                     ColoredPillElement.ColoredPillPreset.HarderModifier);
                 _scoreStatusPill.gameObject.SetActive(true);
             }
+            else if (!isReplay && YARG.Menu.Career.CareerScoreScreen.StatusLine() is { } careerLine)
+            {
+                _scoreStatusPill.SetValues(careerLine, ColoredPillElement.ColoredPillPreset.EasierModifier);
+                _scoreStatusPill.gameObject.SetActive(true);
+            }
             else
             {
                 _scoreStatusPill.gameObject.SetActive(false);
@@ -458,7 +463,7 @@ namespace YARG.Menu.ScoreScreen
                         if (Setlist.TryAdvance(out var nextSong))
                         {
                             // Reset CurrentSong and launch back into the Gameplay scene
-                            GlobalVariables.State.SetPlaybackSong(nextSong);
+                            GlobalVariables.State.SetPlaybackSong(nextSong, YARG.Career.CareerShow.CurrentContext);
                             GlobalVariables.Instance.LoadScene(SceneIndex.Gameplay);
                         }
                         else

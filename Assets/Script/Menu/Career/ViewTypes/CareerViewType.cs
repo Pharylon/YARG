@@ -37,6 +37,7 @@ namespace YARG.Menu.Career
 
         public override void ViewClick()
         {
+            CareerListMenu.ReturningFromCareer = true;
             var menu = MenuManager.Instance.PushMenu(MenuManager.Menu.Career, false);
             if (menu.TryGetComponent<CareerMenu>(out var careerMenu))
             {

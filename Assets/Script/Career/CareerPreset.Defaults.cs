@@ -7,11 +7,13 @@ namespace YARG.Career
     {
         public static CareerPreset YargRock = YargRockCareer();
         public static CareerPreset YargSetlistPop = YargSetlistPopCareer();
+        public static CareerPreset YargSetlistHeadliner = YargSetlistHeadlinerCareer();
 
         public static readonly List<CareerPreset> Defaults = new()
         {
             YargRock,
-            YargSetlistPop
+            YargSetlistPop,
+            YargSetlistHeadliner,
         };
 
         private static CareerPreset YargRockCareer()
@@ -536,6 +538,340 @@ namespace YARG.Career
                 new Guid("7e9ba306-2dc8-4dbf-83f4-80325844b1c4"),
                 "YARG Setlist Pop",
                 "So you wanna be a pop star. Get to it!",
+                null,
+                "yarg",
+                true,
+                tiers);
+        }
+
+        private static CareerPreset YargSetlistHeadlinerCareer()
+        {
+            // Fan-count career: every tier after the first unlocks on the save's total fans (see
+            // CareerFans), so gigs at the same threshold open together and the players pick a path.
+            // Thresholds are checked by Tests/YARG.Career.Tests (DefaultCareerTests): 4 stars a song
+            // reaches the final tier comfortably, 3 stars only by playing most songs.
+
+            // Open Mic Night (Starter, 0 fans) [72aa086a-1ea1-4146-83b8-5054b7f40707]
+            CareerSong[] tierOpenMic = new[]
+            {
+                new CareerSong(Guid.Parse("a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992")) { Id = Guid.Parse("42b6736b-4103-401a-bb0c-3ba197a922bb") }, // Jets Overhead - No Nations
+                new CareerSong(Guid.Parse("c0fddcf4-deeb-4b98-8d00-0b98f0ff3882")) { Id = Guid.Parse("4369f800-8f87-4783-92a8-7d6b077e0e42") }, // TrackTribe - Guess I'll Never Know
+                new CareerSong(Guid.Parse("a1474ea6-ce86-4a86-85c4-8fb596dd8285")) { Id = Guid.Parse("3d1d9f9b-4180-43da-af87-5d52243b175b") }, // Jonathan Coulton - Square Things
+                new CareerSong(Guid.Parse("bbc23ee6-4336-4fb5-990e-e03a9841bb8c")) { Id = Guid.Parse("ccfb96d6-69e9-4830-9b11-793d462111dc") }, // Marta Vega - Oxygen
+            };
+
+            // House Party (Starter, 150 fans) [0e9a3176-33a7-433e-9675-28bb5a76ecb4]
+            CareerSong[] tierHouseParty = new[]
+            {
+                new CareerSong(Guid.Parse("dca3cc66-f65d-4709-bcda-eb5250c2e4b7")) { Id = Guid.Parse("714c279b-ad6b-409e-b413-50c26e02c0aa") }, // Used to Be Valentines - Beverly
+                new CareerSong(Guid.Parse("11ffcf43-64a5-4caf-9986-d53b78d73e3e")) { Id = Guid.Parse("f532925e-4835-4095-9241-2ecb4675c508") }, // Bottom Bunk - Pizza Rolls
+                new CareerSong(Guid.Parse("07eee719-82c0-4874-aa3e-f55a5cb73723")) { Id = Guid.Parse("3ce11835-733e-4b1e-a9df-16902292bbbf") }, // Fries on the Side - I'm a Bug
+                new CareerSong(Guid.Parse("7eb17eb8-6379-48f4-a60d-ae61b17571b9")) { Id = Guid.Parse("18e27f13-fbfd-4681-83b7-c7a099d12182") }, // The Gang - We Are the Gang
+            };
+
+            // Coffee House Set (Small, 350 fans) [2bb14293-7784-4c37-803f-b5c55e0d890d]
+            CareerSong[] tierCoffeeHouse = new[]
+            {
+                new CareerSong(Guid.Parse("4420cda8-b7cd-4f81-a104-3a587ea823ed")) { Id = Guid.Parse("7f2a7784-8c94-4e4d-94ba-875a12ff364a") }, // JW Francis - John, Take Me with You
+                new CareerSong(Guid.Parse("ef6121fa-9aee-4b96-a644-16fba205d4c8")) { Id = Guid.Parse("e91f0c73-d391-4341-ad50-41d3287dc806") }, // Tilly Louise - Join the Club
+                new CareerSong(Guid.Parse("1570dbb7-fbf7-488d-83c4-b8edc8cf3c51")) { Id = Guid.Parse("a854a501-fb35-44cb-9b6d-9c5a5bed37f6") }, // Alex Sandra - Over Again
+                new CareerSong(Guid.Parse("f2f32625-8362-4824-a457-31e365d032c6")) { Id = Guid.Parse("f3bb32df-0d9b-4384-82da-868432721ffe") }, // Pinegrove - Need 2
+            };
+
+            // Street Fair (Small, 350 fans) [e304a74c-185c-4255-b968-79023f618277]
+            CareerSong[] tierStreetFair = new[]
+            {
+                new CareerSong(Guid.Parse("06a92c7e-b1db-4159-9471-7c3bc6505155")) { Id = Guid.Parse("90f9a975-053c-4307-a8cd-8ebba074b1e9") }, // The Covasettes - Duvet Thief
+                new CareerSong(Guid.Parse("35e9770e-ac25-4339-8ae7-c6abcf89156c")) { Id = Guid.Parse("8b54eb84-7cde-4610-93f8-87f61abc33ce") }, // Troubled Minds - Buds
+                new CareerSong(Guid.Parse("45faef17-1e4b-4349-a907-d7b0ae0f6b95")) { Id = Guid.Parse("b68492e2-d53b-428f-9980-64bafe467bbe") }, // Red Vox - In the Garden
+                new CareerSong(Guid.Parse("359d9f75-6219-4fdf-a465-fc52767e444f")) { Id = Guid.Parse("7d969b23-0964-49ae-89d6-8496bf5addab") }, // Portraits of Tracy - The Afterparty
+            };
+
+            // Battle of the Bands (bonus, Small, 900 fans) [7e95b97a-b29a-4989-ba7e-060239a9e298]
+            CareerSong[] tierBattle = new[]
+            {
+                new CareerSong(Guid.Parse("d21e5db8-e372-42bf-bbcb-9fb8a0c74462")) { Id = Guid.Parse("2c1e72a6-56e2-4a05-8618-70bb2ebf02fe") }, // Davvn - Third Degree
+                new CareerSong(Guid.Parse("902cb8e9-3e51-4894-b3d9-cdb3726b7ff6")) { Id = Guid.Parse("08763cad-8726-47bf-9224-8d8dfe745cf3") }, // Daniel Thrasher - Igowallah
+                new CareerSong(Guid.Parse("94f4125f-c30a-4807-a69f-4f6b507026c8")) { Id = Guid.Parse("c5c78b82-a7d8-4e3f-930d-93ad3a02d263") }, // WhyLucas - Oh, Krissy Baby!
+                new CareerSong(Guid.Parse("c1b450e0-a3cc-44b0-b048-ba4550c657bf")) { Id = Guid.Parse("b407ff05-1a2f-4a98-894c-777a8ec1863c") }, // Roomie - It Kills Me
+                new CareerSong(Guid.Parse("c2ab2b15-edc9-40fe-9828-bd9503f4c09d")) { Id = Guid.Parse("43cf9d4a-48c4-4158-8f59-2d5654a084b7") }, // The Sterns - About the Author
+            };
+
+            // Club Debut (Medium, 1300 fans) [f86c4d66-3892-460b-ade9-0aaee2a0fb48]
+            CareerSong[] tierClubDebut = new[]
+            {
+                new CareerSong(Guid.Parse("56390e0b-debb-4743-a1ba-0e8a401af492")) // Last Dinosaurs - Eleven
+                {
+                    Id = Guid.Parse("f5a920b0-40fd-4621-be6f-2d5b34e05449"),
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.FullCombo,
+                        Parameter = 1,
+                        BonusPercent = 50,
+                    },
+                },
+                new CareerSong(Guid.Parse("2c69588b-c01d-4df9-ac7f-1dc0fe5884a1")) { Id = Guid.Parse("21d0c4eb-971c-4e13-b42f-f84c012239c1") }, // King Gizzard and the Lizard Wizard - Plastic Boogie
+                new CareerSong(Guid.Parse("8287d828-ee4e-4bc7-bfad-ea4afbfc5b12")) { Id = Guid.Parse("f64beb7d-60e0-49ed-9f82-9c76d4ce8442") }, // Glass Beach - Bedroom Community
+                new CareerSong(Guid.Parse("8865327b-6f77-46ab-beba-f511db7cf3a0")) { Id = Guid.Parse("b3789028-671a-4755-bb95-79e530e4555f") }, // Thanks! I Hate It - Participation Trophy Wife
+            };
+
+            // Rooftop Sessions (Medium, 2300 fans) [01f58ede-102f-4e2b-a980-6776f514ccdf]
+            CareerSong[] tierRooftop = new[]
+            {
+                new CareerSong(Guid.Parse("7544dbdb-4eda-4a77-8e59-bb6c235504cb")) { Id = Guid.Parse("4eb6b04e-5e08-4fec-8d50-3a888bb8c541") }, // Carter Vail - I Don't Wanna Talk
+                new CareerSong(Guid.Parse("3e7849c4-bac4-4749-bfca-e5ccb349bef9")) { Id = Guid.Parse("5aa3a660-8b3a-4125-8671-e1c08581cea8") }, // Thousand Thoughts - Circles
+                new CareerSong(Guid.Parse("bfced079-86df-4720-b7ae-c98f3508120b")) { Id = Guid.Parse("b9951350-8d78-4090-8ccd-c1fdc8950116") }, // Telethon - Positively Clark Street
+                new CareerSong(Guid.Parse("42d0e0f8-7767-4148-8cfc-1b5eb2c529d6")) { Id = Guid.Parse("2982951f-b611-4ae4-93a7-db4a7b9fe194") }, // Saturdays at Your Place - Eat Me Alive
+            };
+
+            // Campus Nights (Medium, 2300 fans) [6c1c9ecf-1350-4d49-ab6d-2d40b5efa7fd]
+            CareerSong[] tierCampus = new[]
+            {
+                new CareerSong(Guid.Parse("e1cdf591-ab4f-4f7f-944f-4874e50d774d")) { Id = Guid.Parse("2a0113f1-83b9-4f37-a43e-a6b516ba7646") }, // Adamic - All of a Sudden
+                new CareerSong(Guid.Parse("783e6fa5-2d5f-4a8c-8004-3172830d7f8e")) { Id = Guid.Parse("142f2bee-2267-4cfc-bb81-a74d33511aee") }, // Another One Down! - Exeter
+                new CareerSong(Guid.Parse("abe11359-0565-4b39-85de-221d06c0cba4")) { Id = Guid.Parse("9fd8121b-7c20-44c1-9d9b-82f672040b79") }, // Good Kid - Nomu
+                new CareerSong(Guid.Parse("5a69ed2c-da43-45e8-9551-c6f218a5ac05")) { Id = Guid.Parse("d0e9cd68-3175-42f5-a65a-c74e0325eea0") }, // Kingseeker - Butterflies
+            };
+
+            // Late Night Radio (bonus, Medium, 4000 fans) [19139458-9ee9-451f-97c6-4639eb2cd30b]
+            CareerSong[] tierRadio = new[]
+            {
+                new CareerSong(Guid.Parse("b5e52cdb-914d-4a56-8e08-675920d549cd")) { Id = Guid.Parse("9c525c8a-f54e-4d3c-b02d-018acea79b44") }, // Heartsick - Sadness (feat. Sapphire Noel)
+                new CareerSong(Guid.Parse("2672fd8a-574e-4bd2-8429-87fe57967226")) { Id = Guid.Parse("f2c4f171-cb3c-4645-ba1c-84fbefb20599") }, // FIG - Splinter
+                new CareerSong(Guid.Parse("530a0afc-da9c-4951-abdd-9d63df35165a")) { Id = Guid.Parse("1109543f-7996-4d8e-b8c8-6750e754393c") }, // NyxTheShield - Numb the Mind
+                new CareerSong(Guid.Parse("eb0354b7-7687-4ea1-a9ab-f04fcaa3530f")) { Id = Guid.Parse("0e035554-807e-4a26-ae64-9047de167bde") }, // Lemon Demon - Fine
+                new CareerSong(Guid.Parse("9b35574b-5557-493c-b9e9-bfbf9f264b07")) { Id = Guid.Parse("f92ed9e2-ebef-4d94-8736-a9492986d873") }, // The Polarity - Love Me Pls
+            };
+
+            // Theater Night (Large, 5000 fans) [57bcc44c-ea39-4096-a1dc-28a8d87b7e2b]
+            CareerSong[] tierTheater = new[]
+            {
+                new CareerSong(Guid.Parse("ece8093f-07f3-49ea-9111-efe6776c67c2")) { Id = Guid.Parse("1aa01db1-852c-43ea-a287-e182b71ad00e") }, // Vessel - Overdrive
+                new CareerSong(Guid.Parse("815e8f4d-6568-437a-86e4-cef5e3ab3f95")) { Id = Guid.Parse("39036701-3d2f-4d16-add1-641b0ffd0552") }, // Nine Inch Nails - Discipline
+                new CareerSong(Guid.Parse("8d3137f4-373a-413d-940c-dc0b2338c1ac")) // NateWantsToBattle - To Let Go
+                {
+                    Id = Guid.Parse("12f8ea35-8fd6-4929-9d29-7a88d7ae36d8"),
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.MinStars,
+                        Parameter = 6,
+                        BonusPercent = 50,
+                    },
+                },
+                new CareerSong(Guid.Parse("05a9f3fc-64d6-41f4-9289-e75299254e74")) { Id = Guid.Parse("59dcb51f-ef8a-4e27-8d6f-6010d9b5600b") }, // Gnarlemagne - Ain't Askin for Much
+            };
+
+            // Summer Festival (Large, 5000 fans) [6e32fae8-a7f1-4388-b274-2a8d739adc12]
+            CareerSong[] tierFestival = new[]
+            {
+                new CareerSong(Guid.Parse("1f36bed1-8e79-40fc-aabb-bce036b03903")) { Id = Guid.Parse("5dd271a3-697e-4fe4-ad14-535b7cc7fb21") }, // Auris - They Call
+                new CareerSong(Guid.Parse("ffcd4b9a-c0a2-4546-94a6-5bf60c035a19")) // Vera Kay - Alibi
+                {
+                    Id = Guid.Parse("5613f9ee-ad36-4e0d-b479-6ff16eff592b"),
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.MinAccuracy,
+                        Parameter = 95,
+                        BonusPercent = 30,
+                    },
+                },
+                new CareerSong(Guid.Parse("395b26a6-9f7a-4f81-9005-1b16d3ce65f9")) { Id = Guid.Parse("faf62db4-597d-4cd2-8b95-095f434ab665") }, // Space Weather - Dancing Demons
+                new CareerSong(Guid.Parse("99d7b85c-306c-4376-a363-7ec682ed5aa3")) { Id = Guid.Parse("7aad00dd-4824-4411-9f4b-f15c6477f635") }, // Surefire - Salt the Wound
+            };
+
+            // Arena Headliner (Epic, 11000 fans) [1e25e648-87c6-4726-aa58-b9f0fef2b3e3]
+            CareerSong[] tierArena = new[]
+            {
+                new CareerSong(Guid.Parse("9647a6b9-7cd4-48f2-b5f7-42da96d156c6")) { Id = Guid.Parse("452a15ed-aeac-4843-b79e-d38f6fc3dc39") }, // Blight Town - Al Gore Rhythm
+                new CareerSong(Guid.Parse("5c13bf2c-7830-43df-a64e-d8529d418722")) { Id = Guid.Parse("a21da9bc-e004-4e37-881c-9a61cffe4bf7") }, // Four Year Strong - We All Float Down Here
+                new CareerSong(Guid.Parse("43ea77fb-adcf-470e-873d-0b88ce386a0e")) { Id = Guid.Parse("f146cf03-5ec2-45d3-9115-291911bbda7c") }, // Krilloan - Emperor Rising
+                new CareerSong(Guid.Parse("0b1e8054-65f6-4db3-81b4-ed30b8030609")) { Id = Guid.Parse("446c0924-08ea-4a02-9954-55397b8d42ab") }, // Prototype - Synthespian
+                new CareerSong(Guid.Parse("9e3f47e3-7d12-4399-8a48-3e47155b6c15")) { Id = Guid.Parse("992b1ee6-19cb-4276-971d-309fc9eb574c") }, // Bob Kulick and David Glen Eisley - Sweet Victory
+            };
+
+            CareerTier[] tiers =
+            {
+                new()
+                {
+                    Id = new Guid("72aa086a-1ea1-4146-83b8-5054b7f40707"),
+                    Name = "Open Mic Night",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 0,
+                    Songs = tierOpenMic,
+                    VenueSize = VenueSize.Starter,
+                    City = "Millbrook",
+                    VenueName = "The Lantern Room",
+                },
+                new()
+                {
+                    Id = new Guid("0e9a3176-33a7-433e-9675-28bb5a76ecb4"),
+                    Name = "House Party",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 150,
+                    Songs = tierHouseParty,
+                    CustomUnlockText = "Word got around after the open mic. A friend is throwing a party and wants a live band in the basement. Keep it clean and the crowd will remember you.",
+                    VenueSize = VenueSize.Starter,
+                    City = "Millbrook",
+                    VenueName = "A Friend's Basement",
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.NoFailOff,
+                        BonusPercent = 25,
+                    },
+                },
+                new()
+                {
+                    Id = new Guid("2bb14293-7784-4c37-803f-b5c55e0d890d"),
+                    Name = "Coffee House Set",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 350,
+                    Songs = tierCoffeeHouse,
+                    CustomUnlockText = "Two offers came in at once: a quiet set at the cafe on Main Street, or the street fair down in Port Ellis. Play one, or play both.",
+                    VenueSize = VenueSize.Small,
+                    City = "Millbrook",
+                    VenueName = "Grindstone Cafe",
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.MinAccuracy,
+                        Parameter = 85,
+                        BonusPercent = 20,
+                    },
+                },
+                new()
+                {
+                    Id = new Guid("e304a74c-185c-4255-b968-79023f618277"),
+                    Name = "Street Fair",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 350,
+                    Songs = tierStreetFair,
+                    CustomUnlockText = "Two offers came in at once: a quiet set at the cafe on Main Street, or the street fair down in Port Ellis. Play one, or play both.",
+                    VenueSize = VenueSize.Small,
+                    City = "Port Ellis",
+                    VenueName = "Harbor Street Fair",
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.FullBand,
+                        Parameter = 2,
+                        BonusPercent = 25,
+                    },
+                },
+                new()
+                {
+                    Id = new Guid("7e95b97a-b29a-4989-ba7e-060239a9e298"),
+                    Name = "Battle of the Bands",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 900,
+                    Songs = tierBattle,
+                    IsBonus = true,
+                    CustomUnlockText = "The community hall is holding a battle of the bands. Nothing rides on it, but there are fans to win.",
+                    VenueSize = VenueSize.Small,
+                    City = "Millbrook",
+                    VenueName = "Millbrook Community Hall",
+                },
+                new()
+                {
+                    Id = new Guid("f86c4d66-3892-460b-ade9-0aaee2a0fb48"),
+                    Name = "Club Debut",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 1300,
+                    Songs = tierClubDebut,
+                    CustomUnlockText = "A real club with a real stage. The Velvet Anchor books you for a weeknight. Show them you belong on the weekend.",
+                    VenueSize = VenueSize.Medium,
+                    City = "Port Ellis",
+                    VenueName = "The Velvet Anchor",
+                },
+                new()
+                {
+                    Id = new Guid("01f58ede-102f-4e2b-a980-6776f514ccdf"),
+                    Name = "Rooftop Sessions",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 2300,
+                    Songs = tierRooftop,
+                    CustomUnlockText = "Ridgeview wants you, twice over: an evening on the Skyline Terrace, or a string of campus nights. Pick your crowd.",
+                    VenueSize = VenueSize.Medium,
+                    City = "Ridgeview",
+                    VenueName = "Skyline Terrace",
+                },
+                new()
+                {
+                    Id = new Guid("6c1c9ecf-1350-4d49-ab6d-2d40b5efa7fd"),
+                    Name = "Campus Nights",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 2300,
+                    Songs = tierCampus,
+                    CustomUnlockText = "Ridgeview wants you, twice over: an evening on the Skyline Terrace, or a string of campus nights. Pick your crowd.",
+                    VenueSize = VenueSize.Medium,
+                    City = "Ridgeview",
+                    VenueName = "Ridgeview Campus Hall",
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.MinDifficulty,
+                        Parameter = 3,
+                        BonusPercent = 20,
+                    },
+                },
+                new()
+                {
+                    Id = new Guid("19139458-9ee9-451f-97c6-4639eb2cd30b"),
+                    Name = "Late Night Radio",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 4000,
+                    Songs = tierRadio,
+                    IsBonus = true,
+                    CustomUnlockText = "The late-night radio show wants a live session. Just you, the microphones, and whoever is still awake.",
+                    VenueSize = VenueSize.Medium,
+                    City = "Ridgeview",
+                    VenueName = "Night Owl Radio Studio",
+                },
+                new()
+                {
+                    Id = new Guid("57bcc44c-ea39-4096-a1dc-28a8d87b7e2b"),
+                    Name = "Theater Night",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 5000,
+                    Songs = tierTheater,
+                    CustomUnlockText = "The big stages are calling: a seated night at the Old Mill Theater, or the summer festival in Crescent Valley. Either one could make your name.",
+                    VenueSize = VenueSize.Large,
+                    City = "Lakeside",
+                    VenueName = "Old Mill Theater",
+                },
+                new()
+                {
+                    Id = new Guid("6e32fae8-a7f1-4388-b274-2a8d739adc12"),
+                    Name = "Summer Festival",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 5000,
+                    Songs = tierFestival,
+                    CustomUnlockText = "The big stages are calling: a seated night at the Old Mill Theater, or the summer festival in Crescent Valley. Either one could make your name.",
+                    VenueSize = VenueSize.Large,
+                    VenueHint = "Venue/OutdoorConcert",
+                    City = "Crescent Valley",
+                    VenueName = "Crescent Valley Fairgrounds",
+                },
+                new()
+                {
+                    Id = new Guid("1e25e648-87c6-4726-aa58-b9f0fef2b3e3"),
+                    Name = "Arena Headliner",
+                    UnlockType = UnlockType.FanCount,
+                    UnlockCriteria = 11000,
+                    Songs = tierArena,
+                    CustomUnlockText = "Your name is at the top of the poster. Twenty thousand people in the Westbridge Dome came to see you. Give them a night they will not forget.",
+                    VenueSize = VenueSize.Epic,
+                    City = "Westbridge",
+                    VenueName = "Westbridge Dome",
+                    Contract = new CareerContract
+                    {
+                        Type = CareerContractType.MinStars,
+                        Parameter = 5,
+                        BonusPercent = 20,
+                    },
+                },
+            };
+
+            return new CareerPreset(
+                new Guid("88a08607-4394-4f58-a39d-85b6781791a1"),
+                "YARG Setlist Headliner",
+                "From an open mic in Millbrook to the top of the poster in Westbridge. Every gig wins fans, and fans open the next stages: when two gigs open at once, play the one you like. Contracts on some gigs pay extra fans, but you never need them to move on.",
                 null,
                 "yarg",
                 true,

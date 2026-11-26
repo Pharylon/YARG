@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using YARG.Core.Game;
 using YARG.Core.Logging;
 using YARG.Settings.Customization;
 
@@ -19,7 +20,10 @@ namespace YARG.Career
     public enum UnlockType
     {
         StarCount,
-        CompletionCount
+        CompletionCount,
+        // Unlocks when the save's total fans (see CareerFans) reach UnlockCriteria, regardless of
+        // which tiers they came from, so several tiers can be open at once.
+        FanCount,
     }
 
     public enum CompletionBonusType
@@ -62,13 +66,52 @@ namespace YARG.Career
         public UnlockType          UnlockType;
         public int                 UnlockCriteria;
 
-        // How this tier's songs are completed. Playlist modes can be specified in content but are not
-        // yet honored by gameplay (single-song completion only for now).
+        // How this tier's songs are played. FullTierPlaylist: the tier is played as one show, its songs
+        // queued through the setlist (CareerShow); each song still counts on its own when it ends.
+        // FullCareerPlaylist is not supported yet: such a tier is played song by song.
         [JsonConverter(typeof(StringEnumConverter))]
         public CareerCompletionMode CompletionMode;
 
         // Bonus is not counted towards other tier unlocks
         public bool IsBonus;
+
+        // Fans per song relative to the Starter venue (see CareerFans). Null: from VenueSize.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public float? FanMultiplier;
+
+        // Flavor text only.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string City;
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public string VenueName;
+
+        // Optional gig contract for every song of the tier (a song's own contract overrides it).
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public CareerContract Contract;
+
+        // Gig rules (see CareerGigRules): modifiers every player gets for the tier's songs, on top of their
+        // own (only those their instrument supports), and the slowest song speed allowed, in percent (100
+        // or more; a faster chosen speed is kept). Applied for the play only, never saved to the profiles.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        [JsonConverter(typeof(StringEnumConverter))]
+        public Modifier? ForcedModifiers;
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public int? MinSongSpeed;
+
+        // Mystery setlist: the titles and artists of the tier's songs stay hidden until they have been
+        // played (career list, instrument select).
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
+        public bool Mystery;
+
+        // Make your own setlist: the players pick this many of the tier's songs (encore songs not counted)
+        // for a show, and the tier is complete after this many of its songs are completed. Null: all.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public int? SetlistSize;
+
+        // Encore: when the band's average stars over the songs of a show reach this, the tier's encore
+        // song(s) (CareerSong.IsEncore) are revealed and played after the set. Null: no encore.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public float? EncoreMinStars;
 
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
@@ -115,6 +158,15 @@ namespace YARG.Career
             UnlockCriteria = other.UnlockCriteria;
             CompletionMode = other.CompletionMode;
             IsBonus = other.IsBonus;
+            FanMultiplier = other.FanMultiplier;
+            City = other.City;
+            VenueName = other.VenueName;
+            Contract = other.Contract is null ? null : new CareerContract(other.Contract);
+            ForcedModifiers = other.ForcedModifiers;
+            MinSongSpeed = other.MinSongSpeed;
+            Mystery = other.Mystery;
+            SetlistSize = other.SetlistSize;
+            EncoreMinStars = other.EncoreMinStars;
         }
 
         public void AddSong(CareerSong song)

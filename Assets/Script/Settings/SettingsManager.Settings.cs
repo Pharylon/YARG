@@ -248,6 +248,9 @@ namespace YARG.Settings
             public Dictionary<CharacterType,CustomCharacterInfo> CustomCharacters = new();
             public List<CustomCharacterInfo> HiddenCharacters = new();
 
+            // The band careers are played as (see YARG.Career.CareerBands.ActiveBandId), null for none.
+            public Guid? CareerActiveBandId;
+
             public VenueSelectionInfo PinnedVenue;
             public List<VenueSelectionInfo> HiddenVenues = new();
             // Opt-in random rotation for venues tagged "venue-no-random".
@@ -938,6 +941,9 @@ namespace YARG.Settings
                 ? TempoEngine.YargStretch
                 : TempoEngine.BassFx;
             public ToggleSetting SaveScoresWithBots { get; } = new(false);
+
+            // Songs are locked for quickplay until completed in a career (see YARG.Career.RetailMode).
+            public ToggleSetting RetailMode { get; } = new(false, RetailModeCallback);
             public SliderSetting FontScaling { get; } = new(0f, 0f, 100f, FontScalingCallback);
 
             public DropdownSetting<AudioOutputMode> OutputMode { get; } = new(AudioOutputMode.Shared,
@@ -1090,6 +1096,11 @@ namespace YARG.Settings
                 {
                     MusicLibraryMenu.SetReload(MusicLibraryReloadState.Partial);
                 }
+            }
+
+            private static void RetailModeCallback(bool value)
+            {
+                YARG.Career.RetailMode.NotifyChanged();
             }
 
             private static void DataStreamEnableCallback(bool value)

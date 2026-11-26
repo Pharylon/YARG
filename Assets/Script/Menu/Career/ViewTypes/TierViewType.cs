@@ -7,6 +7,7 @@ namespace YARG.Menu.Career
     /// <summary>
     /// A tier header row. Unlocked tiers report how much of the tier's star total has been earned;
     /// the next locked tier reports what is still required to reach it and cannot be clicked.
+    /// Clicking an unlocked tier expands or collapses its songs.
     /// </summary>
     public class TierViewType : ViewType
     {
@@ -15,19 +16,44 @@ namespace YARG.Menu.Career
         private readonly CareerTier                _tier;
         private readonly CareerEvaluation.TierResult _result;
         private readonly string                    _lockHint;
+        private readonly bool                      _collapsed;
+        private readonly Action<CareerTier>        _onToggle;
 
-        public TierViewType(CareerTier tier, CareerEvaluation.TierResult result)
+        public TierViewType(CareerTier tier, CareerEvaluation.TierResult result, bool collapsed = false,
+            Action<CareerTier> onToggle = null)
         {
             _tier = tier;
             _result = result;
+            _collapsed = collapsed;
+            _onToggle = onToggle;
             IsLocked = _result is null || !_result.Unlocked;
             _lockHint = IsLocked ? BuildLockHint() : null;
         }
 
         private bool IsLocked { get; }
 
+        public CareerTier Tier => _tier;
+
+        /// <summary>
+        /// The career uses fans: the header also shows the fans the tier's songs earned.
+        /// </summary>
+        public bool ShowFans { get; set; }
+
+        /// <summary>
+        /// The tier's city is the active band's hometown: the header says "Hometown show" (text only).
+        /// </summary>
+        public bool HometownShow { get; set; }
+
         // A locked tier is still selectable so the list can be browsed, but it starts nothing.
         public override bool IsClickable => !IsLocked;
+
+        public override void ViewClick()
+        {
+            if (!IsLocked)
+            {
+                _onToggle?.Invoke(_tier);
+            }
+        }
 
         public override CareerInfo? GetCareerInfo()
         {
@@ -40,6 +66,9 @@ namespace YARG.Menu.Career
                 AvailableStars = _tier.Songs?.Length * STARS_PER_SONG ?? 0,
                 TierName       = _tier.Name,
                 LockHint       = _lockHint,
+                // Nothing is listed under a locked or collapsed tier, so its header closes the box.
+                LastInGroup    = IsLocked || _collapsed || (_tier.Songs?.Length ?? 0) == 0,
+                Reveal         = 1f,
             };
         }
 
@@ -63,8 +92,31 @@ namespace YARG.Menu.Career
                 {
                     UnlockType.StarCount => Localize.KeyFormat("Menu.Career.StarProgress", _result?.StarSum ?? 0, _tier.Songs?.Length * STARS_PER_SONG ?? 0),
                     UnlockType.CompletionCount => Localize.KeyFormat("Menu.Career.StarProgress", _result?.CompletedSongs ?? 0, _tier.Songs?.Length ?? 0),
+                    UnlockType.FanCount => Localize.KeyFormat("Menu.Career.StarProgress", _result?.StarSum ?? 0, _tier.Songs?.Length * STARS_PER_SONG ?? 0),
                     _ => "Unknown Unlock Type (how?)"
                 };
+
+                if (ShowFans)
+                {
+                    text = Localize.KeyFormat("Menu.Career.TierFans", text, (_result?.Fans ?? 0).ToString("N0"));
+                }
+            }
+
+            // How the gig is played (a full set, ...).
+            if (CareerSetlistText.TierLine(_tier) is { } setlist)
+            {
+                text = Localize.KeyFormat("Menu.Career.HeaderJoin", text, setlist);
+            }
+
+            // The gig's contract, which every song of the tier is played under unless it has its own.
+            if (CareerContractText.Line(_tier.Contract, ShowFans) is { } contract)
+            {
+                text = Localize.KeyFormat("Menu.Career.HeaderJoin", text, contract);
+            }
+
+            if (HometownShow)
+            {
+                text = Localize.KeyFormat("Menu.Career.HeaderJoin", Localize.Key("Menu.Career.Hometown"), text);
             }
 
             return FormatAs(text, TextType.Secondary, selected);
@@ -83,6 +135,8 @@ namespace YARG.Menu.Career
                     Localize.KeyFormat("Menu.Career.UnlockStars", remaining),
                 UnlockType.CompletionCount =>
                     Localize.KeyFormat("Menu.Career.UnlockSongs", remaining),
+                UnlockType.FanCount =>
+                    Localize.KeyFormat("Menu.Career.UnlockFans", remaining.ToString("N0")),
                 _ => Localize.Key("Menu.Career.Locked"),
             };
         }

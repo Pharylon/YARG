@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using YARG.Career;
 using YARG.Core;
 using YARG.Core.Game;
 using YARG.Core.Logging;
@@ -112,7 +113,7 @@ namespace YARG.Scores
         public static bool IsBandScoreValid(float songSpeed, IEnumerable<YargPlayer> players)
         {
             var activePlayers = players.Where(player => !player.SittingOut && player.IsActive).ToList();
-            var humanPlayers = activePlayers.Where(player => !player.Profile.IsBot).ToList();
+            var humanPlayers = activePlayers.Where(player => CareerBotCredit.CountsAsHuman(player.Profile)).ToList();
 
             return humanPlayers.Count > 0 &&
                 humanPlayers.All(player => IsSoloScoreValid(songSpeed, player)) &&
@@ -120,7 +121,7 @@ namespace YARG.Scores
         }
 
         public static bool IsSoloScoreValid(float songSpeed, YargPlayer player) =>
-            songSpeed >= 1.0f && !player.Profile.IsBot && player.IsScoreValid;
+            songSpeed >= 1.0f && CareerBotCredit.CountsAsHuman(player.Profile) && player.IsScoreValid;
 
         public static void RecordScore(GameRecord gameRecord, List<PlayerScoreRecord> playerEntries)
         {
@@ -180,24 +181,32 @@ namespace YARG.Scores
         /// </summary>
         private static void CommitCareerCompletion(GameRecord gameRecord, List<PlayerScoreRecord> playerEntries)
         {
+            CareerSongOutcome.Last = null;
+            RetailMode.LastCloser = null;
+
             var context = GlobalVariables.State.CurrentCareer;
             if (context is null)
             {
                 return;
             }
 
-            // Careers cannot be played with replays or bots.
-            if (gameRecord.PlayedWithReplay || gameRecord.HasBots || playerEntries.Any(entry => entry.IsReplay))
+            // Careers cannot be played with replays or bots (bots only behind the dev switch).
+            var botsCount = CareerBotCredit.BotsCount;
+            if (gameRecord.PlayedWithReplay || gameRecord.HasBots && !botsCount || playerEntries.Any(entry => entry.IsReplay))
             {
                 YargLogger.LogInfo("Career: skipping completion, replay or bot play is not allowed for careers.");
                 return;
             }
 
             var participants = playerEntries.Select(entry => entry.PlayerId).Distinct().ToList();
-            if (participants.Count == 0 ||
-                participants.Any(id => PlayerContainer.GetProfileById(id)?.IsBot == true))
+            var hasBots = !botsCount && participants.Any(id => PlayerContainer.GetProfileById(id)?.IsBot == true);
+
+            // The active band's save if the song was played as a band (a member must have played),
+            // otherwise the save of exactly these players.
+            var credit = CareerBands.Credit(Careers, context.BandId, participants, hasBots);
+            if (!credit.Counts)
             {
-                YargLogger.LogInfo("Career: skipping completion, no valid human players.");
+                YargLogger.LogFormatInfo("Career: skipping completion, it does not count ({0}).", credit.Block);
                 return;
             }
 
@@ -212,6 +221,32 @@ namespace YARG.Scores
 
             // Verify completion is valid for this career context
             var contextTier = career.Tiers.FirstOrDefault(tier => tier.Id == context.TierId);
+
+            // A gig's closer (retail mode) is any song of the library; it is recorded on its own and
+            // only unlocks the song.
+            if (context.Closer)
+            {
+                if (contextTier is null)
+                {
+                    YargLogger.LogFormatError("Career: closer for an unknown tier {0}, skipping.", context.TierId);
+                    return;
+                }
+
+                RetailMode.LastCloser = Careers.CommitCloser(new CareerCloser
+                {
+                    CareerSaveId = CareerBands.GetOrCreateSaveId(Careers, career, credit),
+                    CareerId = career.Id,
+                    TierId = context.TierId,
+                    SongChecksum = gameRecord.SongChecksum,
+                    GameRecordId = gameRecord.Id,
+                    BandStars = gameRecord.BandStars.GetStarCount(),
+                    IsGold = gameRecord.BandStars == StarAmount.StarGold,
+                    PlayedAt = DateTime.Now,
+                });
+                RetailMode.Invalidate();
+                return;
+            }
+
             if (contextTier is null ||
                 context.SongIndex < 0 ||
                 context.SongIndex >= contextTier.Songs.Length ||
@@ -222,17 +257,19 @@ namespace YARG.Scores
                 return;
             }
 
+            // The song played must be the career's, except in a bonus gig, where any song may be
+            // played in place of one of the gig's (retail mode).
             var careerSong = contextTier.Songs[context.SongIndex];
-            if (careerSong.SongEntry is null ||
-                !careerSong.SongEntry.Hash.HashBytes.SequenceEqual(gameRecord.SongChecksum))
+            var substitute = context.Substitute && contextTier.IsBonus;
+            if (!substitute && (careerSong.SongEntry is null ||
+                !careerSong.SongEntry.Hash.HashBytes.SequenceEqual(gameRecord.SongChecksum)))
             {
                 YargLogger.LogFormatError("Career: played song does not match career song {0}, skipping completion.",
                     context.CareerSongId);
                 return;
             }
 
-            // The save belongs to the set of players who actually played this song.
-            var saveId = Careers.GetOrCreateSave(career.Id, career.Version, participants);
+            var saveId = CareerBands.GetOrCreateSaveId(Careers, career, credit);
 
             var commit = new CareerSongCompletionCommit
             {
@@ -245,13 +282,19 @@ namespace YARG.Scores
                 SongChecksum = gameRecord.SongChecksum,
                 GameRecordId = gameRecord.Id,
                 BandStars = gameRecord.BandStars.GetStarCount(),
+                IsGold = gameRecord.BandStars == StarAmount.StarGold,
                 BandScore = gameRecord.BandScore,
                 CompletedAt = DateTime.Now,
-                Source = CareerCompletionSource.SingleSong,
+                Source = context.Source,
             };
 
-            Careers.CommitSongCompletion(commit);
-            career.SyncProgress(Careers, saveId);
+            // The no-fail setting is not stored with scores; it cannot change during a valid play
+            // (toggling it invalidates the score), so the current value is the play's.
+            CareerContracts.Apply(commit,
+                CareerContracts.For(career, context.TierId, context.TierIndex, context.CareerSongId),
+                gameRecord, playerEntries, SettingsManager.Settings.NoFail.Value == YARG.Gameplay.HUD.NoFailMode.Off);
+
+            CareerSongOutcome.Commit(career, Careers, commit);
         }
 
         private static void UpdateBandHighScore(HashWrapper songChecksum)

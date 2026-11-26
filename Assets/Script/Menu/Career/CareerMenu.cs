@@ -10,6 +10,7 @@ using UnityEngine.UI;
 using UnityEngine.Video;
 using YARG.Audio;
 using YARG.Career;
+using YARG.Core.Audio;
 using YARG.Core.IO;
 using YARG.Core.Input;
 using YARG.Core.Logging;
@@ -21,10 +22,11 @@ using YARG.Menu.Navigation;
 using YARG.Menu.Persistent;
 using YARG.Player;
 using YARG.Scores;
+using YARG.Settings;
 
 namespace YARG.Menu.Career
 {
-    public class CareerMenu : ListMenu<ViewType, SongView>
+    public partial class CareerMenu : ListMenu<ViewType, SongView>
     {
         protected override int ExtraListViewPadding => 16;
 
@@ -37,6 +39,22 @@ namespace YARG.Menu.Career
         private int _careerSaveId;
 
         private static CareerPreset _sessionCareer;
+
+        public CareerPreset Career => _career;
+
+        // The one tier whose songs are listed, or null when every tier is collapsed. Kept for the
+        // session so returning from a song keeps the list as it was left.
+        private static Guid? _expandedTier;
+
+        private const float TIER_ANIMATION_SECONDS = 0.2f;
+
+        // While a tier animation runs, the songs of both tiers are listed: one growing, one shrinking.
+        private Guid? _expandingTier;
+        private Guid? _collapsingTier;
+        private float _animationStart;
+        private float _animationProgress;
+
+        private bool IsAnimatingTiers => _expandingTier is not null || _collapsingTier is not null;
         private bool _progressDirty;
 
         private CancellationTokenSource _backgroundCts;
@@ -50,6 +68,18 @@ namespace YARG.Menu.Career
         [SerializeField]
         private RawImage _videoTexture;
 
+        // The band's home screen on the left (see CareerMenu.Home.cs).
+        [SerializeField]
+        private Sprite _bandFallbackSprite;
+        [SerializeField]
+        private Sprite _starSprite;
+        [SerializeField]
+        private Sprite _goldStarSprite;
+        [SerializeField]
+        private Sprite[] _fanSprites;
+        [SerializeField]
+        private float _bandHomeBottomInset = 82f;
+
         private VideoPlayer   _videoPlayer;
         private VideoPlayerSampleConsumer _videoPlayerConsumer;
         private RenderTexture _renderTex;
@@ -62,7 +92,26 @@ namespace YARG.Menu.Career
 
         protected override void OnEnable()
         {
+            // Before the list measures its viewport.
+            EnsureGigMap();
+
             base.OnEnable();
+            UpdateGigMap();
+
+            // A show never runs behind this menu: one still marked as playing was left early. Gig rules
+            // were for the play only.
+            CareerShow.EndIfRunning();
+            CareerGigSession.Restore();
+
+            // No career song is in progress while this menu shows. Backing out of the instrument select used
+            // to leave the context set, so a quickplay song from the music library afterwards was committed
+            // as this career's song.
+            GlobalVariables.State.CurrentCareer = null;
+
+            // The preview of the highlighted song starts at once on entering, as in the music library.
+            StemSettings.ApplySettings = SettingsManager.Settings.ApplyVolumesInMusicLibrary.Value;
+            _previewSong = null;
+            _previewDelay = 0;
 
             SetMenuNavigation();
 
@@ -94,11 +143,17 @@ namespace YARG.Menu.Career
 
         protected override void OnDisable()
         {
+            FinishTierAnimation();
+
             base.OnDisable();
+
+            StopPreview();
+            StemSettings.ApplySettings = true;
 
             StopVideo();
 
             Navigator.Instance.PopScheme();
+            _navigationSet = false;
 
             _backgroundCts?.Cancel();
             _backgroundCts?.Dispose();
@@ -112,7 +167,10 @@ namespace YARG.Menu.Career
                 Navigator.Instance.PopScheme();
             }
 
-            _ = Navigator.Instance.PushScheme(new NavigationScheme(new ()
+            _navigationSet = true;
+            _navigationOffersSubstitute = SubstituteOffered();
+
+            var entries = new List<NavigationScheme.Entry>
             {
                 new NavigationScheme.Entry(MenuAction.Up, "Menu.Common.Up",
                     ctx => {
@@ -124,15 +182,109 @@ namespace YARG.Menu.Career
                         SetWrapAroundState(!ctx.IsRepeat);
                         SelectedIndex++;
                     }),
-                new NavigationScheme.Entry(MenuAction.Green, "Menu.Common.Confirm",
-                    () => CurrentSelection?.ViewClick()),
+                new NavigationScheme.Entry(MenuAction.Green, "Menu.Common.Confirm", Confirm),
+                new NavigationScheme.Entry(MenuAction.Orange, "Menu.Retail.Substitute", PickSubstitute,
+                    hide: !SubstituteOffered()),
+                new NavigationScheme.Entry(MenuAction.Left, "Menu.Career.ChangeGig", () => StepGig(-1)),
+                new NavigationScheme.Entry(MenuAction.Right, "Menu.Career.ChangeGig", () => StepGig(1)),
                 new NavigationScheme.Entry(MenuAction.Yellow, "Menu.Career.Reset",
                     () => { }, // a tap does nothing, only holding resets
                     holdSeconds: RESET_HOLD_SECONDS,
                     onHoldHandler: ResetCareer),
                 new NavigationScheme.Entry(MenuAction.Red, "Menu.Common.Back",
                     Back, hide: true),
-            }, false));
+            };
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            entries.Add(new NavigationScheme.Entry(MenuAction.Blue, "Menu.Career.DebugGrant", DebugGrantStars));
+#endif
+
+            _ = Navigator.Instance.PushScheme(new NavigationScheme(entries, false));
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// Testing aid: records a full-star completion for the selected song, or for every song of the
+        /// selected tier, through the same progress sync a real completion runs (see
+        /// <see cref="YARG.Dev.CareerSimulator"/>, which the dev remote's <c>simulate</c> shares).
+        /// </summary>
+        private void DebugGrantStars()
+        {
+            if (_career is null)
+            {
+                return;
+            }
+
+            var grants = new List<(int tierIndex, int songIndex)>();
+            switch (CurrentSelection)
+            {
+                case SongViewType song:
+                    grants.Add((song.TierIndex, song.SongIndex));
+                    break;
+                case TierViewType header when header.IsClickable:
+                    var tierIndex = _career.Tiers.ToList().IndexOf(header.Tier);
+                    for (var songIndex = 0; songIndex < header.Tier.Songs.Length; songIndex++)
+                    {
+                        grants.Add((tierIndex, songIndex));
+                    }
+                    break;
+            }
+
+            if (grants.Count == 0)
+            {
+                ToastManager.ToastInformation(Localize.Key("Menu.Career.DebugNothingToGrant"));
+                return;
+            }
+
+            if (YARG.Dev.CareerSimulator.CareerPlayers().Count == 0)
+            {
+                ToastManager.ToastInformation(Localize.Key("Menu.Career.NoPlayers"));
+                return;
+            }
+
+            var result = new YARG.Dev.SimulatedResult
+            {
+                Path = YARG.Dev.SimulationPath.Grant,
+                Stars = ViewType.STARS_PER_SONG,
+            };
+
+            var granted = 0;
+            foreach (var (tierIndex, songIndex) in grants)
+            {
+                if (!YARG.Dev.CareerSimulator.TryCommit(_career, tierIndex, songIndex, result, out var error))
+                {
+                    YargLogger.LogFormatError("Career: debug grant failed: {0}", error);
+                    break;
+                }
+
+                granted++;
+            }
+
+            RefreshProgress();
+
+            ToastManager.ToastSuccess(Localize.KeyFormat("Menu.Career.DebugGranted", granted));
+        }
+#endif
+
+        /// <summary>
+        /// Reloads progress from the database and redraws the list, presenting any new unlocks. For
+        /// progress committed while this menu is open (debug grants, the dev remote).
+        /// </summary>
+        public void RefreshProgress()
+        {
+            if (_career is null)
+            {
+                return;
+            }
+
+            ApplyProgress(LoadProgress(_career));
+            RequestViewListUpdate();
+
+            // Only one dialog can be open. Unlocks stay unseen until the next refresh or visit.
+            if (!DialogManager.Instance.IsDialogShowing)
+            {
+                CheckUnlocks();
+            }
         }
 
         private void SetVideoNavigation()
@@ -156,45 +308,212 @@ namespace YARG.Menu.Career
 
             _evaluation ??= Evaluate(_career, _careerSaveId);
 
+            // The gigs are on the map; the list is the selected gig's songs.
+            var selectedGig = SelectedGig();
+            UpdateGigMap();
+
             for (var tierIndex = 0; tierIndex < _career.Tiers.Count; tierIndex++)
             {
                 var tier = _career.Tiers[tierIndex];
                 var result = _evaluation.Tiers[tierIndex];
 
+                if (tier.Id != selectedGig)
+                {
+                    continue;
+                }
+
+                const bool collapsed = false;
+
                 if (result.Unlocked)
                 {
-                    viewList.Add(new TierViewType(tier, result));
+                    // No header row: the map names the gig and shows its progress, fans and rules.
                 }
                 else
                 {
-                    // Don't show bonus tier unless there are no more non-bonus tiers to unlock
-                    // TODO: This doesn't actually do what it says in the case where there are multiple bonus tiers
-                    //  after the last non-bonus tier
-                    if (tier.IsBonus && tierIndex < _career.Tiers.Count - 1)
-                    {
-                        continue;
-                    }
-
-                    viewList.Add(new TierViewType(tier, result));
-                    break;
+                    // Gigs the band has not unlocked are not listed at all: a new career shows only
+                    // its first gig, and each unlock (announced when it happens) adds its gig.
+                    continue;
                 }
+
+                if (collapsed)
+                {
+                    continue;
+                }
+
+                var reveal = RevealFor(tier.Id);
+
+                // A gig played as a show starts as a whole, from its first row or any of its songs.
+                Action startShow = null;
+                if (CareerSetlists.IsShow(tier))
+                {
+                    var showTierIndex = tierIndex;
+                    startShow = () => StartShow(showTierIndex);
+                    viewList.Add(ShowRow(tier, reveal, startShow));
+                }
+
+                // Retail mode: the gig ends with its closer.
+                var closerRow = CloserRow(tier, tierIndex, result);
 
                 for (var songIndex = 0; songIndex < tier.Songs.Length; songIndex++)
                 {
+                    var songResult = songIndex < result.Songs.Count ? result.Songs[songIndex] : null;
+                    var hidden = CareerSetlists.IsHidden(tier, tier.Songs[songIndex], songResult?.Completed ?? false);
                     viewList.Add(new SongViewType(
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
-                        songIndex < result.Songs.Count ? result.Songs[songIndex] : null,
-                        OnSongPlayed));
+                        closerRow is null && songIndex == tier.Songs.Length - 1, songResult,
+                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
                 }
+
+                if (closerRow is not null)
+                {
+                    viewList.Add(closerRow);
+                }
+            }
+
+            // The first row closes the top of the box the gig's rows are drawn in.
+            if (viewList.Count > 0)
+            {
+                viewList[0].FirstInGroup = true;
             }
 
             return viewList;
         }
 
+        /// <summary>
+        /// Expands the tier and collapses whichever one was open, or collapses it if it was the open one.
+        /// </summary>
+        private void ToggleTier(CareerTier tier)
+        {
+            FinishTierAnimation();
+
+            if (_expandedTier == tier.Id)
+            {
+                _collapsingTier = tier.Id;
+                _expandedTier = null;
+            }
+            else
+            {
+                _collapsingTier = _expandedTier;
+                _expandingTier = tier.Id;
+                _expandedTier = tier.Id;
+            }
+
+            _animationStart = Time.unscaledTime;
+            _animationProgress = 0f;
+
+            // The collapsing tier's songs stay listed until they have shrunk away; the expanding tier's
+            // are listed now at zero height. A mouse click may come from anywhere, so the selection
+            // goes to the clicked header.
+            RequestViewListUpdate();
+            SelectTier(tier.Id);
+        }
+
+        private void Update()
+        {
+            if (!IsAnimatingTiers)
+            {
+                return;
+            }
+
+            var t = Mathf.Clamp01((Time.unscaledTime - _animationStart) / TIER_ANIMATION_SECONDS);
+            if (t >= 1f)
+            {
+                FinishTierAnimation();
+                return;
+            }
+
+            _animationProgress = Mathf.SmoothStep(0f, 1f, t);
+            foreach (var song in ViewList.OfType<SongViewType>())
+            {
+                song.Reveal = RevealFor(song.TierId);
+            }
+
+            foreach (var show in ViewList.OfType<ShowViewType>())
+            {
+                show.Reveal = RevealFor(show.TierId);
+            }
+
+            RefreshViewsObjects();
+        }
+
+        private void FinishTierAnimation()
+        {
+            if (!IsAnimatingTiers)
+            {
+                return;
+            }
+
+            _expandingTier = null;
+            _collapsingTier = null;
+
+            // Dropping the collapsed tier's songs shifts every row below them, so the selection is
+            // found again by what it was rather than where it was.
+            var selected = CurrentSelection;
+            RequestViewListUpdate();
+
+            switch (selected)
+            {
+                case TierViewType header:
+                    SelectTier(header.Tier.Id);
+                    break;
+                case SongViewType song:
+                    if (!SetIndexTo(view => view is SongViewType other && other.Song.Id == song.Song.Id))
+                    {
+                        SelectTier(song.TierId);
+                    }
+                    break;
+                case ShowViewType show:
+                    if (!SetIndexTo(view => view is ShowViewType other && other.TierId == show.TierId))
+                    {
+                        SelectTier(show.TierId);
+                    }
+                    break;
+            }
+        }
+
+        private float RevealFor(Guid tierId)
+        {
+            if (tierId == _expandingTier)
+            {
+                return _animationProgress;
+            }
+
+            if (tierId == _collapsingTier)
+            {
+                return 1f - _animationProgress;
+            }
+
+            return 1f;
+        }
+
+        private void SelectTier(Guid tierId)
+        {
+            SetIndexTo(view => view is TierViewType header && header.Tier.Id == tierId);
+        }
+
+        /// <summary>
+        /// The tier the players are working on: the first unlocked one not yet completed, else the last
+        /// unlocked one.
+        /// </summary>
+        private static Guid? CurrentTierId(CareerEvaluation evaluation)
+        {
+            var unlocked = evaluation?.Tiers.Where(tier => tier.Unlocked).ToList();
+            if (unlocked is null || unlocked.Count == 0)
+            {
+                return null;
+            }
+
+            return (unlocked.FirstOrDefault(tier => !tier.Completed) ?? unlocked[^1]).TierId;
+        }
+
         public void Initialize(CareerPreset career, CareerEvaluation evaluation)
         {
-            if (_career is null || _career.Id != career.Id)
+            // Compared with the session's career, not this instance's: the menu is rebuilt when the
+            // menu scene reloads after a song, and must come back as it was left.
+            if (_sessionCareer?.Id != career.Id)
             {
+                _expandedTier = CurrentTierId(evaluation);
+
                 // Row order is per-career (it depends on which tiers are unlocked), so the previous
                 // career's index would select an unrelated song. The remembered position only needs to
                 // survive within one career, to return to the song that was just played.
@@ -205,13 +524,13 @@ namespace YARG.Menu.Career
             _sessionCareer = career;
             ApplyProgress(evaluation);
 
-            SetText(_careerNameText, career.Name);
-            SetText(_careerDescriptionText, career.Description);
+            UpdateHeader();
 
             _progressDirty = false;
 
             RequestViewListUpdate();
             StartBackgroundLoad(career);
+            LoadGigPictures(career);
             CheckUnlocks();
         }
 
@@ -228,18 +547,16 @@ namespace YARG.Menu.Career
                 return 0;
             }
 
-            var profiles = PlayerContainer.Players.Where(player => !player.SittingOut && !player.Profile.IsBot)
-                                                 .Select(player => player.Profile.Id)
-                                                 .ToList();
-            if (profiles.Count == 0)
+            // The active band's save, or (no band) the save of exactly the current players.
+            var credit = CareerBands.CurrentCredit(ScoreContainer.Careers);
+            if (credit.Block == CareerCreditBlock.NoPlayers)
             {
                 YargLogger.LogFormatError("Career: No active players for career '{0}'.",
                     career?.Name);
                 return 0;
             }
 
-            var save = ScoreContainer.Careers.FindActiveSaveForProfiles(career.Id, profiles);
-            return save?.Id ?? 0;
+            return CareerBands.FindSaveId(ScoreContainer.Careers, career, credit);
         }
 
         public static CareerEvaluation Evaluate(CareerPreset career, int careerSaveId)
@@ -256,6 +573,8 @@ namespace YARG.Menu.Career
         {
             _evaluation = evaluation;
             _careerSaveId = evaluation?.CareerSaveId ?? 0;
+            LoadBandScores();
+            UpdateHeader();
         }
 
         private void OnSongPlayed()
@@ -311,15 +630,15 @@ namespace YARG.Menu.Career
                 return;
             }
 
-            var names = fresh.Select(progress => TierName(progress.TierId)).ToList();
-            var tier = _career.Tiers.FirstOrDefault(t => t.Id == fresh.First().TierId);
-
             foreach (var progress in fresh)
             {
                 careers.MarkUnlockSeen(_careerSaveId, progress.TierId);
             }
 
-            _ = HandleUnlockDisplay(names, tier);
+            // No dialog: the gigs open up on the map, once the new stars and fans are in (see
+            // CareerMenu.Map.cs). HandleUnlockDisplay below is what used to announce them.
+            _freshUnlocks.AddRange(fresh.Select(progress => progress.TierId));
+            UpdateGigMap();
         }
 
         private string TierName(Guid tierId)
@@ -456,15 +775,14 @@ namespace YARG.Menu.Career
 
             _loadedBackground = texture;
             _bgImage.texture = texture;
-            _bgImage.enabled = texture != null;
 
-            if (texture != null)
-            {
-                // Decoded textures come out flipped.
-                _bgImage.uvRect = new Rect(0, 0, 1, -1);
-            }
+            // Decoded textures come out flipped.
+            _bgImage.uvRect = texture != null ? new Rect(0, 0, 1, -1) : new Rect(0, 0, 1, 1);
 
-            _bgImage.gameObject.SetActive(texture != null);
+            // Without art of its own the career keeps the panel's plain tinted backdrop, the same one
+            // the band's home screen sits on in the career list.
+            _bgImage.enabled = true;
+            _bgImage.gameObject.SetActive(true);
         }
 
         private UniTask<bool> PlayVideo(string path)
