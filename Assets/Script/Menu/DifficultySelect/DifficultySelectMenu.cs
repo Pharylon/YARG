@@ -48,7 +48,8 @@ namespace YARG.Menu.DifficultySelect
         // Modifiers relocated from the Modifiers menu to the Accessibility menu.
         // RangeCompress is folded into the "No Range Shifts" toggle there.
         private const Modifier ACCESSIBILITY_MODIFIERS =
-            Modifier.OpensToGreens | Modifier.NoKicks | Modifier.UnpitchedOnly | Modifier.RangeCompress;
+            Modifier.OpensToGreens | Modifier.NoKicks | Modifier.EasyKicks | Modifier.UnpitchedOnly |
+            Modifier.RangeCompress;
 
         // Backdrop circle marking the selected instrument's ring — translucent
         // black (a blue tint blended into the row's blue selection highlight).

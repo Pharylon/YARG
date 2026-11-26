@@ -77,7 +77,8 @@
             "NoDynamics": "No Dynamics",
             "NoVocalPercussion": "No Percussion",
             "RangeCompress": "No Range Shifts",
-            "OpensToGreens": "Opens To Greens"
+            "OpensToGreens": "Opens To Greens",
+            "EasyKicks": "Easy Kicks"
         },
         "SortAttribute": {
             "Album": "Album",
