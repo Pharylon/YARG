@@ -66,6 +66,26 @@ namespace YARG.Menu.Career
         public SongEntry SongEntry => _songEntry;
 
         /// <summary>
+        /// A user pick (see <see cref="CareerTier.UserPicks"/>): what clicking it does (pick a song).
+        /// </summary>
+        public Action PickSong { get; set; }
+
+        /// <summary>
+        /// A user pick: the song of its best result so far, shown in its place. Null: not played yet.
+        /// </summary>
+        public SongEntry PickedSong
+        {
+            get => _song.IsUserPick ? _songEntry : null;
+            set
+            {
+                if (_song.IsUserPick)
+                {
+                    _songEntry = value;
+                }
+            }
+        }
+
+        /// <summary>
         /// Whether highlighting the row may play the song's preview (never for a hidden song, which
         /// the audio would give away).
         /// </summary>
@@ -75,7 +95,7 @@ namespace YARG.Menu.Career
         public override bool IsClickable => !_song.IsEncore;
 
         private readonly CareerSong _song;
-        private readonly SongEntry  _songEntry;
+        private SongEntry  _songEntry;
         private readonly Guid  _careerId;
         private readonly Guid  _tierId;
         private readonly int   _tierIndex;
@@ -130,7 +150,7 @@ namespace YARG.Menu.Career
         {
             var name = Hidden
                 ? CareerSetlistText.HiddenTitle(_song)
-                : _songEntry?.Name ?? Localize.Key("Menu.Career.SongMissing");
+                : _songEntry?.Name ?? Localize.Key(_song.IsUserPick ? "Menu.Career.Theme.Pick" : "Menu.Career.SongMissing");
             return AddStrikethrough(FormatAs(name, TextType.Primary, selected));
         }
 
@@ -184,6 +204,13 @@ namespace YARG.Menu.Career
         /// </summary>
         private string DetailLine()
         {
+            if (_song.IsUserPick)
+            {
+                return _songEntry is null
+                    ? Localize.Key("Menu.Career.Theme.PickDetail")
+                    : Localize.KeyFormat("Menu.Career.Theme.Picked", _songEntry.Artist.ToString());
+            }
+
             if (_songEntry is null)
             {
                 // Content fallback for songs that are not in the library.
@@ -207,6 +234,12 @@ namespace YARG.Menu.Career
         {
             if (_song.IsEncore)
             {
+                return;
+            }
+
+            if (_song.IsUserPick)
+            {
+                PickSong?.Invoke();
                 return;
             }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -38,6 +39,16 @@ namespace YARG.Menu.Career
                 parts.Add(Localize.KeyFormat("Menu.Career.Show.Encore", Stars(tier.EncoreMinStars.Value)));
             }
 
+            if (ThemeLine(tier.Theme) is { } theme)
+            {
+                parts.Add(Localize.KeyFormat("Menu.Career.Theme.Line", theme));
+            }
+
+            if (tier.UserPicks is > 0 and var picks)
+            {
+                parts.Add(Localize.KeyFormat(picks == 1 ? "Menu.Career.Theme.PicksOne" : "Menu.Career.Theme.Picks", picks));
+            }
+
             if (tier.Mystery)
             {
                 parts.Add(Localize.Key("Menu.Career.Show.Mystery"));
@@ -49,6 +60,59 @@ namespace YARG.Menu.Career
             }
 
             return parts.Count == 0 ? null : string.Join("  ·  ", parts);
+        }
+
+        /// <summary>
+        /// "1980-1989, Metal or Punk, Rock Band 1, or 3 listed songs", or null without a theme.
+        /// </summary>
+        public static string ThemeLine(CareerGigTheme theme)
+        {
+            if (theme is null || theme.IsEmpty)
+            {
+                return null;
+            }
+
+            var parts = new List<string>();
+            if (theme.YearMin is { } from && theme.YearMax is { } to)
+            {
+                parts.Add(from == to ? from.ToString() : Localize.KeyFormat("Menu.Career.Theme.Years", from, to));
+            }
+            else if (theme.YearMin is { } since)
+            {
+                parts.Add(Localize.KeyFormat("Menu.Career.Theme.Since", since));
+            }
+            else if (theme.YearMax is { } until)
+            {
+                parts.Add(Localize.KeyFormat("Menu.Career.Theme.Until", until));
+            }
+
+            var who = (theme.Genres ?? Array.Empty<string>()).Concat(theme.Artists ?? Array.Empty<string>())
+                .Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value.Trim()).ToList();
+            if (who.Count > 0)
+            {
+                parts.Add(string.Join($" {Localize.Key("Menu.Career.Theme.Or")} ", who));
+            }
+
+            var sources = (theme.Sources ?? Array.Empty<string>()).Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => YARG.Song.SongSources.TryGetSource(value.Trim(), out var source)
+                    ? source.GetDisplayName()
+                    : value.Trim())
+                .ToList();
+            if (sources.Count > 0)
+            {
+                parts.Add(string.Join($" {Localize.Key("Menu.Career.Theme.Or")} ", sources));
+            }
+
+            var text = string.Join(", ", parts);
+            var listed = theme.Songs?.Length ?? 0;
+            if (listed > 0)
+            {
+                text = text.Length == 0
+                    ? Localize.KeyFormat("Menu.Career.Theme.ListedOnly", listed)
+                    : Localize.KeyFormat("Menu.Career.Theme.Listed", text, listed);
+            }
+
+            return text;
         }
 
         /// <summary>"All Strums, 125% speed or faster", or null if the tier has no gig rules.</summary>

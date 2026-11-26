@@ -27,6 +27,9 @@ namespace YARG.Menu.Career
         // Per completion row: the players of that play (see CareerEvaluation.SongResult.CountedCompletionId).
         private Dictionary<int, List<MusicLibrary.ViewType.ScoreInfo>> _scoresByCompletion = new();
 
+        // Per completion row: the song that was played (for a user pick, which has no song of its own).
+        private Dictionary<int, byte[]> _songByCompletion = new();
+
         /// <summary>
         /// Loads who played each completion of the save. Results belong to the save, so they are the
         /// band's own (or, without a band, the current players'), never another group's.
@@ -34,6 +37,7 @@ namespace YARG.Menu.Career
         private void LoadBandScores()
         {
             _scoresByCompletion = new Dictionary<int, List<MusicLibrary.ViewType.ScoreInfo>>();
+            _songByCompletion = new Dictionary<int, byte[]>();
 
             var careers = ScoreContainer.Careers;
             if (careers is null || _careerSaveId <= 0)
@@ -56,6 +60,8 @@ namespace YARG.Menu.Career
 
                 foreach (var completion in careers.GetSongCompletions(_careerSaveId))
                 {
+                    _songByCompletion[completion.Id] = completion.SongChecksum;
+
                     if (completion.GameRecordId > 0 && scoresByGame.TryGetValue(completion.GameRecordId, out var scores))
                     {
                         _scoresByCompletion[completion.Id] = scores;

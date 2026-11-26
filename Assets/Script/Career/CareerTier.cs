@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.Serialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -113,9 +114,70 @@ namespace YARG.Career
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public float? EncoreMinStars;
 
+        // A themed gig (see CareerGigTheme): songs played in place of its own (retail mode) and its user
+        // picks must fit the theme. Null: no theme.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public CareerGigTheme Theme;
+
+        // User picks: this many more songs in the gig, each one picked by the players from their library
+        // (fitting the theme, if any) when they play it. They count like the gig's own songs. Each is a
+        // CareerSong slot (IsUserPick) after the gig's own songs, made at load with an Id derived from the
+        // gig's Id, and never saved. Null or 0: none.
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public int? UserPicks;
+
+        public const int MAX_USER_PICKS = 20;
+
+        /// <summary>
+        /// Makes the gig's user-pick slots match <see cref="UserPicks"/>: the gig's own songs, then one
+        /// slot per pick.
+        /// </summary>
+        public void RefreshUserPicks()
+        {
+            var own = (Songs ?? Array.Empty<CareerSong>()).Where(song => song is not null && !song.IsUserPick).ToList();
+            var count = Math.Clamp(UserPicks ?? 0, 0, MAX_USER_PICKS);
+            for (var i = 0; i < count; i++)
+            {
+                own.Add(new CareerSong
+                {
+                    Id = UserPickId(Id, i),
+                    Identifier = CareerSongIdentifier.UserPick,
+                    Parent = this,
+                });
+            }
+
+            Songs = own.ToArray();
+        }
+
+        /// <summary>The stable Id of a gig's user-pick slot, so its progress stays linked.</summary>
+        public static Guid UserPickId(Guid tierId, int index)
+        {
+            using var md5 = System.Security.Cryptography.MD5.Create();
+            return new Guid(md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes($"{tierId}/user-pick/{index}")));
+        }
+
+        // User-pick slots are not content: they are left out of the saved file and made again on load.
+        private CareerSong[] _savedSongs;
+
+        [OnSerializing]
+        private void OnSerializing(StreamingContext context)
+        {
+            _savedSongs = Songs;
+            Songs = Songs?.Where(song => song is not null && !song.IsUserPick).ToArray();
+        }
+
+        [OnSerialized]
+        private void OnSerialized(StreamingContext context)
+        {
+            Songs = _savedSongs;
+            _savedSongs = null;
+        }
+
         [OnDeserialized]
         private void OnDeserialized(StreamingContext context)
         {
+            RefreshUserPicks();
+
             if (Id == Guid.Empty)
             {
                 YargLogger.LogFormatError(
@@ -136,11 +198,8 @@ namespace YARG.Career
 
             if (other.Songs != null)
             {
-                Songs = new CareerSong[other.Songs.Length];
-                for (int i = 0; i < other.Songs.Length; i++)
-                {
-                    Songs[i] = new CareerSong(other.Songs[i]) { Parent = this };
-                }
+                Songs = other.Songs.Where(song => !song.IsUserPick)
+                    .Select(song => new CareerSong(song) { Parent = this }).ToArray();
             }
             else
             {
@@ -167,6 +226,11 @@ namespace YARG.Career
             Mystery = other.Mystery;
             SetlistSize = other.SetlistSize;
             EncoreMinStars = other.EncoreMinStars;
+            Theme = other.Theme is null ? null : new CareerGigTheme(other.Theme);
+            UserPicks = other.UserPicks;
+
+            // The copy's slots belong to its own Id.
+            RefreshUserPicks();
         }
 
         public void AddSong(CareerSong song)
@@ -174,7 +238,10 @@ namespace YARG.Career
             if (song == null) return;
             song.Parent = this;
             var list = Songs != null ? new List<CareerSong>(Songs) : new List<CareerSong>();
-            list.Add(song);
+
+            // The gig's own songs come before its user picks.
+            var firstPick = list.FindIndex(existing => existing.IsUserPick);
+            list.Insert(firstPick < 0 ? list.Count : firstPick, song);
             Songs = list.ToArray();
         }
 
@@ -231,6 +298,11 @@ namespace YARG.Career
             foreach (var song in Songs)
             {
                 song.RefreshSongEntry();
+            }
+
+            foreach (var song in Theme?.Songs ?? Array.Empty<CareerSong>())
+            {
+                song?.RefreshSongEntry();
             }
         }
     }

@@ -257,10 +257,21 @@ namespace YARG.Scores
                 return;
             }
 
-            // The song played must be the career's, except in a bonus gig, where any song may be
-            // played in place of one of the gig's (retail mode).
+            // The song played must be the career's, except for a user pick (any song), or a song played in
+            // place of one of a bonus or themed gig's own (retail mode). In a themed gig it must fit the
+            // theme.
             var careerSong = contextTier.Songs[context.SongIndex];
-            var substitute = context.Substitute && contextTier.IsBonus;
+            var substitute = careerSong.IsUserPick ||
+                context.Substitute && (contextTier.IsBonus || contextTier.Theme is { IsEmpty: false });
+            if (substitute && contextTier.Theme is { IsEmpty: false } theme &&
+                !(SongContainer.SongsByHash.TryGetValue(HashWrapper.Create(gameRecord.SongChecksum), out var played) &&
+                    played.Count > 0 && CareerThemes.Matches(theme, played[0])))
+            {
+                YargLogger.LogFormatError("Career: the song played does not fit the theme of tier {0}, skipping completion.",
+                    context.TierId);
+                return;
+            }
+
             if (!substitute && (careerSong.SongEntry is null ||
                 !careerSong.SongEntry.Hash.HashBytes.SequenceEqual(gameRecord.SongChecksum)))
             {

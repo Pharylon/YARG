@@ -18,6 +18,8 @@ namespace YARG.Menu.MusicLibrary
         /// </summary>
         private static Action<SongEntry> _songPicker;
         private static string _songPickerTitle;
+        // Only these songs can be picked (a themed gig's theme). Null: any song.
+        private static Func<SongEntry, bool> _songPickerFilter;
 
         public static bool PickMode => _songPicker is not null;
 
@@ -37,6 +39,11 @@ namespace YARG.Menu.MusicLibrary
             get
             {
                 var filters = FiltersMenu.ActiveFilterPredicate;
+                if (PickMode && _songPickerFilter is { } allowed)
+                {
+                    return filters is null ? allowed : song => allowed(song) && filters(song);
+                }
+
                 if (!RetailFilterActive)
                 {
                     return filters;
@@ -52,10 +59,11 @@ namespace YARG.Menu.MusicLibrary
         /// Opens the library over the current menu to pick one song. <paramref name="onPicked"/> gets
         /// the song with the library still open; it is expected to close it (MenuManager.PopMenu).
         /// </summary>
-        public static void OpenSongPicker(string title, Action<SongEntry> onPicked)
+        public static void OpenSongPicker(string title, Action<SongEntry> onPicked, Func<SongEntry, bool> allowed = null)
         {
             _songPicker = onPicked;
             _songPickerTitle = title;
+            _songPickerFilter = allowed;
             LibraryMode = MusicLibraryMode.QuickPlay;
 
             var menu = MenuManager.Instance.PushMenu(MenuManager.Menu.MusicLibrary, false);
@@ -72,6 +80,11 @@ namespace YARG.Menu.MusicLibrary
                 return false;
             }
 
+            if (_songPickerFilter is { } allowed && !allowed(song))
+            {
+                return true;
+            }
+
             ClearSongPicker();
             picker(song);
             return true;
@@ -81,6 +94,7 @@ namespace YARG.Menu.MusicLibrary
         {
             _songPicker = null;
             _songPickerTitle = null;
+            _songPickerFilter = null;
         }
 
         // What the list was last built for. Entering the library again with something else in force
@@ -89,7 +103,8 @@ namespace YARG.Menu.MusicLibrary
 
         private static string RetailListState()
         {
-            return $"{RetailFilterActive}/{PickMode}/{(RetailFilterActive ? RetailMode.UnlockedSongs.Count : 0)}";
+            return $"{RetailFilterActive}/{PickMode}/{_songPickerFilter?.GetHashCode()}/" +
+                $"{(RetailFilterActive ? RetailMode.UnlockedSongs.Count : 0)}";
         }
 
         private void EnsureRetailListCurrent()
