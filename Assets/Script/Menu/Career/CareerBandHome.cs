@@ -30,6 +30,9 @@ namespace YARG.Menu.Career
 
         private const float FAN_ASPECT = 2f / 3f;
 
+        // How much of each fan's height is below the bottom edge of the panel, out of sight.
+        private const float FAN_SINK = 0.3f;
+
         private const float INTRO_SECONDS = 0.9f;
         private const float STAR_POP_SECONDS = 0.28f;
         private const float COUNT_SECONDS = 0.8f;
@@ -130,6 +133,9 @@ namespace YARG.Menu.Career
         {
             // Back to front: the crowd is behind everything else.
             _crowdArea = Child("Crowd");
+            // The fans stand lower than the panel's edge, which hides that the figures end at the waist;
+            // they come up from below it.
+            _crowdArea.gameObject.AddComponent<RectMask2D>();
             _fanPlate = Child("Fan Count Plate");
             var plate = _fanPlate.gameObject.AddComponent<Image>();
             plate.color = new Color(0.01f, 0.04f, 0.09f, 0.82f);
@@ -539,8 +545,9 @@ namespace YARG.Menu.Career
                 var phase = i * 1.618f;
                 var bounce = Mathf.Abs(Mathf.Sin(Time.unscaledTime * (2.6f + (i % 5) * 0.35f) + phase)) * fan.Size * 0.045f;
                 _fans[i].rectTransform.localScale = Vector3.one;
+                var y = fan.Y - fan.Size * FAN_SINK;
                 _fans[i].rectTransform.anchoredPosition =
-                    new Vector2(fan.X, fan.Y - (1f - rise) * (fan.Y + fan.Size * 1.2f) + bounce * rise);
+                    new Vector2(fan.X, y - (1f - rise) * (fan.Y + fan.Size * 1.2f) + bounce * rise);
             }
         }
 
@@ -590,7 +597,7 @@ namespace YARG.Menu.Career
                 var bounce = Mathf.Abs(Mathf.Sin(Time.unscaledTime * (2.6f + (i % 5) * 0.35f) + phase)) * fan.Size * 0.045f;
                 var rect = _fans[i].rectTransform;
                 rect.localScale = new Vector3(scale, scale, 1f);
-                rect.anchoredPosition = new Vector2(fan.X, fan.Y + bounce);
+                rect.anchoredPosition = new Vector2(fan.X, fan.Y - fan.Size * FAN_SINK + bounce);
             }
 
             var fanCountSeconds = _totalFans > _fansBefore ? Mathf.Max(fanSeconds, GAIN_MIN_COUNT_SECONDS) : 0f;
