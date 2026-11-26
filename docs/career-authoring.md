@@ -289,3 +289,36 @@ none), Mystery Setlist, Setlist Size (0 for every song) and Encore Star Bar (emp
 Contract, where "From tier" keeps the tier's contract and "No contract" exempts the song, and Encore Song. The parameter field's label says
 what the number means for the chosen type. A fan multiplier or parameter that is not a number is ignored
 (the saved value stays).
+
+## Themed gigs and user picks
+
+A tier can have a **theme**: which songs of the player's library fit the gig. Every part is optional:
+
+```json
+"Theme": {
+  "YearMin": 1980, "YearMax": 1989,
+  "Genres": ["Metal", "Punk"],
+  "Artists": ["Nirvana"],
+  "Sources": ["rb1", "Rock Band 2"],
+  "Songs": [ { "Id": "...", "SongTuple": { ... }, "Identifier": "SongTuple" } ]
+}
+```
+
+A song fits when it is one of the theme's `Songs` (those always fit), or when it meets every part that is
+set: its year is in the range, it is from one of the `Sources` (a source id such as `yarg` or `rb1`, or its
+display name such as `Rock Band 1`), and it is of one of the `Genres` **or** by one of the `Artists`.
+Genres match ignoring case, spaces and punctuation (`Pop Rock` = `Pop/Rock`); artists and sources ignoring
+case. A song with no year never fits a year range.
+
+What the theme does:
+
+- **Swaps (retail mode).** In retail mode the songs of a bonus gig or a themed gig can be played as
+  another song (Orange, "Play Another Song Instead"). In a themed gig the replacement must fit the theme;
+  in an unthemed bonus gig it can be any song. The result counts for the song it replaced.
+- **User picks.** `"UserPicks": 3` adds three more songs to the gig that the players choose from their
+  library when they play them (in every mode). In a themed gig the picks must fit the theme. Picks count
+  like the gig's own songs: stars, fans (by the difficulty of the song played) and unlocks. A gig can be
+  nothing but picks (`"Songs": []`). A gig with picks is always played song by song, never as a show.
+
+The career menu shows the theme on the gig ("Theme: 1980-1989, Metal or Punk, Rock Band 1"). In the preset
+editor the theme and the number of picks are fields of the tier.

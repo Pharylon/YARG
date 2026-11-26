@@ -22,7 +22,8 @@ namespace YARG.Career
         /// </summary>
         public static bool IsShow(CareerTier tier)
         {
-            return tier?.CompletionMode == CareerCompletionMode.FullTierPlaylist;
+            // A gig with user picks is played song by song: its picks are chosen as they are played.
+            return tier?.CompletionMode == CareerCompletionMode.FullTierPlaylist && !(tier.UserPicks > 0);
         }
 
         public static bool IsEncore(CareerSong song) => song?.IsEncore == true;

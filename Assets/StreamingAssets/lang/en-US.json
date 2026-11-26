@@ -577,6 +577,22 @@
                 "MysteryDetail": "Revealed when you play it",
                 "Rules": "Gig rules: {0}",
                 "RuleSpeed": "{0}% speed or faster"
+            },
+            "Theme": {
+                "Line": "Theme: {0}",
+                "Years": "{0}-{1}",
+                "Since": "{0} or later",
+                "Until": "{0} or earlier",
+                "Or": "or",
+                "Listed": "{0}, or one of {1} listed songs",
+                "ListedOnly": "one of {0} listed songs",
+                "Picks": "{0} songs of your choice",
+                "PicksOne": "1 song of your choice",
+                "Pick": "Your Pick",
+                "PickDetail": "Pick any song that fits the gig",
+                "Picked": "{0}  ·  Your pick",
+                "PickTitle": "Pick a Song for the Gig",
+                "NoSongs": "No song in your library fits this gig's theme"
             }
         },
         "Main": {
@@ -2999,6 +3015,13 @@
                     "SetlistSize": "Setlist Size (0 = every song)",
                     "EncoreMinStars": "Encore Star Bar (average stars)",
                     "IsEncore": "Encore Song",
+                    "ThemeYearMin": "Theme: From Year (0 = any)",
+                    "ThemeYearMax": "Theme: To Year (0 = any)",
+                    "ThemeGenres": "Theme: Genres (comma separated)",
+                    "ThemeArtists": "Theme: Artists (comma separated)",
+                    "ThemeSources": "Theme: Sources (comma separated, e.g. yarg, rb1)",
+                    "ThemeSongs": "Theme: Always-Fitting Songs (Artist - Title; ...)",
+                    "UserPicks": "User Picks (songs the players choose)",
                     "Warning": "Warning"
                 },
                 "Enums": {

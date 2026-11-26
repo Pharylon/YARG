@@ -362,6 +362,16 @@ namespace YARG.Menu.Career
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
                         closerRow is null && songIndex == tier.Songs.Length - 1, songResult,
                         OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
+
+                    // A user pick: the song of its best result, and picking one to play.
+                    if (tier.Songs[songIndex].IsUserPick && viewList[^1] is SongViewType pick)
+                    {
+                        pick.PickedSong = PlayedSong(songResult);
+                        var pickTier = tier;
+                        var pickTierIndex = tierIndex;
+                        var pickIndex = songIndex;
+                        pick.PickSong = () => PickUserSong(pickTier, pickTierIndex, pickIndex);
+                    }
                 }
 
                 if (closerRow is not null)

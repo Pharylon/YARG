@@ -157,6 +157,12 @@ namespace YARG.Settings.Metadata
                         int songIndex = s;
                         var song = songs[songIndex];
 
+                        // User-pick slots are made from the gig's User Picks field, not edited as songs.
+                        if (song.IsUserPick)
+                        {
+                            continue;
+                        }
+
                         if (song.SongEntry == null)
                         {
                             song.RefreshSongEntry();
@@ -462,6 +468,7 @@ namespace YARG.Settings.Metadata
             fields.InsertRange(0, TierWarningFields(tier));
             fields.AddRange(TierFanFields(tier, editable, onInputBlur));
             fields.AddRange(TierSetlistFields(tier, editable));
+            fields.AddRange(TierThemeFields(tier, editable));
 
             int selected = fields.FindIndex(field => field.Label == selectLabel);
             _careerPreview.Show(fields, selected >= 0 ? selected : (int?) null, onInputBlur);

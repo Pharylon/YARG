@@ -120,6 +120,10 @@ case "${1:-}" in
         rm -rf "$DATA" && echo "removed $DATA";;
     do)   shift; run "$@";;
     shot) out="${2:-$DIR/shot.png}"; run "shot $out" >/dev/null && echo "$out";;
-    stop) pkill -f "^$BUILD/YARG " ;;
+    stop)
+        # Wait for it to exit: the game saves its presets on the way out, which would otherwise
+        # overwrite setlists the next start copies in.
+        pkill -f "^$BUILD/YARG "
+        for _ in $(seq 100); do running || break; sleep 0.1; done ;;
     *)    sed -n '2,36p' "$0";;
 esac

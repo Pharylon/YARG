@@ -1,0 +1,95 @@
+{
+  "Id": "02aa1ce5-3229-56d9-b571-f695d1f5f0ba",
+  "Name": "Dev Theme Test",
+  "Type": "Career",
+  "Description": "DEV TEST CAREER, not shipped. Themed gigs and user picks.",
+  "Source": "yarg",
+  "Version": 1,
+  "Tiers": [
+    {
+      "Name": "Open Stage",
+      "Id": "5d83f73d-892b-5eb5-b035-6545d0cd6b7e",
+      "Songs": [
+        {
+          "Id": "a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992",
+          "SongId": "a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
+          "SongId": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "NotSpecified",
+      "UnlockType": "StarCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "The Rusty Nail",
+      "City": "Springfield"
+    },
+    {
+      "Name": "YARG Night",
+      "Id": "777eaf66-0e1b-593c-a11f-cee140369011",
+      "Songs": [
+        {
+          "Id": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
+          "SongId": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
+          "Identifier": "SongId"
+        },
+        {
+          "Id": "bbc23ee6-4336-4fb5-990e-e03a9841bb8c",
+          "SongId": "bbc23ee6-4336-4fb5-990e-e03a9841bb8c",
+          "Identifier": "SongId"
+        }
+      ],
+      "VenueSize": "NotSpecified",
+      "UnlockType": "StarCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "Club Yarg",
+      "City": "Springfield",
+      "CustomUnlockText": "Themed gig: YARG songs only. In retail mode its songs can be swapped, but only for songs that fit.",
+      "Theme": {
+        "Sources": [
+          "yarg"
+        ]
+      }
+    },
+    {
+      "Name": "Rock Band Requests",
+      "Id": "689569a2-c257-59de-a2ae-c73ec6244d59",
+      "Songs": [],
+      "VenueSize": "NotSpecified",
+      "UnlockType": "StarCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": false,
+      "VenueName": "The Request Line",
+      "City": "Springfield",
+      "CustomUnlockText": "User picks: two songs of your choice from Rock Band 1.",
+      "Theme": {
+        "Sources": [
+          "rb1"
+        ]
+      },
+      "UserPicks": 2
+    },
+    {
+      "Name": "Anything Goes",
+      "Id": "93485bbf-6da3-5d49-9973-1fd8b4b6beaa",
+      "Songs": [],
+      "VenueSize": "NotSpecified",
+      "UnlockType": "StarCount",
+      "UnlockCriteria": 0,
+      "CompletionMode": "SingleSong",
+      "IsBonus": true,
+      "VenueName": "Open Mic",
+      "City": "Springfield",
+      "CustomUnlockText": "A user pick with no theme: any song at all.",
+      "UserPicks": 1
+    }
+  ]
+}

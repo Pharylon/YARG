@@ -30,7 +30,10 @@ namespace YARG.Career
         SongId,
         SongHash,
         ShortName,
-        SongTuple
+        SongTuple,
+        // Not a song: one of a gig's user picks (CareerTier.UserPicks), filled with any song of the
+        // library that fits the gig's theme. Made at load, never saved.
+        UserPick,
     }
 
     public class CareerSong
@@ -60,6 +63,10 @@ namespace YARG.Career
         // average stars reach CareerTier.EncoreMinStars (see CareerSetlists).
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Ignore)]
         public bool IsEncore;
+
+        /// <summary>One of a gig's user picks (see <see cref="CareerTier.UserPicks"/>), not a song.</summary>
+        [JsonIgnore]
+        public bool IsUserPick => Identifier == CareerSongIdentifier.UserPick;
 
         [NonSerialized]
         public SongEntry SongEntry;

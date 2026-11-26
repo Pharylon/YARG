@@ -89,7 +89,9 @@ namespace YARG.Menu.Career
             }
 
             var selected = SelectedGig();
-            return _career.Tiers.Any(tier => tier.Id == selected && tier.IsBonus);
+            // Only a gig with songs of its own: user picks are chosen freely already.
+            return _career.Tiers.Any(tier => tier.Id == selected && SwapsAllowed(tier) &&
+                tier.Songs.Any(song => !song.IsUserPick && !song.IsEncore));
         }
 
         // What the button bar was last built for; it is rebuilt when the selected gig changes that.
@@ -136,7 +138,7 @@ namespace YARG.Menu.Career
             }
 
             var tier = _career.Tiers[row.TierIndex];
-            if (!tier.IsBonus || row.Song.IsEncore || CareerSetlists.IsShow(tier))
+            if (!SwapsAllowed(tier) || row.Song.IsEncore || row.Song.IsUserPick || CareerSetlists.IsShow(tier))
             {
                 return;
             }
@@ -155,7 +157,62 @@ namespace YARG.Menu.Career
 
             var replaced = row.SongEntry?.Name.ToString() ?? Localize.Key("Menu.Career.SongMissing");
             MusicLibraryMenu.OpenSongPicker(Localize.KeyFormat("Menu.Retail.SubstituteTitle", replaced),
-                song => StartPicked(song, context, true));
+                song => StartPicked(song, context, true), CareerThemes.Filter(tier.Theme));
+        }
+
+        /// <summary>
+        /// Retail mode lets a gig's songs be swapped for others: any song in a bonus gig, a song that
+        /// fits the theme in a themed gig.
+        /// </summary>
+        private static bool SwapsAllowed(CareerTier tier)
+        {
+            return RetailMode.Enabled && tier is not null && (tier.IsBonus || tier.Theme is { IsEmpty: false });
+        }
+
+        /// <summary>
+        /// One of a gig's user picks: the players pick any song of their library that fits the gig's
+        /// theme, and play it as that song of the gig. In every mode, not only retail mode.
+        /// </summary>
+        private void PickUserSong(CareerTier tier, int tierIndex, int songIndex)
+        {
+            if (_career is null || _videoPlaying || songIndex < 0 || songIndex >= tier.Songs.Length)
+            {
+                return;
+            }
+
+            var filter = CareerThemes.Filter(tier.Theme);
+            if (filter is not null && !SongContainer.Songs.Any(filter))
+            {
+                ToastManager.ToastWarning(Localize.Key("Menu.Career.Theme.NoSongs"));
+                return;
+            }
+
+            var context = new CareerContext
+            {
+                CareerId = _career.Id,
+                TierId = tier.Id,
+                TierIndex = tierIndex,
+                VenueHint = tier.VenueHint,
+                CareerSongId = tier.Songs[songIndex].Id,
+                SongIndex = songIndex,
+                BandId = CareerBands.ActiveBandId,
+                Substitute = true,
+            };
+
+            MusicLibraryMenu.OpenSongPicker(Localize.Key("Menu.Career.Theme.PickTitle"),
+                song => StartPicked(song, context, true), filter);
+        }
+
+        /// <summary>The song a result was played on, from its completion row.</summary>
+        private SongEntry PlayedSong(CareerEvaluation.SongResult result)
+        {
+            if (result is not { Completed: true } ||
+                !_songByCompletion.TryGetValue(result.CountedCompletionId, out var checksum) || checksum is not { Length: > 0 })
+            {
+                return null;
+            }
+
+            return FindSong(HashWrapper.Create(checksum));
         }
 
         /// <summary>
