@@ -182,6 +182,7 @@ namespace YARG.Scores
         private static void CommitCareerCompletion(GameRecord gameRecord, List<PlayerScoreRecord> playerEntries)
         {
             CareerSongOutcome.Last = null;
+            RetailMode.LastCloser = null;
 
             var context = GlobalVariables.State.CurrentCareer;
             if (context is null)
@@ -220,6 +221,32 @@ namespace YARG.Scores
 
             // Verify completion is valid for this career context
             var contextTier = career.Tiers.FirstOrDefault(tier => tier.Id == context.TierId);
+
+            // A gig's closer (retail mode) is any song of the library; it is recorded on its own and
+            // only unlocks the song.
+            if (context.Closer)
+            {
+                if (contextTier is null)
+                {
+                    YargLogger.LogFormatError("Career: closer for an unknown tier {0}, skipping.", context.TierId);
+                    return;
+                }
+
+                RetailMode.LastCloser = Careers.CommitCloser(new CareerCloser
+                {
+                    CareerSaveId = CareerBands.GetOrCreateSaveId(Careers, career, credit),
+                    CareerId = career.Id,
+                    TierId = context.TierId,
+                    SongChecksum = gameRecord.SongChecksum,
+                    GameRecordId = gameRecord.Id,
+                    BandStars = gameRecord.BandStars.GetStarCount(),
+                    IsGold = gameRecord.BandStars == StarAmount.StarGold,
+                    PlayedAt = DateTime.Now,
+                });
+                RetailMode.Invalidate();
+                return;
+            }
+
             if (contextTier is null ||
                 context.SongIndex < 0 ||
                 context.SongIndex >= contextTier.Songs.Length ||
@@ -230,9 +257,12 @@ namespace YARG.Scores
                 return;
             }
 
+            // The song played must be the career's, except in a bonus gig, where any song may be
+            // played in place of one of the gig's (retail mode).
             var careerSong = contextTier.Songs[context.SongIndex];
-            if (careerSong.SongEntry is null ||
-                !careerSong.SongEntry.Hash.HashBytes.SequenceEqual(gameRecord.SongChecksum))
+            var substitute = context.Substitute && contextTier.IsBonus;
+            if (!substitute && (careerSong.SongEntry is null ||
+                !careerSong.SongEntry.Hash.HashBytes.SequenceEqual(gameRecord.SongChecksum)))
             {
                 YargLogger.LogFormatError("Career: played song does not match career song {0}, skipping completion.",
                     context.CareerSongId);

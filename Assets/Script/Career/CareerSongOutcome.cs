@@ -52,6 +52,9 @@ namespace YARG.Career
             careers.CommitSongCompletion(commit);
             var after = career.SyncProgress(careers, commit.CareerSaveId);
 
+            // Whatever was just completed is now unlocked for quickplay.
+            RetailMode.Invalidate();
+
             Last = after is null ? null : Compare(career, commit.CareerSongId, before, after);
             if (Last is not null)
             {

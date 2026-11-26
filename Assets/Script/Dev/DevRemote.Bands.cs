@@ -21,8 +21,8 @@ namespace YARG.Dev
     /// Band, player and dialog commands. Values with spaces go in double quotes; lists are comma
     /// separated. A band or profile is named by its name (case-insensitive) or id.
     ///
-    ///   band list                         Every band: id, name, hometown, genre, members, fans; "*" = active.
-    ///   band create name=.. [hometown=..] [genre=..] [members=a,b] [select=false]
+    ///   band list                         Every band: id, name, hometown, members, fans; "*" = active.
+    ///   band create name=.. [hometown=..] [members=a,b] [select=false]
     ///                                     Create a band (members default to the current human players) and
     ///                                     make it active unless select=false.
     ///   band select &lt;band|none&gt;           Set the active band (none: play as the current players).
@@ -128,8 +128,7 @@ namespace YARG.Dev
                         members = CareerBands.CurrentHumanPlayers();
                     }
 
-                    var created = careers.CreateBand(name, options.GetValueOrDefault("hometown"),
-                        options.GetValueOrDefault("genre"), members);
+                    var created = careers.CreateBand(name, options.GetValueOrDefault("hometown"), members);
                     if (!options.TryGetValue("select", out var select) || select != "false")
                     {
                         CareerBands.ActiveBandId = created.Id;
@@ -145,19 +144,14 @@ namespace YARG.Dev
                     return $"ok active band: {DescribeBand(careers, band)}";
 
                 case "edit":
-                    if (!options.ContainsKey("hometown") && !options.ContainsKey("genre"))
+                    if (!options.ContainsKey("hometown"))
                     {
-                        return "error band edit needs hometown= and/or genre= (empty to clear)";
+                        return "error band edit needs hometown= (empty to clear)";
                     }
 
                     if (options.TryGetValue("hometown", out var hometown))
                     {
                         careers.SetBandHometown(band.Id, hometown.Trim());
-                    }
-
-                    if (options.TryGetValue("genre", out var genre))
-                    {
-                        careers.SetBandGenre(band.Id, genre.Trim());
                     }
 
                     RefreshCareerScreens();
@@ -421,7 +415,7 @@ namespace YARG.Dev
         {
             var active = band.Id == CareerBands.ActiveBandId ? "*" : "";
             var saves = careers.GetActiveSavesForBand(band.Id);
-            return $"{active}'{band.Name}' id={band.Id} hometown='{band.Hometown}' genre='{band.Genre}' " +
+            return $"{active}'{band.Name}' id={band.Id} hometown='{band.Hometown}' " +
                 $"members=[{string.Join(",", CareerBands.MemberNames(careers, band.Id))}] " +
                 $"saves=[{string.Join(",", saves.Select(save => save.Id))}] " +
                 $"fans={CareerBands.BandFans(careers, band.Id, CareerBands.AllCareers())}";

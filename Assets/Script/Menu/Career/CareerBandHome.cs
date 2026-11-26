@@ -214,11 +214,6 @@ namespace YARG.Menu.Career
                 places.Add(band.Hometown);
             }
 
-            if (!string.IsNullOrWhiteSpace(band.Genre))
-            {
-                places.Add(band.Genre);
-            }
-
             _tagline.text = string.Join("  ·  ", places);
 
             _rank.text = CareerBandSheetDialogs.RankName(sheet.Rank).ToUpperInvariant();

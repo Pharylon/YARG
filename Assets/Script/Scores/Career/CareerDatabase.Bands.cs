@@ -13,14 +13,13 @@ namespace YARG.Scores
     {
         #region Bands
 
-        public CareerBand CreateBand(string name, string hometown, string genre, IEnumerable<Guid> memberIds)
+        public CareerBand CreateBand(string name, string hometown, IEnumerable<Guid> memberIds)
         {
             var band = new CareerBand
             {
                 Id = Guid.NewGuid(),
                 Name = name,
                 Hometown = hometown ?? string.Empty,
-                Genre = genre ?? string.Empty,
                 CreatedAt = DateTime.Now,
             };
 
@@ -44,11 +43,6 @@ namespace YARG.Scores
         public void SetBandHometown(Guid bandId, string hometown)
         {
             _db.Execute("UPDATE Bands SET Hometown = ? WHERE Id = ?", hometown ?? string.Empty, bandId);
-        }
-
-        public void SetBandGenre(Guid bandId, string genre)
-        {
-            _db.Execute("UPDATE Bands SET Genre = ? WHERE Id = ?", genre ?? string.Empty, bandId);
         }
 
         /// <summary>

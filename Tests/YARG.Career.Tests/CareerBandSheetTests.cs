@@ -378,7 +378,7 @@ namespace YARG.Career.Tests
         {
             var fans = FanCareer();
             var stars = StarCareer();
-            var band = _careers.CreateBand("The Testers", "Springfield", "Rock", new[] { Alice, Bob });
+            var band = _careers.CreateBand("The Testers", "Springfield", new[] { Alice, Bob });
 
             var fanSave = _careers.GetOrCreateSave(fans.Id, fans.Version, band.Id);
             var starSave = _careers.GetOrCreateSave(stars.Id, stars.Version, band.Id);
@@ -389,7 +389,7 @@ namespace YARG.Career.Tests
             // Alice on her own (profile-set save) and another band: not this band's.
             var solo = _careers.GetOrCreateSave(fans.Id, fans.Version, new[] { Alice });
             Play(solo, fans, 0, 1, 5, Score(0, Alice, Instrument.Keys, 0.1f));
-            var other = _careers.CreateBand("Others", null, null, new[] { Alice });
+            var other = _careers.CreateBand("Others", null, new[] { Alice });
             Play(_careers.GetOrCreateSave(fans.Id, fans.Version, other.Id), fans, 0, 1, 5,
                 Score(0, Alice, Instrument.Keys, 0.1f));
 
@@ -420,23 +420,21 @@ namespace YARG.Career.Tests
         }
 
         [Test]
-        public void HometownAndGenreCanBeChanged()
+        public void HometownCanBeChanged()
         {
-            var band = _careers.CreateBand("The Testers", "Springfield", "Rock", new[] { Alice });
+            var band = _careers.CreateBand("The Testers", "Springfield", new[] { Alice });
 
             _careers.SetBandHometown(band.Id, "Shelbyville");
-            _careers.SetBandGenre(band.Id, "");
 
             var loaded = _careers.GetBand(band.Id);
             Assert.That(loaded.Hometown, Is.EqualTo("Shelbyville"));
-            Assert.That(loaded.Genre, Is.EqualTo(""));
             Assert.That(loaded.Name, Is.EqualTo("The Testers"));
         }
 
         [Test]
         public void NewBandLoadsAnEmptySheet()
         {
-            var band = _careers.CreateBand("Fresh", null, null, new[] { Alice });
+            var band = _careers.CreateBand("Fresh", null, new[] { Alice });
 
             var sheet = CareerBandSheet.Load(_careers, band.Id, new[] { FanCareer() });
 

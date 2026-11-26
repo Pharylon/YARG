@@ -23,5 +23,12 @@ namespace YARG.Career
         // How the song is played: on its own, or as part of a show (a tier played as a setlist, see
         // CareerShow). Stored on the completion row.
         public CareerCompletionSource Source;
+
+        // Retail mode (see RetailMode). Closer: the song is the gig's closer, any song of the library
+        // picked by the players; it is recorded on its own, not as one of the gig's songs (CareerSongId
+        // and SongIndex are not used). Substitute: the song is played in place of the bonus gig's song
+        // the context names, and counts for it.
+        public bool Closer;
+        public bool Substitute;
     }
 }

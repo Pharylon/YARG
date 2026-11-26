@@ -23,6 +23,7 @@ namespace YARG.Scores
             _db.CreateTable<CareerTierProgress>();
             _db.CreateTable<CareerBand>();
             _db.CreateTable<CareerBandMember>();
+            _db.CreateTable<CareerCloser>();
         }
 
         #region Reads

@@ -185,7 +185,7 @@ namespace YARG.Career.Tests
         public void BandSaveAndProfileSetSaveAreSeparate()
         {
             var career = Career();
-            var band = _careers.CreateBand("The Testers", "Austin", "Rock", new[] { Alice });
+            var band = _careers.CreateBand("The Testers", "Austin", new[] { Alice });
 
             var bandCredit = CareerBands.Credit(_careers, band.Id, new[] { Alice }, false);
             var soloCredit = CareerBands.Credit(_careers, null, new[] { Alice }, false);
@@ -210,7 +210,7 @@ namespace YARG.Career.Tests
         public void SitInDoesNotChangeTheBandSave()
         {
             var career = Career();
-            var band = _careers.CreateBand("The Testers", null, null, new[] { Alice, Bob });
+            var band = _careers.CreateBand("The Testers", null, new[] { Alice, Bob });
 
             var alone = CareerBands.GetOrCreateSaveId(_careers, career,
                 CareerBands.Credit(_careers, band.Id, new[] { Alice }, false));
@@ -224,8 +224,8 @@ namespace YARG.Career.Tests
         public void TwoBandsHaveSeparateProgressOnTheSameCareer()
         {
             var career = Career();
-            var first = _careers.CreateBand("First", null, null, new[] { Alice });
-            var second = _careers.CreateBand("Second", null, null, new[] { Alice });
+            var first = _careers.CreateBand("First", null, new[] { Alice });
+            var second = _careers.CreateBand("Second", null, new[] { Alice });
 
             var firstSave = _careers.GetOrCreateSave(career.Id, career.Version, first.Id);
             var secondSave = _careers.GetOrCreateSave(career.Id, career.Version, second.Id);
@@ -238,7 +238,7 @@ namespace YARG.Career.Tests
         public void ResetGivesTheBandAFreshSave()
         {
             var career = Career();
-            var band = _careers.CreateBand("The Testers", null, null, new[] { Alice });
+            var band = _careers.CreateBand("The Testers", null, new[] { Alice });
 
             var save = _careers.GetOrCreateSave(career.Id, career.Version, band.Id);
             _careers.SoftDeleteSave(save);
@@ -251,7 +251,7 @@ namespace YARG.Career.Tests
         [Test]
         public void RenameMembersAndSoftDelete()
         {
-            var band = _careers.CreateBand("Old Name", "Here", "Jazz", new[] { Alice });
+            var band = _careers.CreateBand("Old Name", "Here", new[] { Alice });
 
             _careers.RenameBand(band.Id, "New Name");
             _careers.AddBandMember(band.Id, Bob);
@@ -277,7 +277,7 @@ namespace YARG.Career.Tests
         {
             var career = Career();
             var soloSave = _careers.GetOrCreateSave(career.Id, career.Version, new[] { Alice, Bob });
-            var band = _careers.CreateBand("The Testers", null, null, new[] { Alice, Bob });
+            var band = _careers.CreateBand("The Testers", null, new[] { Alice, Bob });
 
             Assert.That(_careers.AdoptSave(soloSave, band.Id), Is.True);
             Assert.That(_careers.FindActiveSaveForBand(career.Id, band.Id)?.Id, Is.EqualTo(soloSave));
@@ -290,7 +290,7 @@ namespace YARG.Career.Tests
         {
             var fanCareer = FanCareer(out var fanSong);
             var starCareer = StarCareer(out var starSong);
-            var band = _careers.CreateBand("The Testers", null, null, new[] { Alice });
+            var band = _careers.CreateBand("The Testers", null, new[] { Alice });
 
             Complete(_careers.GetOrCreateSave(fanCareer.Id, fanCareer.Version, band.Id), fanCareer, fanSong, 5);
             Complete(_careers.GetOrCreateSave(starCareer.Id, starCareer.Version, band.Id), starCareer, starSong, 5);

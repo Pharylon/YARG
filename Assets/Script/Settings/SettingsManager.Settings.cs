@@ -941,6 +941,9 @@ namespace YARG.Settings
                 ? TempoEngine.YargStretch
                 : TempoEngine.BassFx;
             public ToggleSetting SaveScoresWithBots { get; } = new(false);
+
+            // Songs are locked for quickplay until completed in a career (see YARG.Career.RetailMode).
+            public ToggleSetting RetailMode { get; } = new(false, RetailModeCallback);
             public SliderSetting FontScaling { get; } = new(0f, 0f, 100f, FontScalingCallback);
 
             public DropdownSetting<AudioOutputMode> OutputMode { get; } = new(AudioOutputMode.Shared,
@@ -1093,6 +1096,11 @@ namespace YARG.Settings
                 {
                     MusicLibraryMenu.SetReload(MusicLibraryReloadState.Partial);
                 }
+            }
+
+            private static void RetailModeCallback(bool value)
+            {
+                YARG.Career.RetailMode.NotifyChanged();
             }
 
             private static void DataStreamEnableCallback(bool value)

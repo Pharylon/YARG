@@ -42,7 +42,8 @@ namespace YARG.Menu.Career
             viewport.SetSiblingIndex(rows.GetSiblingIndex());
             viewport.anchorMin = Vector2.zero;
             viewport.anchorMax = new Vector2(1f, 1f - MAP_HEIGHT_SHARE);
-            viewport.offsetMin = Vector2.zero;
+            // The panel runs on under the button bar at the bottom of the screen; the list stops above it.
+            viewport.offsetMin = new Vector2(0f, _bandHomeBottomInset);
             viewport.offsetMax = Vector2.zero;
             rows.SetParent(viewport, false);
 
@@ -220,6 +221,7 @@ namespace YARG.Menu.Career
             }
 
             _gigMap.Show(stops, selected, info, story);
+            RefreshNavigationForGig();
 
             if (_freshUnlocks.Count > 0)
             {

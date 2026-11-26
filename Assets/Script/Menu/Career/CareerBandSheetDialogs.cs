@@ -95,7 +95,6 @@ namespace YARG.Menu.Career
             var notSet = Localize.Key("Menu.Career.Sheet.NotSet");
             lines.Add(string.Join("  ·  ",
                 Localize.KeyFormat("Menu.Career.Sheet.Hometown", Blank(band.Hometown) ? notSet : band.Hometown.Trim()),
-                Localize.KeyFormat("Menu.Career.Sheet.Genre", Blank(band.Genre) ? notSet : band.Genre.Trim()),
                 Localize.KeyFormat("Menu.Career.Sheet.Founded", band.CreatedAt.ToString("d", CultureInfo.CurrentCulture))));
 
             var members = CareerBands.MemberNames(careers, band.Id);

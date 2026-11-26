@@ -13,7 +13,6 @@ namespace YARG.Scores
 
         public string Name { get; set; }
         public string Hometown { get; set; }
-        public string Genre { get; set; }
         public DateTime CreatedAt { get; set; }
 
         // Deleting a band is a soft delete: its saves and their history stay in the database.

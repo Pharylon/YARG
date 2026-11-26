@@ -153,6 +153,7 @@ namespace YARG.Menu.Career
             StopVideo();
 
             Navigator.Instance.PopScheme();
+            _navigationSet = false;
 
             _backgroundCts?.Cancel();
             _backgroundCts?.Dispose();
@@ -165,6 +166,9 @@ namespace YARG.Menu.Career
             {
                 Navigator.Instance.PopScheme();
             }
+
+            _navigationSet = true;
+            _navigationOffersSubstitute = SubstituteOffered();
 
             var entries = new List<NavigationScheme.Entry>
             {
@@ -179,6 +183,8 @@ namespace YARG.Menu.Career
                         SelectedIndex++;
                     }),
                 new NavigationScheme.Entry(MenuAction.Green, "Menu.Common.Confirm", Confirm),
+                new NavigationScheme.Entry(MenuAction.Orange, "Menu.Retail.Substitute", PickSubstitute,
+                    hide: !SubstituteOffered()),
                 new NavigationScheme.Entry(MenuAction.Left, "Menu.Career.ChangeGig", () => StepGig(-1)),
                 new NavigationScheme.Entry(MenuAction.Right, "Menu.Career.ChangeGig", () => StepGig(1)),
                 new NavigationScheme.Entry(MenuAction.Yellow, "Menu.Career.Reset",
@@ -345,14 +351,22 @@ namespace YARG.Menu.Career
                     viewList.Add(ShowRow(tier, reveal, startShow));
                 }
 
+                // Retail mode: the gig ends with its closer.
+                var closerRow = CloserRow(tier, tierIndex, result);
+
                 for (var songIndex = 0; songIndex < tier.Songs.Length; songIndex++)
                 {
                     var songResult = songIndex < result.Songs.Count ? result.Songs[songIndex] : null;
                     var hidden = CareerSetlists.IsHidden(tier, tier.Songs[songIndex], songResult?.Completed ?? false);
                     viewList.Add(new SongViewType(
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
-                        songIndex == tier.Songs.Length - 1, songResult,
+                        closerRow is null && songIndex == tier.Songs.Length - 1, songResult,
                         OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
+                }
+
+                if (closerRow is not null)
+                {
+                    viewList.Add(closerRow);
                 }
             }
 

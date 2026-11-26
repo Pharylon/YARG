@@ -121,7 +121,31 @@ namespace YARG.Career
         /// </summary>
         public static int Intensity(CareerSong song)
         {
+            return Intensity(song?.SongEntry);
+        }
+
+        /// <summary>
+        /// The rating of the song a result was played on: the career's song, or, when another song was
+        /// played in its place (a bonus gig's substitute, see RetailMode), that song.
+        /// </summary>
+        public static int Intensity(CareerSong song, byte[] playedChecksum)
+        {
             var entry = song?.SongEntry;
+            if (playedChecksum is { Length: > 0 } &&
+                (entry is null || !entry.Hash.HashBytes.AsSpan().SequenceEqual(playedChecksum)))
+            {
+                var played = YARG.Core.Song.HashWrapper.Create(playedChecksum);
+                if (YARG.Song.SongContainer.SongsByHash.TryGetValue(played, out var songs) && songs.Count > 0)
+                {
+                    return Intensity(songs[0]);
+                }
+            }
+
+            return Intensity(entry);
+        }
+
+        private static int Intensity(YARG.Core.Song.SongEntry entry)
+        {
             if (entry is null)
             {
                 return DEFAULT_INTENSITY;
@@ -144,7 +168,7 @@ namespace YARG.Career
         /// <see cref="CareerTier.FanMultiplier"/>, else its venue size when one is specified), else from
         /// the song's difficulty.
         /// </summary>
-        public static float SongMultiplier(CareerTier tier, CareerSong song)
+        public static float SongMultiplier(CareerTier tier, CareerSong song, byte[] playedChecksum = null)
         {
             if (tier.FanMultiplier is { } multiplier)
             {
@@ -153,7 +177,7 @@ namespace YARG.Career
 
             return tier.VenueSize != VenueSize.NotSpecified
                 ? VenueMultiplier(tier.VenueSize)
-                : DifficultyMultiplier(Intensity(song));
+                : DifficultyMultiplier(Intensity(song, playedChecksum));
         }
 
         /// <summary>
@@ -164,6 +188,16 @@ namespace YARG.Career
         public static int SongFans(CareerTier tier, CareerSong song, int stars, int contractBonusPercent)
         {
             return Fans(SongMultiplier(tier, song), tier.IsBonus, stars, contractBonusPercent);
+        }
+
+        /// <summary>
+        /// Fans for one stored result. <paramref name="playedChecksum"/> is the song the result was
+        /// played on: when it is not the career's own song (a substitute), its difficulty decides.
+        /// </summary>
+        public static int SongFans(CareerTier tier, CareerSong song, int stars, int contractBonusPercent,
+            byte[] playedChecksum)
+        {
+            return Fans(SongMultiplier(tier, song, playedChecksum), tier.IsBonus, stars, contractBonusPercent);
         }
 
         /// <summary>

@@ -28,7 +28,7 @@
 #   band list|create|select|rename|edit|members|delete|adopt|sheet|history, profile create,
 #   player add|remove|sitout, players,
 #   dialog, type <text>, press <button label> (bands and dialogs, see Assets/Script/Dev/DevRemote.Bands.cs), e.g.
-#   band create name="The Testers" hometown=Austin genre=Rock members="New Profile"
+#   band create name="The Testers" hometown=Austin members="New Profile"
 #   songs, validate, editor open|copy|tier|song|rows|fields|set|scroll|close (career content and the career
 #   preset editor, see Assets/Script/Dev/DevRemote.Content.cs), e.g.
 #   editor open career="YARG Setlist Headliner"   editor set "Fan Multiplier" 3

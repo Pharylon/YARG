@@ -19,6 +19,13 @@ namespace YARG.Menu.Career
         {
             var context = GlobalVariables.State.CurrentCareer;
             var outcome = CareerSongOutcome.Last;
+
+            // A gig's closer: it earns nothing but the song itself.
+            if (context is { Closer: true })
+            {
+                return RetailMode.LastCloser is null ? null : Localize.Key("Menu.Retail.ScoreCloser");
+            }
+
             if (context is null || outcome is null ||
                 outcome.CareerId != context.CareerId || outcome.CareerSongId != context.CareerSongId)
             {

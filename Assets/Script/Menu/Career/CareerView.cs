@@ -48,6 +48,25 @@ namespace YARG.Menu.Career
         private bool _helpTextPlaced;
 
         /// <summary>
+        /// The pill the lineup's Connected/Connect buttons are made from, with its two colours, for
+        /// other career screens that show an on/off state the same way (the band's member picker).
+        /// Set once a row exists.
+        /// </summary>
+        public static Menu.ColoredButton PillPrefab { get; private set; }
+        public static Color PillOnColor { get; private set; }
+        public static Color PillOffColor { get; private set; }
+
+        private void Awake()
+        {
+            if (_connectButtonPrefab != null)
+            {
+                PillPrefab = _connectButtonPrefab;
+                PillOnColor = _connectedColor;
+                PillOffColor = _disconnectedColor;
+            }
+        }
+
+        /// <summary>
         /// The help text sits in the row's layout sized for the music library's short labels; it is
         /// moved onto the row itself, right-aligned with room for longer text.
         /// </summary>

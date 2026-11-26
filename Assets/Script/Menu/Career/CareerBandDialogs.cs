@@ -37,30 +37,25 @@ namespace YARG.Menu.Career
             var dialog = DialogManager.Instance.ShowList(band.Name);
             dialog.ClearButtons();
 
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Sheet", band.Name),
-                () => ShowAfterClose(() => CareerBandSheetDialogs.ShowSheet(band)).Forget());
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.History", band.Name),
-                () => ShowAfterClose(() => CareerBandSheetDialogs.ShowHistory(band)).Forget());
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Rename", band.Name),
+            // The dialog is titled with the band's name, so the options do not repeat it.
+            AddListButton(dialog, Localize.Key("Menu.Career.Band.Rename"),
                 () => RenameBand(band, onChanged).Forget());
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditHometown", band.Name),
+            AddListButton(dialog, Localize.Key("Menu.Career.Band.EditHometown"),
                 () => EditHometown(band, onChanged).Forget());
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditGenre", band.Name),
-                () => EditGenre(band, onChanged).Forget());
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.EditMembers", band.Name),
+            AddListButton(dialog, Localize.Key("Menu.Career.Band.EditMembers"),
                 () => EditMembers(band, onChanged).Forget());
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.ChooseIcon", band.Name),
+            AddListButton(dialog, Localize.Key("Menu.Career.Band.ChooseIcon"),
                 () => CareerIcons.ChooseBandIcon(band, onChanged));
             if (CareerIcons.HasBandIcon(band.Id))
             {
-                AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.RemoveIcon", band.Name), () =>
+                AddListButton(dialog, Localize.Key("Menu.Career.Band.RemoveIcon"), () =>
                 {
                     CareerIcons.RemoveBandIcon(band);
                     onChanged?.Invoke();
                 });
             }
 
-            AddListButton(dialog, Localize.KeyFormat("Menu.Career.Band.Delete", band.Name),
+            AddListButton(dialog, Localize.Key("Menu.Career.Band.Delete"),
                 () => DeleteBand(band, onChanged).Forget());
 
             dialog.AddDialogButton("Menu.Common.Close", MenuData.Colors.CancelButton,
@@ -68,7 +63,7 @@ namespace YARG.Menu.Career
         }
 
         /// <summary>
-        /// Asks for a new band's name, hometown, genre and members, creates it and makes it the active
+        /// Asks for a new band's name, hometown and members, creates it and makes it the active
         /// band. <paramref name="onChanged"/> runs once it exists.
         /// </summary>
         public static void CreateBand(Action onChanged)
@@ -90,12 +85,6 @@ namespace YARG.Menu.Career
                 return;
             }
 
-            var genre = await AskText(Localize.Key("Menu.Career.Band.AskGenre"));
-            if (genre is null)
-            {
-                return;
-            }
-
             var members = await PickMembers(Localize.KeyFormat("Menu.Career.Band.PickMembers", name.Trim()),
                 CareerBands.CurrentHumanPlayers(), "Menu.Career.Band.Create");
             if (members is null)
@@ -104,7 +93,7 @@ namespace YARG.Menu.Career
             }
 
             var careers = ScoreContainer.Careers;
-            var band = careers.CreateBand(name.Trim(), hometown.Trim(), genre.Trim(), members);
+            var band = careers.CreateBand(name.Trim(), hometown.Trim(), members);
             CareerBands.ActiveBandId = band.Id;
             YargLogger.LogFormatInfo("Career: created band '{0}'.", band.Name);
             ToastManager.ToastSuccess(Localize.KeyFormat("Menu.Career.Band.Created", band.Name));
@@ -135,21 +124,6 @@ namespace YARG.Menu.Career
             }
 
             ScoreContainer.Careers.SetBandHometown(band.Id, hometown.Trim());
-            onChanged?.Invoke();
-        }
-
-        /// <summary>
-        /// Change the genre; confirming an empty field clears it.
-        /// </summary>
-        private static async UniTaskVoid EditGenre(CareerBand band, Action onChanged)
-        {
-            var genre = await AskText(Localize.KeyFormat("Menu.Career.Band.AskEditGenre", band.Name), band.Genre);
-            if (genre is null)
-            {
-                return;
-            }
-
-            ScoreContainer.Careers.SetBandGenre(band.Id, genre.Trim());
             onChanged?.Invoke();
         }
 
@@ -252,6 +226,7 @@ namespace YARG.Menu.Career
                 var id = profile.Id;
                 var name = profile.Name;
                 ColoredButton button = null;
+                Menu.ColoredButton pill = null;
                 button = AddListButton(dialog, MemberText(name, chosen.Contains(id)), () =>
                 {
                     if (!chosen.Remove(id))
@@ -260,7 +235,16 @@ namespace YARG.Menu.Career
                     }
 
                     button.Text.text = MemberText(name, chosen.Contains(id));
+                    ShowMemberPill(pill, chosen.Contains(id));
                 }, false);
+
+                // A "Member" pill on the right, like the lineup's "Connected", when one can be made.
+                pill = AddMemberPill(button);
+                if (pill != null)
+                {
+                    button.Text.text = name;
+                    ShowMemberPill(pill, chosen.Contains(id));
+                }
             }
 
             dialog.AddDialogButton("Menu.Common.Cancel", MenuData.Colors.CancelButton,
@@ -283,8 +267,54 @@ namespace YARG.Menu.Career
             return confirmed ? profiles.Select(profile => profile.Id).Where(chosen.Contains).ToList() : null;
         }
 
+        private static Menu.ColoredButton AddMemberPill(ColoredButton row)
+        {
+            if (CareerView.PillPrefab == null)
+            {
+                return null;
+            }
+
+            var pill = UnityEngine.Object.Instantiate(CareerView.PillPrefab, row.transform);
+            var rect = (UnityEngine.RectTransform) pill.transform;
+            rect.anchorMin = new UnityEngine.Vector2(1f, 0.18f);
+            rect.anchorMax = new UnityEngine.Vector2(1f, 0.82f);
+            rect.pivot = new UnityEngine.Vector2(1f, 0.5f);
+            rect.sizeDelta = new UnityEngine.Vector2(170f, 0f);
+            rect.anchoredPosition = new UnityEngine.Vector2(-20f, 0f);
+
+            // Only a label: the row takes the clicks.
+            foreach (var graphic in pill.GetComponentsInChildren<UnityEngine.UI.Graphic>(true))
+            {
+                graphic.raycastTarget = false;
+            }
+
+            foreach (var navigatable in pill.GetComponentsInChildren<NavigatableBehaviour>(true))
+            {
+                navigatable.enabled = false;
+            }
+
+            return pill;
+        }
+
+        private static void ShowMemberPill(Menu.ColoredButton pill, bool member)
+        {
+            if (pill == null)
+            {
+                return;
+            }
+
+            pill.SetBackgroundAndTextColor(member ? CareerView.PillOnColor : CareerView.PillOffColor);
+            pill.Text.text = Localize.Key(member ? "Menu.Career.Band.MemberPill" : "Menu.Career.Band.MemberPillOff");
+        }
+
         private static string MemberText(string name, bool chosen)
         {
+            // With a pill on the row, the name alone.
+            if (CareerView.PillPrefab != null)
+            {
+                return name;
+            }
+
             return Localize.KeyFormat(chosen ? "Menu.Career.Band.MemberOn" : "Menu.Career.Band.MemberOff", name);
         }
 

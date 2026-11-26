@@ -38,7 +38,7 @@ namespace YARG.Menu.Career
         }
 
         /// <summary>
-        /// "Hometown · Genre · Members: A, B · 1,234 fans (Local Act)", leaving out what is not set.
+        /// "Hometown · Members: A, B · 1,234 fans (Local Act)", leaving out what is not set.
         /// </summary>
         public static string Describe(CareerDatabase careers, CareerBand band)
         {
@@ -46,11 +46,6 @@ namespace YARG.Menu.Career
             if (!string.IsNullOrWhiteSpace(band.Hometown))
             {
                 parts.Add(band.Hometown);
-            }
-
-            if (!string.IsNullOrWhiteSpace(band.Genre))
-            {
-                parts.Add(band.Genre);
             }
 
             var members = CareerBands.MemberNames(careers, band.Id);

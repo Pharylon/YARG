@@ -234,7 +234,7 @@ namespace YARG.Career
             {
                 var met = CareerContracts.RowMet(contract, row);
                 var fans = CareerFans.SongFans(tier, song, row.IsGold ? CareerFans.GOLD_STARS : row.BandStars,
-                    met ? contract.BonusPercent : 0);
+                    met ? contract.BonusPercent : 0, row.SongChecksum);
 
                 songResult.ContractEverMet |= met;
                 if (fans > songResult.Fans || fans == songResult.Fans && met && !songResult.ContractMet)

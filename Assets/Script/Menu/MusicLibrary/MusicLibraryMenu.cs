@@ -252,6 +252,7 @@ namespace YARG.Menu.MusicLibrary
 
             StemSettings.ApplySettings = SettingsManager.Settings.ApplyVolumesInMusicLibrary.Value;
             _previewDelay = 0;
+            EnsureRetailListCurrent();
             if (_reloadState == MusicLibraryReloadState.Full)
             {
                 Refresh();
@@ -318,7 +319,7 @@ namespace YARG.Menu.MusicLibrary
             _reloadState = MusicLibraryReloadState.None;
 
             // Set proper text
-            _subHeader.text = LibraryMode switch
+            _subHeader.text = PickMode && !string.IsNullOrEmpty(_songPickerTitle) ? _songPickerTitle : LibraryMode switch
             {
                 MusicLibraryMode.QuickPlay => Localize.Key("Menu.Main.Options.Quickplay"),
                 MusicLibraryMode.Practice  => Localize.Key("Menu.Main.Options.Practice"),
@@ -515,6 +516,11 @@ namespace YARG.Menu.MusicLibrary
                     () => CurrentSelection?.SecondaryTextClick(), hide: true),
             };
 
+            if (RetailToggleEntry() is { } retailToggle)
+            {
+                entries.Add(retailToggle);
+            }
+
             var scheme = new NavigationScheme(entries, false);
             if (MenuState == MenuState.Library)
             {
@@ -657,8 +663,7 @@ namespace YARG.Menu.MusicLibrary
                 }
             }
 
-            bool showSortHeaders = _sortedSongs.Length > 1 ||
-                YARG.Menu.Filters.FiltersMenu.ActiveFilterPredicate != null;
+            bool showSortHeaders = _sortedSongs.Length > 1 || EffectiveFilter != null;
 
             foreach (var (section, index) in _sortedSongs.Select((s, i) => (s, i)))
             {
@@ -935,6 +940,11 @@ namespace YARG.Menu.MusicLibrary
             ShowPlaylist.Clear();
             _ = _previewPlayer.StopPreview();
             StemSettings.ApplySettings = true;
+
+            // "Show all songs" and a pick in progress end with the visit.
+            ClearSongPicker();
+            YARG.Career.RetailMode.ShowAllSongs = false;
+
             MenuManager.Instance.PopMenu();
         }
 
@@ -1170,7 +1180,7 @@ namespace YARG.Menu.MusicLibrary
                 return;
             }
 
-            bool setListNotEmpty = ShowPlaylist.Count > 0;
+            bool setListNotEmpty = ShowPlaylist.Count > 0 && !PickMode;
 
             if (setListNotEmpty)
             {
@@ -1191,6 +1201,12 @@ namespace YARG.Menu.MusicLibrary
 
         public void ExecuteGreenHoldAction()
         {
+            // Picking a song: there is no set to build or start.
+            if (PickMode)
+            {
+                return;
+            }
+
             bool setListNotEmpty = ShowPlaylist.Count > 0;
 
             if (setListNotEmpty)
