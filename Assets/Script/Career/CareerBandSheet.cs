@@ -192,7 +192,7 @@ namespace YARG.Career
             // Valued the way the evaluation values every row (see CareerEvaluation.ApplyBestFans).
             if (tier is not null && song is not null)
             {
-                var contract = CareerContracts.For(tier, song);
+                var contract = CareerContracts.For(tier);
                 var met = CareerContracts.RowMet(contract, row);
                 gig.Fans = CareerFans.SongFans(tier, song, row.IsGold ? CareerFans.GOLD_STARS : row.BandStars,
                     met ? contract.BonusPercent : 0, row.SongChecksum);

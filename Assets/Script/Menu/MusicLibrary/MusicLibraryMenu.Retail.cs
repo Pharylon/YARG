@@ -130,14 +130,51 @@ namespace YARG.Menu.MusicLibrary
             }
 
             return new NavigationScheme.Entry(MenuAction.Select,
-                RetailMode.ShowAllSongs ? "Menu.Retail.ShowUnlocked" : "Menu.Retail.ShowAll", ToggleRetailFilter);
+                    RetailMode.ShowAllSongs ? "Menu.Retail.ShowUnlocked" : "Menu.Retail.ShowAll", ToggleRetailFilter)
+                .WithWidthOf(RetailMode.ShowAllSongs ? "Menu.Retail.ShowAll" : "Menu.Retail.ShowUnlocked");
         }
 
         private void ToggleRetailFilter()
         {
             RetailMode.ShowAllSongs = !RetailMode.ShowAllSongs;
             _retailListState = RetailListState();
-            Refresh();
+
+            // The list again, keeping what is typed in the search.
+            SetRecommendedSongs();
+            UpdateSearch(true);
+
+            if (_searchField.IsTyping)
+            {
+                UpdateRetailTypingEntry();
+                _searchField.RefreshTypingBar();
+            }
+            else
+            {
+                // Also gives the button its new label.
+                SetNavigationScheme(true);
+            }
+        }
+
+        // While typing a search the button bar is the search field's own; it gets the same toggle.
+        private void UpdateRetailTypingEntry()
+        {
+            var show = RetailToggleEntry() is not null;
+
+            // Select keeps working while typing a search, on a controller. On a keyboard Select is
+            // Backspace, which is deleting a letter there, so a press while Backspace is down is left
+            // to the text.
+            _searchField.TypingEntry = show
+                ? new NavigationScheme.Entry(MenuAction.Select,
+                    RetailMode.ShowAllSongs ? "Menu.Retail.ShowUnlocked" : "Menu.Retail.ShowAll", () =>
+                    {
+                        if (UnityEngine.InputSystem.Keyboard.current is { backspaceKey: { isPressed: true } })
+                        {
+                            return;
+                        }
+
+                        ToggleRetailFilter();
+                    }).WithWidthOf(RetailMode.ShowAllSongs ? "Menu.Retail.ShowAll" : "Menu.Retail.ShowUnlocked")
+                : null;
         }
     }
 }

@@ -86,13 +86,13 @@ namespace YARG.Career.Tests
         {
             // Every song of a show is its own completion row; a show left early keeps the songs it finished.
             var show = Tier(3, CareerCompletionMode.FullTierPlaylist);
-            var next = Tier(1, criteria: 150);
+            var next = Tier(1, criteria: 1_500);
             var career = Career(show, next);
 
             var partial = Evaluate(career, Completion(show.Songs[0], 5), Completion(show.Songs[1], 4));
             Assert.That(partial.Tiers[0].Songs.Count(song => song.Completed), Is.EqualTo(2));
             Assert.That(partial.Tiers[0].Completed, Is.False);
-            Assert.That(partial.TotalFans, Is.EqualTo(100 + 75));
+            Assert.That(partial.TotalFans, Is.EqualTo(1_000 + 750));
             Assert.That(partial.Tiers[1].Unlocked, Is.True);
 
             var full = Evaluate(career, Completion(show.Songs[0], 5), Completion(show.Songs[1], 4),
@@ -183,7 +183,7 @@ namespace YARG.Career.Tests
             Assert.That(two.Tiers[1].Unlocked, Is.True);
             // Playing more of the pool still earns fans: each song counts on its own.
             var three = Evaluate(career, Completion(tier.Songs[3], 3), Completion(tier.Songs[1], 4), Completion(tier.Songs[0], 5));
-            Assert.That(three.TotalFans, Is.EqualTo(50 + 75 + 100));
+            Assert.That(three.TotalFans, Is.EqualTo(500 + 750 + 1_000));
         }
 
         [Test]
@@ -264,7 +264,7 @@ namespace YARG.Career.Tests
             // The encore's fans count like any song's.
             var withEncore = Evaluate(career, Completion(tier.Songs[0], 4), Completion(tier.Songs[1], 4),
                 Completion(tier.Songs[2], 5));
-            Assert.That(withEncore.TotalFans, Is.EqualTo(75 + 75 + 100));
+            Assert.That(withEncore.TotalFans, Is.EqualTo(750 + 750 + 1_000));
         }
 
         [Test]
@@ -272,22 +272,22 @@ namespace YARG.Career.Tests
         {
             var tier = Tier(2);
             tier.Songs[1].IsEncore = true;
-            var next = Tier(1, criteria: 200);
+            var next = Tier(1, criteria: 2_000);
             var career = Career(tier, next);
 
             var issues = CareerValidation.Validate(career);
             Assert.That(issues.Select(issue => issue.Type), Is.EquivalentTo(new[]
             {
                 CareerIssueType.EncoreNeverPlayed,
-                // Only the set song can earn fans: 125 at gold is not 200.
+                // Only the set song can earn fans: 1,250 at gold is not 2,000.
                 CareerIssueType.UnreachableTier,
             }));
-            Assert.That(CareerValidation.MaxTierFans(tier), Is.EqualTo(125));
+            Assert.That(CareerValidation.MaxTierFans(tier), Is.EqualTo(1_250));
 
             tier.CompletionMode = CareerCompletionMode.FullTierPlaylist;
             tier.EncoreMinStars = 4.5f;
             Assert.That(CareerValidation.Validate(career), Is.Empty);
-            Assert.That(CareerValidation.MaxTierFans(tier), Is.EqualTo(250));
+            Assert.That(CareerValidation.MaxTierFans(tier), Is.EqualTo(2_500));
 
             tier.EncoreMinStars = 6f;
             Assert.That(CareerValidation.Validate(career).Select(issue => issue.Type),

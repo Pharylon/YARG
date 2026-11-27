@@ -176,8 +176,15 @@ namespace YARG.Career
                     UnlockCriteria = 18,
                     Songs = tierBonusSongs1,
                     IsBonus = true,
-                    CustomUnlockText = "Uh... where are we? What did we say about eating the YARG gems? Now you'll need to play yourself out of this stupor. Go on, try whatever you want, it's all a dream.",
+                    CustomUnlockText = "Uh... where are we? What did we say about eating the YARG gems? Now you'll need to play yourself out of this neon stupor. Go on, swap in anything poppy or synthy you like, it's all a dream.",
                     VenueHint = "Venue/TunnelTrip",
+                    // A pop fever dream: its songs (always on theme) or any poppy or electronic song of the
+                    // 2020s, as most of its songs are.
+                    Theme = new CareerGigTheme
+                    {
+                        YearMin = 2020,
+                        Genres = new[] { "Pop", "Pop-Rock", "Synthpop", "R&B/Soul/Funk", "Electronic Rock" },
+                    },
                 },
                 new()
                 {
@@ -600,16 +607,7 @@ namespace YARG.Career
             // Club Debut (Medium, 1300 fans) [f86c4d66-3892-460b-ade9-0aaee2a0fb48]
             CareerSong[] tierClubDebut = new[]
             {
-                new CareerSong(Guid.Parse("56390e0b-debb-4743-a1ba-0e8a401af492")) // Last Dinosaurs - Eleven
-                {
-                    Id = Guid.Parse("f5a920b0-40fd-4621-be6f-2d5b34e05449"),
-                    Contract = new CareerContract
-                    {
-                        Type = CareerContractType.FullCombo,
-                        Parameter = 1,
-                        BonusPercent = 50,
-                    },
-                },
+                new CareerSong(Guid.Parse("56390e0b-debb-4743-a1ba-0e8a401af492")) { Id = Guid.Parse("f5a920b0-40fd-4621-be6f-2d5b34e05449") }, // Last Dinosaurs - Eleven
                 new CareerSong(Guid.Parse("2c69588b-c01d-4df9-ac7f-1dc0fe5884a1")) { Id = Guid.Parse("21d0c4eb-971c-4e13-b42f-f84c012239c1") }, // King Gizzard and the Lizard Wizard - Plastic Boogie
                 new CareerSong(Guid.Parse("8287d828-ee4e-4bc7-bfad-ea4afbfc5b12")) { Id = Guid.Parse("f64beb7d-60e0-49ed-9f82-9c76d4ce8442") }, // Glass Beach - Bedroom Community
                 new CareerSong(Guid.Parse("8865327b-6f77-46ab-beba-f511db7cf3a0")) { Id = Guid.Parse("b3789028-671a-4755-bb95-79e530e4555f") }, // Thanks! I Hate It - Participation Trophy Wife
@@ -648,16 +646,7 @@ namespace YARG.Career
             {
                 new CareerSong(Guid.Parse("ece8093f-07f3-49ea-9111-efe6776c67c2")) { Id = Guid.Parse("1aa01db1-852c-43ea-a287-e182b71ad00e") }, // Vessel - Overdrive
                 new CareerSong(Guid.Parse("815e8f4d-6568-437a-86e4-cef5e3ab3f95")) { Id = Guid.Parse("39036701-3d2f-4d16-add1-641b0ffd0552") }, // Nine Inch Nails - Discipline
-                new CareerSong(Guid.Parse("8d3137f4-373a-413d-940c-dc0b2338c1ac")) // NateWantsToBattle - To Let Go
-                {
-                    Id = Guid.Parse("12f8ea35-8fd6-4929-9d29-7a88d7ae36d8"),
-                    Contract = new CareerContract
-                    {
-                        Type = CareerContractType.MinStars,
-                        Parameter = 6,
-                        BonusPercent = 50,
-                    },
-                },
+                new CareerSong(Guid.Parse("8d3137f4-373a-413d-940c-dc0b2338c1ac")) { Id = Guid.Parse("12f8ea35-8fd6-4929-9d29-7a88d7ae36d8") }, // NateWantsToBattle - To Let Go
                 new CareerSong(Guid.Parse("05a9f3fc-64d6-41f4-9289-e75299254e74")) { Id = Guid.Parse("59dcb51f-ef8a-4e27-8d6f-6010d9b5600b") }, // Gnarlemagne - Ain't Askin for Much
             };
 
@@ -665,16 +654,7 @@ namespace YARG.Career
             CareerSong[] tierFestival = new[]
             {
                 new CareerSong(Guid.Parse("1f36bed1-8e79-40fc-aabb-bce036b03903")) { Id = Guid.Parse("5dd271a3-697e-4fe4-ad14-535b7cc7fb21") }, // Auris - They Call
-                new CareerSong(Guid.Parse("ffcd4b9a-c0a2-4546-94a6-5bf60c035a19")) // Vera Kay - Alibi
-                {
-                    Id = Guid.Parse("5613f9ee-ad36-4e0d-b479-6ff16eff592b"),
-                    Contract = new CareerContract
-                    {
-                        Type = CareerContractType.MinAccuracy,
-                        Parameter = 95,
-                        BonusPercent = 30,
-                    },
-                },
+                new CareerSong(Guid.Parse("ffcd4b9a-c0a2-4546-94a6-5bf60c035a19")) { Id = Guid.Parse("5613f9ee-ad36-4e0d-b479-6ff16eff592b") }, // Vera Kay - Alibi
                 new CareerSong(Guid.Parse("395b26a6-9f7a-4f81-9005-1b16d3ce65f9")) { Id = Guid.Parse("faf62db4-597d-4cd2-8b95-095f434ab665") }, // Space Weather - Dancing Demons
                 new CareerSong(Guid.Parse("99d7b85c-306c-4376-a363-7ec682ed5aa3")) { Id = Guid.Parse("7aad00dd-4824-4411-9f4b-f15c6477f635") }, // Surefire - Salt the Wound
             };
@@ -707,7 +687,7 @@ namespace YARG.Career
                     Id = new Guid("0e9a3176-33a7-433e-9675-28bb5a76ecb4"),
                     Name = "House Party",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 150,
+                    UnlockCriteria = 1_500,
                     Songs = tierHouseParty,
                     CustomUnlockText = "Word got around after the open mic. A friend is throwing a party and wants a live band in the basement. Keep it clean and the crowd will remember you.",
                     VenueSize = VenueSize.Starter,
@@ -724,7 +704,7 @@ namespace YARG.Career
                     Id = new Guid("2bb14293-7784-4c37-803f-b5c55e0d890d"),
                     Name = "Coffee House Set",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 350,
+                    UnlockCriteria = 3_500,
                     Songs = tierCoffeeHouse,
                     CustomUnlockText = "Two offers came in at once: a quiet set at the cafe on Main Street, or the street fair down in Port Ellis. Play one, or play both.",
                     VenueSize = VenueSize.Small,
@@ -742,7 +722,7 @@ namespace YARG.Career
                     Id = new Guid("e304a74c-185c-4255-b968-79023f618277"),
                     Name = "Street Fair",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 350,
+                    UnlockCriteria = 3_500,
                     Songs = tierStreetFair,
                     CustomUnlockText = "Two offers came in at once: a quiet set at the cafe on Main Street, or the street fair down in Port Ellis. Play one, or play both.",
                     VenueSize = VenueSize.Small,
@@ -760,7 +740,7 @@ namespace YARG.Career
                     Id = new Guid("7e95b97a-b29a-4989-ba7e-060239a9e298"),
                     Name = "Battle of the Bands",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 900,
+                    UnlockCriteria = 25_000,
                     Songs = tierBattle,
                     IsBonus = true,
                     CustomUnlockText = "The community hall is holding a battle of the bands. Nothing rides on it, but there are fans to win.",
@@ -773,7 +753,7 @@ namespace YARG.Career
                     Id = new Guid("f86c4d66-3892-460b-ade9-0aaee2a0fb48"),
                     Name = "Club Debut",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 1300,
+                    UnlockCriteria = 35_000,
                     Songs = tierClubDebut,
                     CustomUnlockText = "A real club with a real stage. The Velvet Anchor books you for a weeknight. Show them you belong on the weekend.",
                     VenueSize = VenueSize.Medium,
@@ -785,7 +765,7 @@ namespace YARG.Career
                     Id = new Guid("01f58ede-102f-4e2b-a980-6776f514ccdf"),
                     Name = "Rooftop Sessions",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 2300,
+                    UnlockCriteria = 140_000,
                     Songs = tierRooftop,
                     CustomUnlockText = "Ridgeview wants you, twice over: an evening on the Skyline Terrace, or a string of campus nights. Pick your crowd.",
                     VenueSize = VenueSize.Medium,
@@ -797,7 +777,7 @@ namespace YARG.Career
                     Id = new Guid("6c1c9ecf-1350-4d49-ab6d-2d40b5efa7fd"),
                     Name = "Campus Nights",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 2300,
+                    UnlockCriteria = 140_000,
                     Songs = tierCampus,
                     CustomUnlockText = "Ridgeview wants you, twice over: an evening on the Skyline Terrace, or a string of campus nights. Pick your crowd.",
                     VenueSize = VenueSize.Medium,
@@ -815,7 +795,7 @@ namespace YARG.Career
                     Id = new Guid("19139458-9ee9-451f-97c6-4639eb2cd30b"),
                     Name = "Late Night Radio",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 4000,
+                    UnlockCriteria = 400_000,
                     Songs = tierRadio,
                     IsBonus = true,
                     CustomUnlockText = "The late-night radio show wants a live session. Just you, the microphones, and whoever is still awake.",
@@ -828,7 +808,7 @@ namespace YARG.Career
                     Id = new Guid("57bcc44c-ea39-4096-a1dc-28a8d87b7e2b"),
                     Name = "Theater Night",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 5000,
+                    UnlockCriteria = 475_000,
                     Songs = tierTheater,
                     CustomUnlockText = "The big stages are calling: a seated night at the Old Mill Theater, or the summer festival in Crescent Valley. Either one could make your name.",
                     VenueSize = VenueSize.Large,
@@ -840,7 +820,7 @@ namespace YARG.Career
                     Id = new Guid("6e32fae8-a7f1-4388-b274-2a8d739adc12"),
                     Name = "Summer Festival",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 5000,
+                    UnlockCriteria = 475_000,
                     Songs = tierFestival,
                     CustomUnlockText = "The big stages are calling: a seated night at the Old Mill Theater, or the summer festival in Crescent Valley. Either one could make your name.",
                     VenueSize = VenueSize.Large,
@@ -853,7 +833,7 @@ namespace YARG.Career
                     Id = new Guid("1e25e648-87c6-4726-aa58-b9f0fef2b3e3"),
                     Name = "Arena Headliner",
                     UnlockType = UnlockType.FanCount,
-                    UnlockCriteria = 11000,
+                    UnlockCriteria = 2_300_000,
                     Songs = tierArena,
                     CustomUnlockText = "Your name is at the top of the poster. Twenty thousand people in the Westbridge Dome came to see you. Give them a night they will not forget.",
                     VenueSize = VenueSize.Epic,

@@ -613,7 +613,7 @@ namespace YARG.Settings.Metadata
                     song.Description = value;
                     Save();
                 }), editable),
-            }.Concat(SongContractFields(state, editable)).Concat(SongSetlistFields(state, editable)).ToArray(),
+            }.Concat(SongSetlistFields(state, editable)).ToArray(),
                 selectedIndex, state.SummaryChanged);
         }
 

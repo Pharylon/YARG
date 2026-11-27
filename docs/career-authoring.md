@@ -44,9 +44,9 @@ results of the song last played in the slot count, even if an earlier song had d
 earlier song again trades the slot back, and its earlier results count again.
 
 ```
-fans = 100 x multiplier x star factor
+fans = 1,000 x multiplier x star factor
        x 0.5                          (bonus tiers only)
-       x (100 + contract bonus) / 100 (only if that result met the song's contract)
+       x (100 + contract bonus) / 100 (only if that result met the tier's contract)
 ```
 
 rounded to the nearest whole fan (halves round up).
@@ -62,24 +62,24 @@ amounts sets a venue size or a multiplier on the tier.
 
 | Song difficulty (band rating, 0 to 6) | multiplier | fans at 5 stars |
 |---|---|---|
-| 0 | 1 | 100 |
-| 1 | 1.5 | 150 |
-| 2 | 2.5 | 250 |
-| 3 | 4 | 400 |
-| 4 | 6 | 600 |
-| 5 | 10 | 1,000 |
-| 6 | 15 | 1,500 |
+| 0 | 1 | 1,000 |
+| 1 | 4 | 4,000 |
+| 2 | 16 | 16,000 |
+| 3 | 64 | 64,000 |
+| 4 | 256 | 256,000 |
+| 5 | 1,024 | 1,024,000 |
+| 6 | 4,096 | 4,096,000 |
 
 The rating is the chart's band difficulty; a chart without one uses the hardest of its guitar, bass,
 drums, keys and vocals ratings, and a song with no rating at all (or not in the library) counts as 2.
 
 | `VenueSize` | venue multiplier | fans at 5 stars |
 |---|---|---|
-| `Starter` | 1 | 100 |
-| `Small` | 2.5 | 250 |
-| `Medium` | 6 | 600 |
-| `Large` | 15 | 1,500 |
-| `Epic` | 40 | 4,000 |
+| `Starter` | 1 | 1,000 |
+| `Small` | 8 | 8,000 |
+| `Medium` | 64 | 64,000 |
+| `Large` | 512 | 512,000 |
+| `Epic` | 4,096 | 4,096,000 |
 
 | Best stars | star factor |
 |---|---|
@@ -90,8 +90,12 @@ drums, keys and vocals ratings, and a song with no rating at all (or not in the 
 | 5 | 1 |
 | gold | 1.25 |
 
-Example: a 4-star result at a `Large` venue is 1,500 x 0.75 = 1,125 fans; the same result in a bonus tier
-is 563.
+Example: a 4-star result at a `Large` venue is 512,000 x 0.75 = 384,000 fans; the same result in a bonus
+tier is 192,000.
+
+A band's rank comes from its fans across all its setlists: Garage Band, Local Act (10,000), Club Regulars
+(100,000), Touring Band (1 million), Headliners (10 million), Arena Legends (100 million) and Biggest Band in
+the World (1 billion).
 
 Rule of thumb for thresholds: add up what the tiers that can be open before a tier give at the average
 you have in mind (4 stars is 0.75 of the 5-star column), and set the threshold a bit below that.
@@ -103,7 +107,7 @@ All optional. Leave a field out (or `null`) to use the default.
 | Field | Type | Meaning |
 |---|---|---|
 | `VenueSize` | `NotSpecified`, `Starter`, `Small`, `Medium`, `Large`, `Epic` | Sets the venue multiplier above. Also used to pick an installed venue. |
-| `FanMultiplier` | number, e.g. `10.0` | Replaces the venue multiplier for this tier (fans at 5 stars = 100 x this). `null` = from `VenueSize`. |
+| `FanMultiplier` | number, e.g. `10.0` | Replaces the venue multiplier for this tier (fans at 5 stars = 1,000 x this). `null` = from `VenueSize`. |
 | `City` | text | In a career that uses fans, the selected tier's venue and city are shown in the career menu header ("Westbridge Dome, Westbridge"); both also appear in the band's gig history. When the active band's hometown matches the city (ignoring case), the tier gets a "Hometown show" tag. Flavor only, no extra fans. |
 | `VenueName` | text | The venue, shown with the city. |
 | `Contract` | contract, see below | A contract for every song of the tier. |
@@ -113,9 +117,8 @@ other, but bonus tiers never count for star or completion unlocks, and a locked 
 
 ## Gig contracts
 
-A contract is an optional condition with a fan bonus. It goes on a tier (every song of the tier) or on a
-single song. A song's own contract replaces its tier's; a song contract of type `None` exempts that song
-from its tier's contract. Missing a contract never blocks anything: the result just earns no bonus.
+A contract is an optional condition with a fan bonus. It goes on a tier and applies to every song of
+the tier. Missing a contract never blocks anything: the result just earns no bonus.
 
 ```json
 "Contract": {
@@ -135,7 +138,7 @@ from its tier's contract. Missing a contract never blocks anything: the result j
 
 | `Type` | `Parameter` | Met when ... |
 |---|---|---|
-| `None` | unused | No contract (on a song: exempt from the tier's contract). |
+| `None` | unused | No contract. |
 | `MinStars` | 1 to 5, or 6 for gold | the band's stars are at least that. |
 | `MinAccuracy` | 0 to 100 (percent) | the average note accuracy of the players is at least that. Players without notes are left out. |
 | `FullCombo` | 0 = every player; N = at least N players | full combos. A player without notes neither counts nor holds back "every player". |
@@ -144,10 +147,10 @@ from its tier's contract. Missing a contract never blocks anything: the result j
 | `FullBand` | 1 or more | at least that many human players played. |
 
 The players judged are every human who played the song (band members and anyone sitting in). Solo
-players cannot meet `FullBand` or `FullCombo` with N of 2 or more; give such songs another contract or
-`None` if that matters to you.
+players cannot meet `FullBand` or `FullCombo` with N of 2 or more; give such a gig another contract if
+that matters to you.
 
-Each play stores the contract type it was judged under. If you later change a song's contract to a
+Each play stores the contract type it was judged under. If you later change a tier's contract to a
 different type, earlier plays no longer earn its bonus; changing only the parameter does not re-judge
 them.
 
@@ -192,8 +195,7 @@ results bring out the encore. The tier is complete after 3 songs.
 
 ## Example
 
-A career with two gigs that open together at 300 fans, one of them with a contract, and a song that is
-exempt from it:
+A career with two gigs that open together at 3,000 fans, one of them with a contract:
 
 ```json
 {
@@ -222,41 +224,35 @@ exempt from it:
       "Name": "Coffee House",
       "Id": "6b1d6d84-3f0e-4bb9-a5d4-0a3c2f9f0c02",
       "UnlockType": "FanCount",
-      "UnlockCriteria": 300,
+      "UnlockCriteria": 3000,
       "VenueSize": "Small",
       "City": "Millbrook",
       "VenueName": "Grindstone Cafe",
       "Contract": { "Type": "MinAccuracy", "Parameter": 85, "BonusPercent": 20 },
       "Songs": [
         { "Id": "e2d1c7a0-4444-4c2e-8f1a-3b1d2c4e5f60", "Identifier": "SongId", "SongId": "4420cda8-b7cd-4f81-a104-3a587ea823ed" },
-        {
-          "Id": "e2d1c7a0-5555-4c2e-8f1a-3b1d2c4e5f60", "Identifier": "SongId", "SongId": "ef6121fa-9aee-4b96-a644-16fba205d4c8",
-          "Contract": { "Type": "None", "Parameter": 0, "BonusPercent": 0 }
-        }
+        { "Id": "e2d1c7a0-5555-4c2e-8f1a-3b1d2c4e5f60", "Identifier": "SongId", "SongId": "ef6121fa-9aee-4b96-a644-16fba205d4c8" }
       ]
     },
     {
       "Name": "Street Fair",
       "Id": "6b1d6d84-3f0e-4bb9-a5d4-0a3c2f9f0c03",
       "UnlockType": "FanCount",
-      "UnlockCriteria": 300,
+      "UnlockCriteria": 3000,
       "VenueSize": "Small",
       "FanMultiplier": 3.0,
       "City": "Port Ellis",
       "VenueName": "Harbor Street Fair",
       "Songs": [
-        {
-          "Id": "e2d1c7a0-6666-4c2e-8f1a-3b1d2c4e5f60", "Identifier": "SongId", "SongId": "06a92c7e-b1db-4159-9471-7c3bc6505155",
-          "Contract": { "Type": "FullCombo", "Parameter": 1, "BonusPercent": 50, "Text": "One perfect performance" }
-        }
+        { "Id": "e2d1c7a0-6666-4c2e-8f1a-3b1d2c4e5f60", "Identifier": "SongId", "SongId": "06a92c7e-b1db-4159-9471-7c3bc6505155" }
       ]
     }
   ]
 }
 ```
 
-At 4 stars the three Open Mic songs give 3 x 75 = 225 fans, not enough for 300; at 5 stars they give 300
-and both gigs open at once. The shipped career "YARG Setlist Headliner" is a full example (its source is
+At 4 stars the three Open Mic songs give 3 x 750 = 2,250 fans, not enough for 3,000; at 5 stars they give
+3,000 and both gigs open at once. The shipped career "YARG Setlist Headliner" is a full example (its source is
 `Assets/Script/Career/CareerPreset.Defaults.cs`).
 
 ## Warnings
@@ -290,8 +286,7 @@ Multiplier (leave it empty to use the venue size), City, Venue Name, and Contrac
 bonus and text (leave the text empty for the generated description), Session Length (single songs or a
 full tier playlist), Forced Modifiers (names, comma separated; empty for none), Minimum Song Speed (0 for
 none), Mystery Setlist, Setlist Size (0 for every song) and Encore Star Bar (empty for no encore). On a song:
-Contract, where "From tier" keeps the tier's contract and "No contract" exempts the song, and Encore Song. The parameter field's label says
-what the number means for the chosen type. A fan multiplier or parameter that is not a number is ignored
+Encore Song. The contract parameter field's label says what the number means for the chosen type. A fan multiplier or parameter that is not a number is ignored
 (the saved value stays).
 
 ## Themed gigs and user picks

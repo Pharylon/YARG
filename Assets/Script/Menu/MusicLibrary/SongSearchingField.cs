@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -172,6 +173,27 @@ namespace YARG.Menu.MusicLibrary
             OnSearchQueryUpdated?.Invoke(false);
         }
 
+        /// <summary>
+        /// One more button the bar offers while typing a search, besides leaving it (Retail Mode's
+        /// "Show All Songs" on Select). Null: none.
+        /// </summary>
+        public NavigationScheme.Entry? TypingEntry { get; set; }
+
+        /// <summary>The search is being typed in (its own button bar is up).</summary>
+        public bool IsTyping => _searchNavigationActive;
+
+        /// <summary>While typing, shows the button bar again (after <see cref="TypingEntry"/> changed).</summary>
+        public void RefreshTypingBar()
+        {
+            if (!_searchNavigationActive)
+            {
+                return;
+            }
+
+            DisableSearchNavigation();
+            OnSearchFieldSelected(null);
+        }
+
         private void OnSearchFieldSelected(string _)
         {
             _focusBorder.SetActive(true);
@@ -186,11 +208,19 @@ namespace YARG.Menu.MusicLibrary
                 return;
             }
 
-            var scheme = new NavigationScheme(new()
+            var entries = new List<NavigationScheme.Entry>
             {
                 new NavigationScheme.Entry(MenuAction.Red, "Menu.MusicLibrary.ExitSearchHold",
                     handler: null, onHoldHandler: ClearSearchFocus, holdSeconds: 0.5f, hide: false),
-            }, allowsMusicPlayer: null, popCallback: () => _searchNavigationActive = false);
+            };
+
+            if (TypingEntry is { } extra)
+            {
+                entries.Add(extra);
+            }
+
+            var scheme = new NavigationScheme(entries, allowsMusicPlayer: null,
+                popCallback: () => _searchNavigationActive = false);
 
             _searchNavigationActive = true;
             Navigator.Instance.PushTextInputScheme(scheme);

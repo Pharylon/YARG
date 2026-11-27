@@ -16,7 +16,7 @@ namespace YARG.Career
     /// </summary>
     public enum CareerContractType
     {
-        // No contract. A song can use it to opt out of its tier's contract.
+        // No contract.
         None = 0,
 
         // Band stars of at least Parameter (1..5, 6 = gold).
@@ -40,8 +40,8 @@ namespace YARG.Career
     }
 
     /// <summary>
-    /// An optional condition on a tier (the gig) or a single song, with a fan bonus when met. Failing a
-    /// contract never blocks progress; the result just earns no bonus.
+    /// An optional condition on a tier (the gig), for every song of it, with a fan bonus when met. Failing
+    /// a contract never blocks progress; the result just earns no bonus.
     /// </summary>
     public class CareerContract
     {
@@ -80,19 +80,17 @@ namespace YARG.Career
     public static class CareerContracts
     {
         /// <summary>
-        /// The contract a song is played under: its own, else its tier's. Null if neither has an active one
-        /// (a song contract of type None cancels the tier's).
+        /// The contract every song of the tier is played under, or null if it has no active one.
         /// </summary>
-        public static CareerContract For(CareerTier tier, CareerSong song)
+        public static CareerContract For(CareerTier tier)
         {
-            var contract = song?.Contract ?? tier?.Contract;
-            return contract is { IsActive: true } ? contract : null;
+            return tier?.Contract is { IsActive: true } contract ? contract : null;
         }
 
         /// <summary>
-        /// The contract of a career song by its ids, as a <see cref="CareerContext"/> carries them.
+        /// The contract of a tier by its id and index, as a <see cref="CareerContext"/> carries them.
         /// </summary>
-        public static CareerContract For(CareerPreset career, Guid tierId, int tierIndex, Guid careerSongId)
+        public static CareerContract For(CareerPreset career, Guid tierId, int tierIndex)
         {
             if (career?.Tiers is null)
             {
@@ -103,8 +101,7 @@ namespace YARG.Career
                 ? career.Tiers[tierIndex]
                 : career.Tiers.FirstOrDefault(t => t.Id == tierId);
 
-            var song = tier?.Songs?.FirstOrDefault(s => s.Id == careerSongId);
-            return tier is null ? null : For(tier, song);
+            return For(tier);
         }
 
         /// <summary>

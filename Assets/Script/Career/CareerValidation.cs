@@ -248,7 +248,7 @@ namespace YARG.Career
                     continue;
                 }
 
-                var contract = CareerContracts.For(tier, song);
+                var contract = CareerContracts.For(tier);
                 total += Math.Max(0, CareerFans.SongFans(tier, song, CareerFans.GOLD_STARS, contract?.BonusPercent ?? 0));
             }
 
@@ -310,9 +310,6 @@ namespace YARG.Career
                             SongIndex = songIndex,
                         });
                     }
-
-                    // A song contract on a tier without one is fine, and so is a None that exempts the song.
-                    CheckContract(song.Contract, tierIndex, songIndex, issues);
                 }
             }
         }

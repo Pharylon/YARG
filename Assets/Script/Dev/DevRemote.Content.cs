@@ -63,7 +63,9 @@ namespace YARG.Dev
                     if (song.SongEntry is { } entry)
                     {
                         found++;
-                        text.Append($" | t{t}s{s} {entry.Artist.Original} - {entry.Name.Original} ({entry.SongLengthSeconds:0}s)");
+                        text.Append($" | t{t}s{s} {entry.Artist.Original} - {entry.Name.Original} ({entry.SongLengthSeconds:0}s, " +
+                            $"{entry.Genre.Original}/{entry.Subgenre.Original}, {entry.ParsedYear}, {entry.Source.Original}, " +
+                            $"intensity {CareerFans.Intensity(song)})");
                     }
                     else
                     {

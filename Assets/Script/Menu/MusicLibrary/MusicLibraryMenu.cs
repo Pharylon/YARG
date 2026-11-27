@@ -521,6 +521,8 @@ namespace YARG.Menu.MusicLibrary
                 entries.Add(retailToggle);
             }
 
+            UpdateRetailTypingEntry();
+
             var scheme = new NavigationScheme(entries, false);
             if (MenuState == MenuState.Library)
             {

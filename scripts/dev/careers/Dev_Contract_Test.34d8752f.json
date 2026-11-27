@@ -19,22 +19,12 @@
         {
           "Id": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
           "SongId": "c0fddcf4-deeb-4b98-8d00-0b98f0ff3882",
-          "Identifier": "SongId",
-          "Contract": {
-            "Type": "MinStars",
-            "Parameter": 4,
-            "BonusPercent": 50
-          }
+          "Identifier": "SongId"
         },
         {
           "Id": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
           "SongId": "a1474ea6-ce86-4a86-85c4-8fb596dd8285",
-          "Identifier": "SongId",
-          "Contract": {
-            "Type": "MinAccuracy",
-            "Parameter": 90,
-            "BonusPercent": 20
-          }
+          "Identifier": "SongId"
         }
       ],
       "VenueSize": "Starter",
@@ -59,22 +49,12 @@
         {
           "Id": "530a0afc-da9c-4951-abdd-9d63df35165a",
           "SongId": "530a0afc-da9c-4951-abdd-9d63df35165a",
-          "Identifier": "SongId",
-          "Contract": {
-            "Type": "FullCombo",
-            "Parameter": 0,
-            "BonusPercent": 50
-          }
+          "Identifier": "SongId"
         },
         {
           "Id": "7eb17eb8-6379-48f4-a60d-ae61b17571b9",
           "SongId": "7eb17eb8-6379-48f4-a60d-ae61b17571b9",
-          "Identifier": "SongId",
-          "Contract": {
-            "Type": "None",
-            "Parameter": 0,
-            "BonusPercent": 25
-          }
+          "Identifier": "SongId"
         }
       ],
       "VenueSize": "Starter",
@@ -107,12 +87,7 @@
         {
           "Id": "4420cda8-b7cd-4f81-a104-3a587ea823ed",
           "SongId": "4420cda8-b7cd-4f81-a104-3a587ea823ed",
-          "Identifier": "SongId",
-          "Contract": {
-            "Type": "MinStars",
-            "Parameter": 6,
-            "BonusPercent": 100
-          }
+          "Identifier": "SongId"
         }
       ],
       "VenueSize": "Small",
@@ -178,13 +153,7 @@
         {
           "Id": "2c69588b-c01d-4df9-ac7f-1dc0fe5884a1",
           "SongId": "2c69588b-c01d-4df9-ac7f-1dc0fe5884a1",
-          "Identifier": "SongId",
-          "Contract": {
-            "Type": "FullBand",
-            "Parameter": 3,
-            "BonusPercent": 100,
-            "Text": "Bring the whole crew: 3 or more players"
-          }
+          "Identifier": "SongId"
         }
       ],
       "VenueSize": "Medium",

@@ -32,7 +32,7 @@ namespace YARG.Menu.Career
 
             _showSongDetails = !_showSongDetails;
             SetMenuNavigation(true);
-            ShowBandHome(null);
+            UpdateHeader();
         }
 
         private void ShowBandHome(string notice)
@@ -121,6 +121,14 @@ namespace YARG.Menu.Career
             _songDetails.Show(DetailsFor(CurrentSelection));
         }
 
+        /// <summary>The highlighted song's name, for the header while its details are open.</summary>
+        private string DetailsTitle()
+        {
+            return CurrentSelection is SongViewType song
+                ? song.SongEntry?.Name.ToString() ?? (song.Song.IsUserPick ? Localize.Key("Menu.Career.Theme.Pick") : null)
+                : null;
+        }
+
         private CareerSongDetails.Info DetailsFor(ViewType row)
         {
             if (row is not SongViewType song)
@@ -143,6 +151,10 @@ namespace YARG.Menu.Career
                 info.Stars = result.BestStars;
                 info.Gold = result.BestIsGold;
                 info.Fans = result.Fans;
+                info.Contract = song.TierIndex < (_career?.Tiers.Count ?? 0)
+                    ? CareerContracts.For(_career.Tiers[song.TierIndex])
+                    : null;
+                info.ContractMet = result.ContractMet;
                 if (_completionById.TryGetValue(result.CountedCompletionId, out var completion))
                 {
                     info.Points = completion.BandScore;

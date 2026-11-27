@@ -101,7 +101,7 @@ MonoBehaviour:
   _groupSideInset: 8
   _groupSpacing: 16
   _tierHeaderFontSize: 36
-  _songIndent: 40
+  _songIndent: 0
 --- !u!1 &425044748247620466
 GameObject:
   m_ObjectHideFlags: 0

@@ -50,8 +50,7 @@ namespace YARG.Menu.Career
                             Localize.KeyFormat("Menu.Retail.CloserLocked", RetailMode.CLOSER_MIN_STARS)));
             }
 
-            return new ShowViewType(tier.Id, Localize.Key("Menu.Retail.CloserPick"),
-                Localize.Key("Menu.Retail.CloserPickDetail"), true, () =>
+            return new ShowViewType(tier.Id, Localize.Key("Menu.Retail.CloserPick"), string.Empty, true, () =>
                     MusicLibraryMenu.OpenSongPicker(Localize.Key("Menu.Retail.CloserPick"),
                         song => StartPicked(song, CloserContext(tier, tierIndex), true)));
         }

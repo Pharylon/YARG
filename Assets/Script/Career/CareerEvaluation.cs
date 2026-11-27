@@ -134,7 +134,7 @@ namespace YARG.Career
                             tier.UnlockType == UnlockType.StarCount && bestStars >= 5,
                     };
 
-                    var contract = CareerContracts.For(tier, song);
+                    var contract = CareerContracts.For(tier);
                     songResult.HasContract = contract is not null;
                     if (songResult.Completed)
                     {

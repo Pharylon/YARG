@@ -90,7 +90,7 @@ namespace YARG.Menu.Career
         [SerializeField]
         private float _tierHeaderFontSize = 36f;
         [SerializeField]
-        private float _songIndent = 40f;
+        private float _songIndent = 0f;
 
         private RectTransform _rect;
 
@@ -114,11 +114,9 @@ namespace YARG.Menu.Career
         private RectTransform _scoreRoot;
         private float _scoreWidth;
 
-        // Share of a song row's text width the song name column takes (a longer name takes what it
-        // needs and pushes the artist over).
-        private const float SONG_NAME_COLUMN = 0.5f;
-        // What the artist always keeps, however long the song name is.
-        private const float MIN_ARTIST_WIDTH = 90f;
+        // Share of a song row's text width the song name column takes; a longer name is cut short
+        // ("...") so the artists of every row line up.
+        private const float SONG_NAME_COLUMN = 0.55f;
         // More than any row is wide: the column that has it takes whatever the others leave.
         private const float REST_OF_ROW = 5000f;
 
@@ -222,6 +220,10 @@ namespace YARG.Menu.Career
             }
         }
 
+        // The row's icon slot (a song's source icon), found in the info layout.
+        private GameObject _iconSlot;
+        private Image _iconSlotImage;
+
         public override void Show(bool selected, ViewType viewType)
         {
             base.Show(selected, viewType);
@@ -232,6 +234,10 @@ namespace YARG.Menu.Career
             var isCareerHeader = kind == ViewType.CareerRowKind.CareerHeader;
 
             var isTierHeader = !isSong && !isCareerHeader;
+
+            // A row in a gig's song list without an icon (the closer) keeps the icon's room, so its texts
+            // line up with the song names and artists above it.
+            KeepIconSlot(isSong);
             var topGap = isTierHeader ? _groupSpacing : 0f;
 
             var reveal = isSong ? Mathf.Clamp01(info?.Reveal ?? 1f) : 1f;
@@ -328,9 +334,9 @@ namespace YARG.Menu.Career
 
         /// <summary>
         /// Splits the row between its two texts. A gig header: the progress ("20 / 25 · 814 fans") keeps
-        /// exactly what it needs at the right edge and the name gets the rest. A song: the name is never
-        /// cut off; its column is a fixed share of the row so the artists line up, a longer name takes
-        /// what it needs, and the artist gets the rest (and is the one that is cut short).
+        /// exactly what it needs at the right edge and the name gets the rest. A song: the name column is
+        /// a fixed share of the row (a longer name ends in "..."), so the artists line up, and the artist
+        /// gets the rest.
         /// </summary>
         private void LayoutColumns(bool isTierHeader, bool isSong, int indent)
         {
@@ -376,9 +382,11 @@ namespace YARG.Menu.Career
 
             width -= _infoLayout.spacing * (columns - 1);
 
-            var name = Mathf.Ceil(_primaryLabel.GetPreferredValues(_primaryLabel.text).x) + 2f;
-            name = Mathf.Max(name, width * SONG_NAME_COLUMN);
-            name = Mathf.Max(0f, Mathf.Min(name, width - MIN_ARTIST_WIDTH));
+            // A row without stars (the closer) has the stars' room to spare: its columns are measured as
+            // if it had them, so its texts line up with the songs above.
+            width -= Mathf.Ceil(SongScoreWidth()) - (padding.right - _defaultInfoPaddingRight);
+
+            var name = Mathf.Max(0f, Mathf.Floor(width * SONG_NAME_COLUMN));
             Column(_primaryLayout, name, name);
             Column(_secondaryLayout, 0f, REST_OF_ROW);
         }
@@ -412,6 +420,34 @@ namespace YARG.Menu.Career
             element.minWidth = minWidth;
             element.preferredWidth = preferredWidth;
             element.flexibleWidth = -1f;
+        }
+
+        private void KeepIconSlot(bool reserve)
+        {
+            if (_iconSlot == null && _infoLayout != null)
+            {
+                var slot = _infoLayout.transform.Find("Icon");
+                if (slot != null)
+                {
+                    _iconSlot = slot.gameObject;
+                    _iconSlotImage = slot.GetComponent<Image>();
+                }
+            }
+
+            if (_iconSlot == null || _iconSlotImage == null)
+            {
+                return;
+            }
+
+            if (!_iconSlot.activeSelf && reserve)
+            {
+                _iconSlot.SetActive(true);
+                _iconSlotImage.enabled = false;
+            }
+            else if (_iconSlot.activeSelf)
+            {
+                _iconSlotImage.enabled = true;
+            }
         }
 
         private void CreateScoreRoot()
@@ -468,13 +504,19 @@ namespace YARG.Menu.Career
                 return;
             }
 
+            _scoreWidth = SongScoreWidth();
+        }
+
+        /// <summary>The room the stars take at a song row's right edge.</summary>
+        private float SongScoreWidth()
+        {
             var right = _scoreRightMargin;
             if (_starViewPrefab != null)
             {
                 right += _starViewSize.x + _scoreSpacing;
             }
 
-            _scoreWidth = right;
+            return right;
         }
 
         private void CreateGroupFrame()

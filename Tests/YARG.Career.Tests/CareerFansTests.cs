@@ -58,33 +58,33 @@ namespace YARG.Career.Tests
             return CareerEvaluation.Evaluate(career, snapshot);
         }
 
-        [TestCase(VenueSize.Starter, 5, 100)]
-        [TestCase(VenueSize.NotSpecified, 5, 100)]
-        [TestCase(VenueSize.Small, 5, 250)]
-        [TestCase(VenueSize.Medium, 5, 600)]
-        [TestCase(VenueSize.Large, 5, 1500)]
-        [TestCase(VenueSize.Epic, 5, 4000)]
-        [TestCase(VenueSize.Small, 6, 313)] // gold: 250 * 1.25 = 312.5, rounded up
-        [TestCase(VenueSize.Large, 4, 1125)]
-        [TestCase(VenueSize.Large, 3, 750)]
-        [TestCase(VenueSize.Large, 2, 375)]
-        [TestCase(VenueSize.Large, 1, 375)]
+        [TestCase(VenueSize.Starter, 5, 1_000)]
+        [TestCase(VenueSize.NotSpecified, 5, 1_000)]
+        [TestCase(VenueSize.Small, 5, 8_000)]
+        [TestCase(VenueSize.Medium, 5, 64_000)]
+        [TestCase(VenueSize.Large, 5, 512_000)]
+        [TestCase(VenueSize.Epic, 5, 4_096_000)]
+        [TestCase(VenueSize.Small, 6, 10_000)] // gold: 8,000 * 1.25
+        [TestCase(VenueSize.Large, 4, 384_000)]
+        [TestCase(VenueSize.Large, 3, 256_000)]
+        [TestCase(VenueSize.Large, 2, 128_000)]
+        [TestCase(VenueSize.Large, 1, 128_000)]
         [TestCase(VenueSize.Large, 0, 0)]
-        [TestCase(VenueSize.Epic, 6, 5000)]
+        [TestCase(VenueSize.Epic, 6, 5_120_000)]
         public void SongFansFollowTheTable(VenueSize venue, int stars, int expected)
         {
             Assert.That(CareerFans.SongFans(Tier(1, venue: venue), stars), Is.EqualTo(expected));
         }
 
-        [TestCase(-1, 100)]
-        [TestCase(0, 100)]
-        [TestCase(1, 150)]
-        [TestCase(2, 250)]
-        [TestCase(3, 400)]
-        [TestCase(4, 600)]
-        [TestCase(5, 1000)]
-        [TestCase(6, 1500)]
-        [TestCase(9, 1500)]
+        [TestCase(-1, 1_000)]
+        [TestCase(0, 1_000)]
+        [TestCase(1, 4_000)]
+        [TestCase(2, 16_000)]
+        [TestCase(3, 64_000)]
+        [TestCase(4, 256_000)]
+        [TestCase(5, 1_024_000)]
+        [TestCase(6, 4_096_000)]
+        [TestCase(9, 4_096_000)]
         public void HarderSongsAreWorthMore(int intensity, int expected)
         {
             Assert.That(CareerFans.BASE_FANS * CareerFans.DifficultyMultiplier(intensity), Is.EqualTo(expected));
@@ -98,17 +98,17 @@ namespace YARG.Career.Tests
             var byDifficulty = (int) (CareerFans.BASE_FANS * CareerFans.DifficultyMultiplier(CareerFans.DEFAULT_INTENSITY));
 
             Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.NotSpecified), song, 5, 0), Is.EqualTo(byDifficulty));
-            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Large), song, 5, 0), Is.EqualTo(1500));
-            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.NotSpecified, multiplier: 3f), song, 5, 0), Is.EqualTo(300));
-            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Large, multiplier: 3f), song, 5, 0), Is.EqualTo(300));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Large), song, 5, 0), Is.EqualTo(512_000));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.NotSpecified, multiplier: 3f), song, 5, 0), Is.EqualTo(3_000));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Large, multiplier: 3f), song, 5, 0), Is.EqualTo(3_000));
         }
 
         [Test]
         public void FanMultiplierOverridesVenueSize()
         {
             // 10x the Starter base, whatever the venue says.
-            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Epic, multiplier: 10f), 5), Is.EqualTo(1000));
-            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Epic, multiplier: 10f), 3), Is.EqualTo(500));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Epic, multiplier: 10f), 5), Is.EqualTo(10_000));
+            Assert.That(CareerFans.SongFans(Tier(1, venue: VenueSize.Epic, multiplier: 10f), 3), Is.EqualTo(5_000));
         }
 
         [Test]
@@ -123,18 +123,18 @@ namespace YARG.Career.Tests
                 Completion(bonus.Songs[0], 5),
                 Completion(bonus.Songs[1], 6));
 
-            Assert.That(evaluation.Tiers[0].Fans, Is.EqualTo(250));
-            Assert.That(evaluation.Tiers[1].Songs[0].Fans, Is.EqualTo(125));
-            Assert.That(evaluation.Tiers[1].Songs[1].Fans, Is.EqualTo(156)); // 250 * 1.25 / 2 = 156.25
-            Assert.That(evaluation.Tiers[1].Fans, Is.EqualTo(281));
-            Assert.That(evaluation.TotalFans, Is.EqualTo(531));
+            Assert.That(evaluation.Tiers[0].Fans, Is.EqualTo(8_000));
+            Assert.That(evaluation.Tiers[1].Songs[0].Fans, Is.EqualTo(4_000));
+            Assert.That(evaluation.Tiers[1].Songs[1].Fans, Is.EqualTo(5_000)); // 8,000 * 1.25 / 2
+            Assert.That(evaluation.Tiers[1].Fans, Is.EqualTo(9_000));
+            Assert.That(evaluation.TotalFans, Is.EqualTo(17_000));
         }
 
         [Test]
         public void OnlyTheBestResultPerSongCounts()
         {
             var tier = Tier(2, venue: VenueSize.Medium);
-            var career = Career(tier, Tier(1, UnlockType.FanCount, 10_000));
+            var career = Career(tier, Tier(1, UnlockType.FanCount, 1_000_000));
 
             // Played three times: 3, 5, then a worse replay. The best counts once.
             var evaluation = Evaluate(career,
@@ -143,23 +143,23 @@ namespace YARG.Career.Tests
                 Completion(tier.Songs[0], 2));
 
             Assert.That(evaluation.Tiers[0].Songs[0].BestStars, Is.EqualTo(5));
-            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(600));
+            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(64_000));
             Assert.That(evaluation.Tiers[0].Songs[1].Fans, Is.EqualTo(0));
-            Assert.That(evaluation.TotalFans, Is.EqualTo(600));
+            Assert.That(evaluation.TotalFans, Is.EqualTo(64_000));
         }
 
         [Test]
         public void GoldCountsForFansButShowsAsFiveStars()
         {
             var tier = Tier(1, venue: VenueSize.Large);
-            var career = Career(tier, Tier(1, UnlockType.FanCount, 10_000));
+            var career = Career(tier, Tier(1, UnlockType.FanCount, 1_000_000));
 
             var evaluation = Evaluate(career, Completion(tier.Songs[0], 5), Completion(tier.Songs[0], 6));
 
             var song = evaluation.Tiers[0].Songs[0];
             Assert.That(song.BestStars, Is.EqualTo(5));
             Assert.That(song.BestIsGold, Is.True);
-            Assert.That(song.Fans, Is.EqualTo(1875));
+            Assert.That(song.Fans, Is.EqualTo(640_000));
             Assert.That(evaluation.Tiers[0].StarSum, Is.EqualTo(5));
         }
 
@@ -167,28 +167,28 @@ namespace YARG.Career.Tests
         public void FanCountUnlocksAgainstTotalSoSeveralTiersOpenAtOnce()
         {
             var start = Tier(3, venue: VenueSize.Starter);
-            var bonus = Tier(1, UnlockType.FanCount, 100, VenueSize.Starter, bonus: true);
-            var club = Tier(1, UnlockType.FanCount, 200, VenueSize.Small);
-            var bar = Tier(1, UnlockType.FanCount, 250, VenueSize.Small);
-            var theater = Tier(1, UnlockType.FanCount, 1000, VenueSize.Large);
+            var bonus = Tier(1, UnlockType.FanCount, 1_000, VenueSize.Starter, bonus: true);
+            var club = Tier(1, UnlockType.FanCount, 2_000, VenueSize.Small);
+            var bar = Tier(1, UnlockType.FanCount, 2_500, VenueSize.Small);
+            var theater = Tier(1, UnlockType.FanCount, 20_000, VenueSize.Large);
             var career = Career(start, bonus, club, bar, theater);
 
             var evaluation = Evaluate(career);
             Assert.That(evaluation.UsesFans, Is.True);
             Assert.That(evaluation.TotalFans, Is.EqualTo(0));
             Assert.That(evaluation.Tiers.Select(t => t.Unlocked), Is.EqualTo(new[] { true, false, false, false, false }));
-            Assert.That(evaluation.Tiers[2].RemainingToUnlock, Is.EqualTo(200));
+            Assert.That(evaluation.Tiers[2].RemainingToUnlock, Is.EqualTo(2_000));
 
-            // 75 + 100 + 125 = 300 fans: the bonus tier and both 200/250 tiers open together.
+            // 750 + 1,000 + 1,250 = 3,000 fans: the bonus tier and both 2,000/2,500 tiers open together.
             evaluation = Evaluate(career,
                 Completion(start.Songs[0], 4),
                 Completion(start.Songs[1], 5),
                 Completion(start.Songs[2], 6));
 
-            Assert.That(evaluation.TotalFans, Is.EqualTo(300));
+            Assert.That(evaluation.TotalFans, Is.EqualTo(3_000));
             Assert.That(evaluation.Tiers.Select(t => t.Unlocked), Is.EqualTo(new[] { true, true, true, true, false }));
             Assert.That(evaluation.Tiers[3].RemainingToUnlock, Is.EqualTo(0));
-            Assert.That(evaluation.Tiers[4].RemainingToUnlock, Is.EqualTo(700));
+            Assert.That(evaluation.Tiers[4].RemainingToUnlock, Is.EqualTo(17_000));
 
             // Fans from any tier count, including a later one played before an earlier one.
             evaluation = Evaluate(career,
@@ -198,8 +198,8 @@ namespace YARG.Career.Tests
                 Completion(bar.Songs[0], 5),
                 Completion(bonus.Songs[0], 5));
 
-            Assert.That(evaluation.TotalFans, Is.EqualTo(300 + 250 + 50));
-            Assert.That(evaluation.Tiers[4].RemainingToUnlock, Is.EqualTo(400));
+            Assert.That(evaluation.TotalFans, Is.EqualTo(3_000 + 8_000 + 500));
+            Assert.That(evaluation.Tiers[4].RemainingToUnlock, Is.EqualTo(8_500));
             Assert.That(evaluation.Tiers[2].Completed, Is.False);
             Assert.That(evaluation.Tiers[3].Completed, Is.True);
         }
@@ -248,7 +248,7 @@ namespace YARG.Career.Tests
         public void PreviewReportsFansGainedAndUnlocks()
         {
             var start = Tier(2);
-            var club = Tier(1, UnlockType.FanCount, 150, VenueSize.Small);
+            var club = Tier(1, UnlockType.FanCount, 1_500, VenueSize.Small);
             var career = Career(start, club);
 
             var snapshot = new CareerProgressSnapshot { CareerSaveId = 1 };
@@ -256,7 +256,7 @@ namespace YARG.Career.Tests
 
             var outcome = CareerSongOutcome.Preview(career, snapshot, Completion(start.Songs[1], 4));
             Assert.That(outcome.UsesFans, Is.True);
-            Assert.That(outcome.FansGained, Is.EqualTo(75));
+            Assert.That(outcome.FansGained, Is.EqualTo(750));
             Assert.That(outcome.UnlockedTiers, Is.EqualTo(new[] { 1 }));
 
             // A worse replay gains nothing.

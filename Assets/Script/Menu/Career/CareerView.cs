@@ -30,6 +30,8 @@ namespace YARG.Menu.Career
         private Sprite _personSprite;
         [SerializeField]
         private Sprite _botSprite;
+        [SerializeField]
+        private Sprite _bandSprite;
 
         [Space]
         // A prefab asset; one instance is made per row the first time a row needs it.
@@ -46,6 +48,9 @@ namespace YARG.Menu.Career
 
         private Menu.ColoredButton _connectButton;
         private bool _helpTextPlaced;
+
+        // The band's initials over the band logo, made the first time a row needs it.
+        private TextMeshProUGUI _iconText;
 
         /// <summary>
         /// The pill the lineup's Connected/Connect buttons are made from, with its two colours, for
@@ -64,6 +69,51 @@ namespace YARG.Menu.Career
                 PillOnColor = _connectedColor;
                 PillOffColor = _disconnectedColor;
             }
+        }
+
+        private void ShowIconText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                if (_iconText != null)
+                {
+                    _iconText.gameObject.SetActive(false);
+                }
+
+                return;
+            }
+
+            if (_iconText == null)
+            {
+                if (_iconImage == null || _buttonHelpText == null)
+                {
+                    return;
+                }
+
+                var child = new GameObject("Icon Text", typeof(RectTransform));
+                var rect = (RectTransform) child.transform;
+                rect.SetParent(_iconImage.rectTransform, false);
+                rect.anchorMin = new Vector2(0.06f, 0.1f);
+                rect.anchorMax = new Vector2(0.94f, 0.9f);
+                rect.offsetMin = Vector2.zero;
+                rect.offsetMax = Vector2.zero;
+
+                _iconText = child.AddComponent<TextMeshProUGUI>();
+                _iconText.font = _buttonHelpText.font;
+                _iconText.fontStyle = FontStyles.Bold;
+                _iconText.color = Color.white;
+                _iconText.alignment = TextAlignmentOptions.Center;
+                _iconText.textWrappingMode = TextWrappingModes.NoWrap;
+                _iconText.enableAutoSizing = true;
+                _iconText.fontSizeMin = 4f;
+                _iconText.fontSizeMax = 200f;
+                _iconText.outlineColor = new Color32(8, 10, 18, 255);
+                _iconText.outlineWidth = 0.3f;
+                _iconText.raycastTarget = false;
+            }
+
+            _iconText.gameObject.SetActive(true);
+            _iconText.text = text;
         }
 
         /// <summary>
@@ -101,6 +151,7 @@ namespace YARG.Menu.Career
             {
                 ViewType.RowIcon.Person => _personSprite,
                 ViewType.RowIcon.Bot => _botSprite,
+                ViewType.RowIcon.Band => _bandSprite,
                 _ => null,
             };
 
@@ -113,6 +164,8 @@ namespace YARG.Menu.Career
             {
                 _iconImage.rectTransform.localScale = new Vector3(1f, custom != null ? -1f : 1f, 1f);
             }
+
+            ShowIconText(custom == null && sprite != null ? viewType.CareerIconText : null);
 
             if (_iconBackground != null)
             {

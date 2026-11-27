@@ -83,7 +83,7 @@ namespace YARG.Menu.Career
             }
 
             var career = CareerBands.AllCareers().FirstOrDefault(c => c.Id == context.CareerId);
-            var line = Line(CareerContracts.For(career, context.TierId, context.TierIndex, context.CareerSongId),
+            var line = Line(CareerContracts.For(career, context.TierId, context.TierIndex),
                 CareerFans.UsesFans(career));
             var contract = line is null ? null : Localize.KeyFormat("Menu.Career.Contract.Upcoming", line);
 

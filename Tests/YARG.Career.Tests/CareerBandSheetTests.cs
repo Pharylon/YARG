@@ -22,24 +22,25 @@ namespace YARG.Career.Tests
         public void RankComesFromFans()
         {
             Assert.That(CareerFans.Rank(0), Is.EqualTo(CareerRank.GarageBand));
-            Assert.That(CareerFans.Rank(499), Is.EqualTo(CareerRank.GarageBand));
-            Assert.That(CareerFans.Rank(500), Is.EqualTo(CareerRank.LocalAct));
-            Assert.That(CareerFans.Rank(1_999), Is.EqualTo(CareerRank.LocalAct));
-            Assert.That(CareerFans.Rank(2_000), Is.EqualTo(CareerRank.ClubRegulars));
-            Assert.That(CareerFans.Rank(7_500), Is.EqualTo(CareerRank.TouringBand));
-            Assert.That(CareerFans.Rank(20_000), Is.EqualTo(CareerRank.Headliners));
-            Assert.That(CareerFans.Rank(50_000), Is.EqualTo(CareerRank.ArenaLegends));
-            Assert.That(CareerFans.Rank(10_000_000), Is.EqualTo(CareerRank.ArenaLegends));
+            Assert.That(CareerFans.Rank(9_999), Is.EqualTo(CareerRank.GarageBand));
+            Assert.That(CareerFans.Rank(10_000), Is.EqualTo(CareerRank.LocalAct));
+            Assert.That(CareerFans.Rank(99_999), Is.EqualTo(CareerRank.LocalAct));
+            Assert.That(CareerFans.Rank(100_000), Is.EqualTo(CareerRank.ClubRegulars));
+            Assert.That(CareerFans.Rank(1_000_000), Is.EqualTo(CareerRank.TouringBand));
+            Assert.That(CareerFans.Rank(10_000_000), Is.EqualTo(CareerRank.Headliners));
+            Assert.That(CareerFans.Rank(100_000_000), Is.EqualTo(CareerRank.ArenaLegends));
+            Assert.That(CareerFans.Rank(1_000_000_000), Is.EqualTo(CareerRank.BiggestBand));
+            Assert.That(CareerFans.Rank(int.MaxValue), Is.EqualTo(CareerRank.BiggestBand));
         }
 
         [Test]
         public void NextRankSaysHowManyFansAreMissing()
         {
-            Assert.That(CareerFans.NextRank(0), Is.EqualTo((CareerRank.LocalAct, 500)));
-            Assert.That(CareerFans.NextRank(450), Is.EqualTo((CareerRank.LocalAct, 50)));
-            Assert.That(CareerFans.NextRank(500), Is.EqualTo((CareerRank.ClubRegulars, 1_500)));
-            Assert.That(CareerFans.NextRank(49_999), Is.EqualTo((CareerRank.ArenaLegends, 1)));
-            Assert.That(CareerFans.NextRank(50_000), Is.Null);
+            Assert.That(CareerFans.NextRank(0), Is.EqualTo((CareerRank.LocalAct, 10_000)));
+            Assert.That(CareerFans.NextRank(9_000), Is.EqualTo((CareerRank.LocalAct, 1_000)));
+            Assert.That(CareerFans.NextRank(10_000), Is.EqualTo((CareerRank.ClubRegulars, 90_000)));
+            Assert.That(CareerFans.NextRank(999_999_999), Is.EqualTo((CareerRank.BiggestBand, 1)));
+            Assert.That(CareerFans.NextRank(1_000_000_000), Is.Null);
         }
 
         [Test]
@@ -73,7 +74,7 @@ namespace YARG.Career.Tests
 
         #region Sheet (pure)
 
-        // A fan career: tier 0 Small (250 fans for 5 stars) with a MinStars 4 contract (+20%) and two
+        // A fan career: tier 0 Small (8,000 fans for 5 stars) with a MinStars 4 contract (+20%) and two
         // songs, tier 1 gated on fans. A star career with one Large tier (no fans shown).
         private static CareerPreset FanCareer()
         {
@@ -184,10 +185,11 @@ namespace YARG.Career.Tests
                 new[] { Record(1), Record(2), Record(3) },
                 Array.Empty<PlayerScoreRecord>());
 
-            // Fans: gold 250 * 1.25 * 1.2 = 375; 4 stars 250 * 0.75 * 1.2 = 225. The star career's 5-star song: 1,500.
-            Assert.That(sheet.Fans, Is.EqualTo(375 + 225 + 1500));
+            // Fans: gold 8,000 * 1.25 * 1.2 = 12,000; 4 stars 8,000 * 0.75 * 1.2 = 7,200. The star career's
+            // 5-star song: 512,000.
+            Assert.That(sheet.Fans, Is.EqualTo(12_000 + 7_200 + 512_000));
             Assert.That(sheet.Rank, Is.EqualTo(CareerRank.ClubRegulars));
-            Assert.That(sheet.NextRank, Is.EqualTo((CareerRank.TouringBand, 7_500 - 2_100)));
+            Assert.That(sheet.NextRank, Is.EqualTo((CareerRank.TouringBand, 1_000_000 - 531_200)));
 
             Assert.That(sheet.CareersPlayed, Is.EqualTo(2), "a save without gigs is not a career played");
             Assert.That(sheet.GigsPlayed, Is.EqualTo(4), "every play counts, replays included");
@@ -199,15 +201,15 @@ namespace YARG.Career.Tests
             Assert.That(sheet.History.Select(gig => gig.Row), Is.EqualTo(new[] { grant, other, gold, first }));
 
             var history = sheet.History.ToDictionary(gig => gig.Row);
-            Assert.That(history[first].Fans, Is.EqualTo(125), "3 stars, contract missed: 250 * 0.5");
+            Assert.That(history[first].Fans, Is.EqualTo(4_000), "3 stars, contract missed: 8,000 * 0.5");
             Assert.That(history[first].Counts, Is.False);
-            Assert.That(history[gold].Fans, Is.EqualTo(375));
+            Assert.That(history[gold].Fans, Is.EqualTo(12_000));
             Assert.That(history[gold].Gold, Is.True);
             Assert.That(history[gold].Counts, Is.True);
-            Assert.That(history[other].Fans, Is.EqualTo(225));
+            Assert.That(history[other].Fans, Is.EqualTo(7_200));
             Assert.That(history[other].Counts, Is.True);
             Assert.That(history[grant].UsesFans, Is.True);
-            Assert.That(history[grant].Fans, Is.EqualTo(1500));
+            Assert.That(history[grant].Fans, Is.EqualTo(512_000));
             Assert.That(history[grant].Record, Is.Null);
             Assert.That(history[gold].Record?.Id, Is.EqualTo(2));
             Assert.That(history[gold].Tier, Is.SameAs(fans.Tiers[0]));
@@ -219,17 +221,17 @@ namespace YARG.Career.Tests
             var fans = FanCareer();
             var day = new DateTime(2026, 11, 15);
 
-            // 5 stars missed the contract (250); 4 stars met it (225): the 5-star row counts.
+            // 5 stars missed the contract (8,000); 4 stars met it (7,200): the 5-star row counts.
             var five = Row(fans, 0, 0, 5, 1, day, met: false);
             var four = Row(fans, 0, 0, 4, 2, day.AddMinutes(1), met: true);
             var sheet = CareerBandSheet.Build(null, new[] { Save(fans, five, four) }, null, null);
 
             var history = sheet.History.ToDictionary(gig => gig.Row);
-            Assert.That(history[five].Fans, Is.EqualTo(250));
+            Assert.That(history[five].Fans, Is.EqualTo(8_000));
             Assert.That(history[five].Counts, Is.True);
-            Assert.That(history[four].Fans, Is.EqualTo(225));
+            Assert.That(history[four].Fans, Is.EqualTo(7_200));
             Assert.That(history[four].Counts, Is.False);
-            Assert.That(sheet.Fans, Is.EqualTo(250));
+            Assert.That(sheet.Fans, Is.EqualTo(8_000));
         }
 
         [Test]
@@ -298,7 +300,7 @@ namespace YARG.Career.Tests
 
             Assert.That(sheet.Fans, Is.EqualTo(0));
             Assert.That(sheet.Rank, Is.EqualTo(CareerRank.GarageBand));
-            Assert.That(sheet.NextRank, Is.EqualTo((CareerRank.LocalAct, 500)));
+            Assert.That(sheet.NextRank, Is.EqualTo((CareerRank.LocalAct, 10_000)));
             Assert.That(sheet.CareersPlayed, Is.EqualTo(0));
             Assert.That(sheet.GigsPlayed, Is.EqualTo(0));
             Assert.That(sheet.TotalStars, Is.EqualTo(0));
@@ -399,8 +401,8 @@ namespace YARG.Career.Tests
             Assert.That(sheet.GigsPlayed, Is.EqualTo(3));
             Assert.That(sheet.CareersPlayed, Is.EqualTo(2));
             Assert.That(sheet.TotalStars, Is.EqualTo(5 + 3));
-            // 250 from the fan career plus the star career's 750: every career earns fans.
-            Assert.That(sheet.Fans, Is.EqualTo(250 + 750));
+            // 8,000 from the fan career plus the star career's 256,000: every career earns fans.
+            Assert.That(sheet.Fans, Is.EqualTo(8_000 + 256_000));
             Assert.That(sheet.History.All(gig => gig.Record is not null), Is.True);
 
             var alice = sheet.Members.Single(member => member.ProfileId == Alice);
@@ -415,7 +417,7 @@ namespace YARG.Career.Tests
             _careers.SoftDeleteSave(fanSave);
             sheet = CareerBandSheet.Load(_careers, band.Id, all);
             Assert.That(sheet.GigsPlayed, Is.EqualTo(1));
-            Assert.That(sheet.Fans, Is.EqualTo(750), "the star career's fans remain");
+            Assert.That(sheet.Fans, Is.EqualTo(256_000), "the star career's fans remain");
             Assert.That(CareerBandSheet.Load(_careers, band.Id, new[] { fans }).GigsPlayed, Is.EqualTo(0));
         }
 

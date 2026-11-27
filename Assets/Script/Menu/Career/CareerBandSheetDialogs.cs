@@ -204,7 +204,7 @@ namespace YARG.Menu.Career
 
             if (gig.ContractType is { } type)
             {
-                var current = gig.Tier is null ? null : CareerContracts.For(gig.Tier, gig.Song);
+                var current = gig.Tier is null ? null : CareerContracts.For(gig.Tier);
                 var condition = current?.Type == type ? CareerContractText.Condition(current) : null;
                 how.Add(condition is null
                     ? Localize.Key(gig.ContractMet ? "Menu.Career.Sheet.GigContractMet" : "Menu.Career.Sheet.GigContractMissed")

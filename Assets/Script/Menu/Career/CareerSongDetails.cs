@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using YARG.Career;
 using YARG.Core.Song;
 using YARG.Localization;
 using YARG.Menu.MusicLibrary;
@@ -29,6 +30,9 @@ namespace YARG.Menu.Career
             public int Points;
             public int Fans;
             public bool ShowFans;
+            // The gig's contract, if it has one, and whether the counted result met it.
+            public CareerContract Contract;
+            public bool ContractMet;
             public List<string> Players = new();
         }
 
@@ -199,6 +203,12 @@ namespace YARG.Menu.Career
                 if (info.ShowFans)
                 {
                     lines.Add(Localize.KeyFormat("Menu.Career.Details.Fans", info.Fans.ToString("N0")));
+                }
+
+                if (info.Contract is not null)
+                {
+                    lines.Add(Localize.KeyFormat(info.ContractMet ? "Menu.Career.Contract.Met" : "Menu.Career.Contract.Missed",
+                        CareerContractText.Condition(info.Contract)));
                 }
 
                 lines.AddRange(info.Players);

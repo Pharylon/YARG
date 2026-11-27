@@ -93,7 +93,7 @@ namespace YARG.Career
         {
             if (career.Tiers.Any(tier => tier.Id == tierId))
             {
-                return CareerContracts.For(career, tierId, tierIndex, careerSongId);
+                return CareerContracts.For(career, tierId, tierIndex);
             }
 
             foreach (var tier in career.Tiers)
@@ -102,7 +102,7 @@ namespace YARG.Career
                 {
                     if (song.Id == careerSongId)
                     {
-                        return CareerContracts.For(tier, song);
+                        return CareerContracts.For(tier);
                     }
                 }
             }

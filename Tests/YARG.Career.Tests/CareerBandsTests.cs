@@ -86,7 +86,7 @@ namespace YARG.Career.Tests
             career.AddTier(first);
             var second = Tier(VenueSize.Medium);
             second.UnlockType = UnlockType.FanCount;
-            second.UnlockCriteria = 1000;
+            second.UnlockCriteria = 32_000;
             career.AddTier(second);
             song = first.Songs[0];
             return career;
@@ -135,13 +135,13 @@ namespace YARG.Career.Tests
 
             var total = CareerFans.BandFans(new[]
             {
-                Evaluate(fanCareer, fanSong, 5),           // Small venue, 5 stars: 250
-                Evaluate(otherFanCareer, otherFanSong, 3), // Small venue, 3 stars: 125
-                Evaluate(starCareer, starSong, 5),         // no fan-count unlocks, still counted: 1,500
+                Evaluate(fanCareer, fanSong, 5),           // Small venue, 5 stars: 8,000
+                Evaluate(otherFanCareer, otherFanSong, 3), // Small venue, 3 stars: 4,000
+                Evaluate(starCareer, starSong, 5),         // no fan-count unlocks, still counted: 512,000
                 null,
             });
 
-            Assert.That(total, Is.EqualTo(250 + 125 + 1500));
+            Assert.That(total, Is.EqualTo(8_000 + 4_000 + 512_000));
             Assert.That(CareerFans.BandFans(Array.Empty<CareerEvaluation>()), Is.EqualTo(0));
         }
 
@@ -298,11 +298,11 @@ namespace YARG.Career.Tests
             Complete(_careers.GetOrCreateSave(fanCareer.Id, fanCareer.Version, new[] { Alice }), fanCareer, fanSong, 5);
 
             var careers = new[] { fanCareer, starCareer };
-            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(250 + 1500));
+            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(8_000 + 512_000));
 
             // A reset save no longer counts.
             _careers.SoftDeleteSave(_careers.FindActiveSaveForBand(fanCareer.Id, band.Id).Id);
-            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(1500));
+            Assert.That(CareerBands.BandFans(_careers, band.Id, careers), Is.EqualTo(512_000));
         }
 
         #endregion

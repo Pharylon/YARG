@@ -94,8 +94,40 @@ namespace YARG.Menu.Career
         private UniTaskCompletionSource<bool> _videoStopped;
 
 
+        private bool _backButtonWired;
+
+        /// <summary>
+        /// The header's back arrow closes the menu outright (MenuObject.CloseMenu); here it does what
+        /// Back does, which first closes the song details.
+        /// </summary>
+        private void WireHeaderBackButton()
+        {
+            if (_backButtonWired)
+            {
+                return;
+            }
+
+            _backButtonWired = true;
+            foreach (var button in GetComponentsInChildren<Button>(true))
+            {
+                var onClick = button.onClick;
+                for (var i = 0; i < onClick.GetPersistentEventCount(); i++)
+                {
+                    if (onClick.GetPersistentMethodName(i) != nameof(MenuObject.CloseMenu))
+                    {
+                        continue;
+                    }
+
+                    onClick.SetPersistentListenerState(i, UnityEngine.Events.UnityEventCallState.Off);
+                    onClick.AddListener(Back);
+                }
+            }
+        }
+
         protected override void OnEnable()
         {
+            WireHeaderBackButton();
+
             // Before the list measures its viewport.
             EnsureGigMap();
 
@@ -199,8 +231,10 @@ namespace YARG.Menu.Career
                     Back, hide: true),
             };
 
+            // As wide as the wider of its two labels, so the buttons after it stay put when it changes.
             entries.Add(new NavigationScheme.Entry(MenuAction.Blue,
-                _showSongDetails ? "Menu.Career.Details.Back" : "Menu.Career.Details.Show", ToggleSongDetails));
+                    _showSongDetails ? "Menu.Career.Details.Back" : "Menu.Career.Details.Show", ToggleSongDetails)
+                .WithWidthOf(_showSongDetails ? "Menu.Career.Details.Show" : "Menu.Career.Details.Back"));
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             entries.Add(new NavigationScheme.Entry(MenuAction.Select, "Menu.Career.DebugGrant", DebugGrantStars));
@@ -368,7 +402,7 @@ namespace YARG.Menu.Career
                     viewList.Add(new SongViewType(
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
                         closerRow is null && songIndex == tier.Songs.Length - 1, songResult,
-                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
+                        OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
 
                     // A swapped song: what its best result was played on.
                     if (!tier.Songs[songIndex].IsUserPick && viewList[^1] is SongViewType swapped &&
@@ -907,6 +941,13 @@ namespace YARG.Menu.Career
             if (_videoPlaying)
             {
                 StopVideo();
+                return;
+            }
+
+            // Song details are open: Back closes them (as Blue does) before leaving the gigs.
+            if (_showSongDetails)
+            {
+                ToggleSongDetails();
                 return;
             }
 

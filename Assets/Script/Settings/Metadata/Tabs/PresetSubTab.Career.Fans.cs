@@ -9,15 +9,12 @@ using YARG.Settings.Types;
 namespace YARG.Settings.Metadata
 {
     /// <summary>
-    /// Career editor fields for fans, venues and contracts (tier: fan multiplier, city, venue name, contract;
-    /// song: contract) and the content warnings of <see cref="CareerValidation"/>. Built from the same stock
+    /// Career editor fields for fans, venues and contracts (tier: fan multiplier, city, venue name, contract)
+    /// and the content warnings of <see cref="CareerValidation"/>. Built from the same stock
     /// setting rows as the other editor fields; no prefab of its own.
     /// </summary>
     public partial class CareerPresetSubTab
     {
-        // Song contract choice that keeps the tier's contract (CareerSong.Contract = null).
-        private const int TIER_CONTRACT = -1;
-
         private sealed class CareerChoiceSetting : DropdownSetting<int>
         {
             private readonly Func<int, string> _formatter;
@@ -96,52 +93,6 @@ namespace YARG.Settings.Metadata
             }
         }
 
-        /// <summary>The contract field of the song editor, and its details for a song's own contract.</summary>
-        private IEnumerable<CareerPresetPreviewBuilder.Field> SongContractFields(SongFilterState state, bool editable)
-        {
-            var song = state.CareerSong;
-            var current = song.Contract is null ? TIER_CONTRACT : (int) song.Contract.Type;
-
-            var choice = new CareerChoiceSetting(current, value =>
-            {
-                if (value == TIER_CONTRACT)
-                {
-                    song.Contract = null;
-                }
-                else
-                {
-                    var type = (CareerContractType) value;
-                    song.Contract ??= new CareerContract
-                    {
-                        BonusPercent = type == CareerContractType.None ? 0 : DEFAULT_CONTRACT_BONUS,
-                    };
-                    SetContractType(song.Contract, type);
-                }
-
-                Save();
-                state.SummaryChanged?.Invoke();
-                ShowSongFields(state, SongFieldIndex(FieldText("SongContract")));
-            }, value => value switch
-            {
-                TIER_CONTRACT                   => SongTierContractText(song),
-                (int) CareerContractType.None   => EditorText("SongContractNone"),
-                _                               => FormatEnumValue((CareerContractType) value),
-            });
-
-            choice.Add(TIER_CONTRACT);
-            foreach (CareerContractType type in Enum.GetValues(typeof(CareerContractType)))
-            {
-                choice.Add((int) type);
-            }
-
-            yield return new CareerPresetPreviewBuilder.Field(FieldText("SongContract"), choice, editable);
-
-            foreach (var field in ContractDetailFields(song.Contract, editable))
-            {
-                yield return field;
-            }
-        }
-
         private const int DEFAULT_CONTRACT_BONUS = 25;
 
         private static void SetContractType(CareerContract contract, CareerContractType type)
@@ -195,21 +146,6 @@ namespace YARG.Settings.Metadata
                 contract.Text = string.IsNullOrWhiteSpace(value) ? null : value;
                 Save();
             }), editable);
-        }
-
-        private string SongTierContractText(CareerSong song)
-        {
-            var tier = _presetRef?.Tiers.FirstOrDefault(t => t.Songs != null && t.Songs.Contains(song));
-            return tier?.Contract is { IsActive: true } contract
-                ? Localize.KeyFormat(CAREER_EDITOR_KEY + ".SongContractTier", FormatEnumValue(contract.Type))
-                : EditorText("SongContractTierNone");
-        }
-
-        private int? SongFieldIndex(string label)
-        {
-            // Song editor order: four facets, Clear (a button, counted only when shown), identifier,
-            // fallback description, then the contract fields.
-            return label == FieldText("SongContract") ? (ReadOnlyFields ? 6 : 7) : null;
         }
 
         /// <summary>Read-only warning rows for the tier's content mistakes, shown first in its editor.</summary>

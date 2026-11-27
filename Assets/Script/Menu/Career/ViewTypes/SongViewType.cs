@@ -28,11 +28,6 @@ namespace YARG.Menu.Career
         public bool ShowFans { get; set; }
 
         /// <summary>
-        /// The contract of the song's tier, which applies unless the song has its own.
-        /// </summary>
-        public CareerContract TierContract { get; set; }
-
-        /// <summary>
         /// The song's gig is played as a show (see <see cref="CareerShow"/>): clicking the song starts the
         /// whole set instead of the song alone.
         /// </summary>
@@ -191,13 +186,8 @@ namespace YARG.Menu.Career
 
         public override string GetSecondaryText(bool selected)
         {
+            // The song's fans and contract are in its details (Blue), not on the row.
             var detail = Hidden ? CareerSetlistText.HiddenDetail(HiddenBy, _song) : DetailLine();
-            if (ShowFans && _result is { Completed: true })
-            {
-                detail = Localize.KeyFormat("Menu.Career.SongFans", detail, _result.Fans.ToString("N0"));
-            }
-
-            detail = AddContract(detail);
 
             return AddStrikethrough(FormatAs(detail, TextType.Secondary, selected));
         }
@@ -206,23 +196,6 @@ namespace YARG.Menu.Career
         /// A song with its own contract shows it (the tier header shows the tier's); a song exempt from
         /// its tier's contract says so; a song whose counted result met its contract says that.
         /// </summary>
-        private string AddContract(string detail)
-        {
-            if (_result is { ContractMet: true })
-            {
-                return Localize.KeyFormat("Menu.Career.Contract.SongMet", detail);
-            }
-
-            if (_song.Contract is { IsActive: false } && TierContract is { IsActive: true })
-            {
-                return Localize.KeyFormat("Menu.Career.Contract.SongNone", detail);
-            }
-
-            return CareerContractText.Line(_song.Contract, ShowFans) is { } own
-                ? Localize.KeyFormat("Menu.Career.HeaderJoin", detail, own)
-                : detail;
-        }
-
         private string AddStrikethrough(string text)
         {
             // Finished songs used to be struck through; the stars show that well enough.

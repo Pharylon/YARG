@@ -234,27 +234,27 @@ namespace YARG.Career.Tests
         }
 
         // A tier that makes the career use fans, so fan rules apply.
-        private static CareerTier FanGate() => Tier(1, VenueSize.Starter, UnlockType.FanCount, 1_000_000);
+        private static CareerTier FanGate() => Tier(1, VenueSize.Starter, UnlockType.FanCount, 1_000_000_000);
 
         [Test]
-        public void SongContractOverridesTheTier()
+        public void TheTierContractIsTheGigsContract()
         {
             var tier = Tier(3);
             tier.Contract = Contract(CareerContractType.NoFailOff);
-            tier.Songs[1].Contract = Contract(CareerContractType.MinStars, 4);
-            tier.Songs[2].Contract = Contract(CareerContractType.None);
 
-            Assert.That(CareerContracts.For(tier, tier.Songs[0])?.Type, Is.EqualTo(CareerContractType.NoFailOff));
-            Assert.That(CareerContracts.For(tier, tier.Songs[1])?.Type, Is.EqualTo(CareerContractType.MinStars));
-            Assert.That(CareerContracts.For(tier, tier.Songs[2]), Is.Null, "None cancels the tier's contract");
-            Assert.That(CareerContracts.For(Tier(1), null), Is.Null);
+            Assert.That(CareerContracts.For(tier)?.Type, Is.EqualTo(CareerContractType.NoFailOff));
+            Assert.That(CareerContracts.For(Tier(1)), Is.Null);
+            Assert.That(CareerContracts.For((CareerTier) null), Is.Null);
 
-            var career = Career(tier);
-            Assert.That(CareerContracts.For(career, tier.Id, 0, tier.Songs[1].Id)?.Type,
-                Is.EqualTo(CareerContractType.MinStars));
-            Assert.That(CareerContracts.For(career, tier.Id, 5, tier.Songs[0].Id)?.Type,
+            var none = Tier(1);
+            none.Contract = Contract(CareerContractType.None);
+            Assert.That(CareerContracts.For(none), Is.Null, "None is no contract");
+
+            var career = Career(Tier(1), tier);
+            Assert.That(CareerContracts.For(career, tier.Id, 1)?.Type, Is.EqualTo(CareerContractType.NoFailOff));
+            Assert.That(CareerContracts.For(career, tier.Id, 5)?.Type,
                 Is.EqualTo(CareerContractType.NoFailOff), "found by id when the index is stale");
-            Assert.That(CareerContracts.For(career, Guid.NewGuid(), 0, tier.Songs[0].Id), Is.Null);
+            Assert.That(CareerContracts.For(career, Guid.NewGuid(), 0), Is.Null);
         }
 
         [Test]
@@ -291,12 +291,13 @@ namespace YARG.Career.Tests
             Assert.That(copy.Contract.Type, Is.EqualTo(CareerContractType.MinAccuracy));
             Assert.That(copy.Contract.Text, Is.EqualTo("Tight!"));
 
-            var song = new CareerSong { Id = Guid.NewGuid(), Contract = Contract(CareerContractType.FullBand, 3) };
-            var songCopy = new CareerSong(song);
-            Assert.That(songCopy.Contract, Is.Not.SameAs(song.Contract));
-            Assert.That(songCopy.Contract.Type, Is.EqualTo(CareerContractType.FullBand));
-            Assert.That(songCopy.Contract.Parameter, Is.EqualTo(3f));
-            Assert.That(new CareerSong(new CareerSong()).Contract, Is.Null);
+            // Songs had contracts of their own once: such content still loads, and saves without one.
+            const string oldSong = @"{ ""Id"": ""e2d1c7a0-1111-4c2e-8f1a-3b1d2c4e5f60"", ""Identifier"": ""SongId"",
+                ""SongId"": ""a1a97c1d-19ea-48b4-aa2d-8e0bb69c9992"",
+                ""Contract"": { ""Type"": ""FullBand"", ""Parameter"": 3, ""BonusPercent"": 25 } }";
+            var song = JsonConvert.DeserializeObject<CareerSong>(oldSong);
+            Assert.That(song.Id, Is.EqualTo(Guid.Parse("e2d1c7a0-1111-4c2e-8f1a-3b1d2c4e5f60")));
+            Assert.That(JsonConvert.SerializeObject(song), Does.Not.Contain("Contract"));
         }
 
         #endregion
@@ -335,12 +336,12 @@ namespace YARG.Career.Tests
                 Row(tier.Songs[1], 5, CareerContractType.NoFailOff, met: false));
 
             var songs = evaluation.Tiers[0].Songs;
-            Assert.That(songs[0].Fans, Is.EqualTo(1875), "Large 5 stars 1,500 + 25%");
+            Assert.That(songs[0].Fans, Is.EqualTo(640_000), "Large 5 stars 512,000 + 25%");
             Assert.That(songs[0].ContractMet, Is.True);
-            Assert.That(songs[1].Fans, Is.EqualTo(1500));
+            Assert.That(songs[1].Fans, Is.EqualTo(512_000));
             Assert.That(songs[1].ContractMet, Is.False);
             Assert.That(songs[1].HasContract, Is.True);
-            Assert.That(evaluation.TotalFans, Is.EqualTo(1875 + 1500));
+            Assert.That(evaluation.TotalFans, Is.EqualTo(640_000 + 512_000));
         }
 
         [Test]
@@ -354,19 +355,19 @@ namespace YARG.Career.Tests
 
             tier.Contract = Contract(CareerContractType.MinAccuracy, 95, bonus: 50);
             var evaluation = Evaluate(career,
-                Row(song, 5, CareerContractType.MinAccuracy, met: false),  // 1,500
-                Row(song, 4, CareerContractType.MinAccuracy, met: true));  // 1,125 * 1.5 = 1,687.5
+                Row(song, 5, CareerContractType.MinAccuracy, met: false),  // 512,000
+                Row(song, 4, CareerContractType.MinAccuracy, met: true));  // 384,000 * 1.5 = 576,000
             var result = evaluation.Tiers[0].Songs[0];
-            Assert.That(result.Fans, Is.EqualTo(1688));
+            Assert.That(result.Fans, Is.EqualTo(576_000));
             Assert.That(result.ContractMet, Is.True);
             Assert.That(result.BestStars, Is.EqualTo(5));
 
             tier.Contract = Contract(CareerContractType.MinAccuracy, 95, bonus: 25);
             evaluation = Evaluate(career,
-                Row(song, 5, CareerContractType.MinAccuracy, met: false),  // 1,500
-                Row(song, 4, CareerContractType.MinAccuracy, met: true));  // 1,125 * 1.25 = 1,406.25
+                Row(song, 5, CareerContractType.MinAccuracy, met: false),  // 512,000
+                Row(song, 4, CareerContractType.MinAccuracy, met: true));  // 384,000 * 1.25 = 480,000
             result = evaluation.Tiers[0].Songs[0];
-            Assert.That(result.Fans, Is.EqualTo(1500));
+            Assert.That(result.Fans, Is.EqualTo(512_000));
             Assert.That(result.ContractMet, Is.False, "the counted result did not meet it");
             Assert.That(result.ContractEverMet, Is.True);
 
@@ -387,25 +388,29 @@ namespace YARG.Career.Tests
 
             // Met under MinStars, content now asks for a full combo.
             var evaluation = Evaluate(career, Row(tier.Songs[0], 5, CareerContractType.MinStars, met: true));
-            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(1500));
+            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(512_000));
             Assert.That(evaluation.Tiers[0].Songs[0].ContractMet, Is.False);
 
             // Rows from before contracts existed (no type) never earn a bonus.
             evaluation = Evaluate(career, Row(tier.Songs[0], 5));
-            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(1500));
+            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(512_000));
         }
 
         [Test]
-        public void SongWithoutContractIsUnchanged()
+        public void TierWithoutContractEarnsNoBonus()
         {
-            var tier = Tier(2);
-            tier.Songs[1].Contract = Contract(CareerContractType.NoFailOff, bonus: 100);
-            var career = Career(tier, FanGate());
+            var plain = Tier(1);
+            var contracted = Tier(1);
+            contracted.Contract = Contract(CareerContractType.NoFailOff, bonus: 100);
+            var career = Career(plain, contracted, FanGate());
 
-            var evaluation = Evaluate(career, Row(tier.Songs[0], 4), Row(tier.Songs[1], 4, CareerContractType.NoFailOff, true));
-            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(CareerFans.SongFans(tier, 4)));
+            // A row judged under a contract its tier no longer has (or never had) earns no bonus.
+            var evaluation = Evaluate(career, Row(plain.Songs[0], 4, CareerContractType.NoFailOff, true),
+                Row(contracted.Songs[0], 4, CareerContractType.NoFailOff, true));
+            Assert.That(evaluation.Tiers[0].Songs[0].Fans, Is.EqualTo(CareerFans.SongFans(plain, 4)));
             Assert.That(evaluation.Tiers[0].Songs[0].HasContract, Is.False);
-            Assert.That(evaluation.Tiers[0].Songs[1].Fans, Is.EqualTo(2 * CareerFans.SongFans(tier, 4)));
+            Assert.That(evaluation.Tiers[1].Songs[0].HasContract, Is.True);
+            Assert.That(evaluation.Tiers[1].Songs[0].Fans, Is.EqualTo(2 * CareerFans.SongFans(contracted, 4)));
         }
 
         [Test]
@@ -414,7 +419,7 @@ namespace YARG.Career.Tests
             var first = Tier(2);
             first.Contract = Contract(CareerContractType.FullBand, 4, bonus: 50);
             var second = Tier(1, criteria: 10);
-            var fanTier = Tier(1, VenueSize.Starter, UnlockType.FanCount, 3000);
+            var fanTier = Tier(1, VenueSize.Starter, UnlockType.FanCount, 1_024_000);
             var career = Career(first, second, fanTier);
 
             var evaluation = Evaluate(career,
@@ -423,16 +428,19 @@ namespace YARG.Career.Tests
 
             Assert.That(evaluation.Tiers[0].Completed, Is.True);
             Assert.That(evaluation.Tiers[1].Unlocked, Is.True, "10 stars");
-            Assert.That(evaluation.Tiers[2].Unlocked, Is.True, "3,000 fans without any bonus");
+            Assert.That(evaluation.Tiers[2].Unlocked, Is.True, "1,024,000 fans without any bonus");
         }
 
         [Test]
         public void ContractBonusFansAddToTheFanTable()
         {
-            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Starter), 5, 25), Is.EqualTo(125));
-            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Large), 4, 10), Is.EqualTo(1238), "1,237.5 rounds up");
-            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Small), CareerFans.GOLD_STARS, 0), Is.EqualTo(313));
-            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Small), 5, -50), Is.EqualTo(250), "negative is 0");
+            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Starter), 5, 25), Is.EqualTo(1_250));
+            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Large), 4, 10), Is.EqualTo(422_400));
+            var bonus = Tier(0, VenueSize.Starter);
+            bonus.IsBonus = true;
+            Assert.That(CareerFans.SongFans(bonus, CareerFans.GOLD_STARS, 10), Is.EqualTo(688), "625 + 10% = 687.5 rounds up");
+            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Small), CareerFans.GOLD_STARS, 0), Is.EqualTo(10_000));
+            Assert.That(CareerFans.SongFans(Tier(0, VenueSize.Small), 5, -50), Is.EqualTo(8_000), "negative is 0");
         }
 
         #endregion
@@ -443,19 +451,19 @@ namespace YARG.Career.Tests
         public void DoneInFanCareersMeansNoMoreFansToEarn()
         {
             var tier = Tier(3, VenueSize.Small, UnlockType.FanCount, 0);
-            tier.Songs[2].Contract = Contract(CareerContractType.NoFailOff, bonus: 25);
+            tier.Contract = Contract(CareerContractType.NoFailOff, bonus: 25);
             var starter = Tier(1, VenueSize.Starter);
             var career = Career(starter, tier);
 
             var evaluation = Evaluate(career,
                 Row(starter.Songs[0], 5),     // a star tier in a fan career: gold still earns more
-                Row(tier.Songs[0], 5),
-                Row(tier.Songs[1], CareerFans.GOLD_STARS),
+                Row(tier.Songs[0], 5, CareerContractType.NoFailOff, met: true),
+                Row(tier.Songs[1], CareerFans.GOLD_STARS, CareerContractType.NoFailOff, met: true),
                 Row(tier.Songs[2], CareerFans.GOLD_STARS, CareerContractType.NoFailOff, met: false));
 
             Assert.That(evaluation.Tiers[0].Songs[0].Done, Is.False);
             Assert.That(evaluation.Tiers[1].Songs[0].Done, Is.False, "5 stars, gold earns more");
-            Assert.That(evaluation.Tiers[1].Songs[1].Done, Is.True, "gold, no contract");
+            Assert.That(evaluation.Tiers[1].Songs[1].Done, Is.True, "gold and the contract met");
             Assert.That(evaluation.Tiers[1].Songs[2].Done, Is.False, "gold, but the contract bonus is still open");
 
             evaluation = Evaluate(career, Row(tier.Songs[2], CareerFans.GOLD_STARS, CareerContractType.NoFailOff, met: true));
