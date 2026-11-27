@@ -41,7 +41,7 @@ namespace YARG.Menu.ProfileInfo
         public async UniTask<bool> Show<TSingleState>(InputDevice controller, ReusableSingleBinding<TSingleState> single, BindingType bindingType)
             where TSingleState : struct
         {
-            _waitingText.text = Localize.KeyFormat("Menu.ProfileList.Record.Waiting", controller.displayName);
+            _waitingText.text = Localize.KeyFormat("Menu.ProfileList.Record.Waiting", DeviceIdentity.GetName(controller));
             _selectText.text = Localize.Key("Menu.ProfileList.Record.Select");
 
             _grabbedControl = null;

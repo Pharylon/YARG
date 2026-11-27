@@ -81,6 +81,11 @@ namespace YARG.Input
             Application.focusChanged += OnFocusChange;
             InputSystem.onDeviceChange += OnDeviceChange;
 
+            DeviceIdentity.Identified += OnDeviceIdentified;
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+            LinuxDeviceIdentifier.Start();
+#endif
+
             _defaultKeyboardMenuBindings = new DefaultKeyboardMenuBindings();
 
             // Notify of all current devices
@@ -118,6 +123,19 @@ namespace YARG.Input
             InputSystem.onAfterUpdate -= OnAfterUpdate;
 
             InputSystem.onDeviceChange -= OnDeviceChange;
+
+            DeviceIdentity.Identified -= OnDeviceIdentified;
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+            LinuxDeviceIdentifier.Stop();
+#endif
+        }
+
+        // A controller turned out to be a particular USB device (its serial number is known now):
+        // the profiles that remember that device can have it
+        private static void OnDeviceIdentified(InputDevice device)
+        {
+            YARG.Input.Serialization.BindingSerialization.InvalidateHash(device);
+            PlayerContainer.OnDeviceIdentified(device);
         }
 
         public static void RegisterPlayer(YargPlayer player)
@@ -192,6 +210,10 @@ namespace YARG.Input
                     players.Current.DeviceInfo.UpdateBindingsForFrame(InputUpdateTime);
                 }
             }
+
+#if UNITY_STANDALONE_LINUX || UNITY_EDITOR_LINUX
+            LinuxDeviceIdentifier.Update();
+#endif
 
             // Remove any devices that happened to be actually disabled
             // right as the game focus changed
@@ -328,7 +350,7 @@ namespace YARG.Input
                     // Don't toast if the device disabled itself
                     if (device.enabled)
                     {
-                        ToastManager.ToastMessage($"Device added: {device.displayName}");
+                        ToastManager.ToastMessage($"Device added: {DeviceIdentity.GetName(device)}");
                         DeviceAdded?.Invoke(device);
                     }
                     else
@@ -346,7 +368,7 @@ namespace YARG.Input
                     // Don't toast for disabled devices
                     if (!_disabledDevices.Remove(device))
                     {
-                        ToastManager.ToastMessage($"Device removed: {device.displayName}");
+                        ToastManager.ToastMessage($"Device removed: {DeviceIdentity.GetName(device)}");
                         DeviceRemoved?.Invoke(device);
                     }
 
@@ -371,7 +393,7 @@ namespace YARG.Input
                     if (_disabledDevices.Remove(device))
                     {
                         // Toast as a newly-added device, for simplicity to the user
-                        ToastManager.ToastMessage($"Device added: {device.displayName}");
+                        ToastManager.ToastMessage($"Device added: {DeviceIdentity.GetName(device)}");
                         DeviceAdded?.Invoke(device);
                     }
 
@@ -398,7 +420,7 @@ namespace YARG.Input
                     if (!_disabledDevices.Contains(device) && _seenDevices.Contains(device))
                     {
                         // Toast as a removed device, for simplicity to the user
-                        ToastManager.ToastMessage($"Device removed: {device.displayName}");
+                        ToastManager.ToastMessage($"Device removed: {DeviceIdentity.GetName(device)}");
                         DeviceRemoved?.Invoke(device);
                     }
 

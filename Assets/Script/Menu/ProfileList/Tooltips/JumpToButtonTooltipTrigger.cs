@@ -32,7 +32,7 @@ namespace YARG.Menu.ProfileList
             else
             {
                 title = Localize.Key("Menu.ProfileList.Tooltip.Profiles.Settings.JumpTo.Populated.Title");
-                text = Localize.KeyFormat("Menu.ProfileList.Tooltip.Profiles.Settings.JumpTo.Populated.Text", _entry.Controller.displayName);
+                text = Localize.KeyFormat("Menu.ProfileList.Tooltip.Profiles.Settings.JumpTo.Populated.Text", YARG.Input.DeviceIdentity.GetName(_entry.Controller));
             }
 
             return (

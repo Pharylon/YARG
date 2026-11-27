@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -252,6 +252,48 @@ namespace YARG.Player
                 ActiveProfilesChanged();
         }
 
+        /// <summary>
+        /// A connected player's profile went to another game mode.
+        /// </summary>
+        public static event Action<YargPlayer> PlayerGameModeChanged;
+
+        public static void NotifyGameModeChanged(YargPlayer player)
+        {
+            FiltersMenu.ResetIntensityFiltersForProfile(player.Profile);
+            ActiveProfilesChanged();
+            PlayerGameModeChanged?.Invoke(player);
+        }
+
+        /// <summary>
+        /// Called when <paramref name="player"/> presses a menu button on <paramref name="controller"/>.
+        /// If that controller cannot play the game mode the player is in (they put the guitar down and
+        /// picked up the drums), the player goes to a mode it can play.
+        /// </summary>
+        /// <returns>Whether the game mode changed.</returns>
+        public static bool FollowController(YargPlayer player, InputDevice controller)
+        {
+            if (player.IsReplay || player.Profile.IsBot || player.DeviceInfo is null)
+            {
+                return false;
+            }
+
+            // Never under a song that is loading or playing
+            if (GlobalVariables.Instance == null || GlobalVariables.Instance.CurrentScene != SceneIndex.Menu)
+            {
+                return false;
+            }
+
+            var mode = player.DeviceInfo.GetGameModeToFollow(controller, player.GameModeChosenByHand);
+            if (mode is null || !player.SetGameMode(mode.Value))
+            {
+                return false;
+            }
+
+            ToastManager.ToastInformation(Localize.KeyFormat("Menu.ProfileList.GameModeFollowed",
+                player.Profile.Name, mode.Value.ToLocalizedName()));
+            return true;
+        }
+
         public static YargPlayer GetPlayerFromProfile(YargProfile profile)
         {
             if (!_playersByProfile.TryGetValue(profile, out var player))
@@ -326,6 +368,21 @@ namespace YARG.Player
             return null;
         }
 #nullable disable
+
+        /// <summary>
+        /// A connected controller was found to be a particular device (see <see cref="DeviceIdentity"/>),
+        /// which a profile may remember where it could not be told from others of its model before.
+        /// </summary>
+        public static void OnDeviceIdentified(InputDevice device)
+        {
+            if (device.enabled && !IsControllerTaken(device))
+            {
+                OnDeviceAdded(device);
+            }
+
+            // Its name changed as well
+            UnityEngine.Object.FindAnyObjectByType<YARG.Menu.ProfileList.ProfileCenterPane>()?.RefreshControllers();
+        }
 
         private static void OnDeviceAdded(InputDevice device)
         {

@@ -341,7 +341,7 @@ namespace YARG.Dev
             var words = SplitWords(argument);
             if (words.Count < 2)
             {
-                return "error usage: player <add|remove|sitout> <profile> [true|false]";
+                return "error usage: player <add|remove|sitout|mode|device|press|devices> <profile> [argument]";
             }
 
             var profile = FindProfile(words[1]);
@@ -373,12 +373,83 @@ namespace YARG.Dev
 
                     existing.SittingOut = sittingOut;
                     break;
+                case "mode":
+                    // player mode <profile> <GameMode>: as choosing it in the profile pane or difficulty select.
+                    if (existing is null || words.Count < 3 || !Enum.TryParse<GameMode>(words[2], true, out var mode))
+                    {
+                        return "error usage: player mode <profile with a player> <GameMode>";
+                    }
+
+                    existing.ChooseGameMode(mode);
+                    return $"ok {DescribePlayerDevices()}";
+                case "device":
+                    // player device <profile> <name or layout>: gives the player a connected device whose name
+                    // contains the text, or else a new virtual device of that layout (e.g. XInputGuitarRockBand).
+                    if (existing is null || words.Count < 3)
+                    {
+                        return "error usage: player device <profile with a player> <device name|layout>";
+                    }
+
+                    var device = UnityEngine.InputSystem.InputSystem.devices.FirstOrDefault(d =>
+                        d.displayName.Contains(words[2], StringComparison.OrdinalIgnoreCase) ||
+                        d.name.Contains(words[2], StringComparison.OrdinalIgnoreCase));
+                    try
+                    {
+                        device ??= UnityEngine.InputSystem.InputSystem.AddDevice(words[2]);
+                    }
+                    catch (Exception e)
+                    {
+                        return $"error no device or layout '{words[2]}': {e.Message}";
+                    }
+
+                    PlayerContainer.GetControllerUser(device)?.DeviceInfo.RemoveController(device);
+                    existing.DeviceInfo.AddController(device);
+                    return $"ok {DescribePlayerDevices()}";
+                case "press":
+                    // player press <profile> <device name>: what a menu button press on that device does to the
+                    // player's game mode (the press itself is not sent).
+                    if (existing is null || words.Count < 3)
+                    {
+                        return "error usage: player press <profile with a player> <device name>";
+                    }
+
+                    var pressed = existing.DeviceInfo.Controllers.FirstOrDefault(d =>
+                        d.displayName.Contains(words[2], StringComparison.OrdinalIgnoreCase) ||
+                        d.name.Contains(words[2], StringComparison.OrdinalIgnoreCase));
+                    if (pressed is null)
+                    {
+                        return $"error '{profile.Name}' has no device '{words[2]}'";
+                    }
+
+                    bool followed = PlayerContainer.FollowController(existing, pressed);
+                    return $"ok followed={followed} {DescribePlayerDevices()}";
+                case "devices":
+                    return $"ok {DescribePlayerDevices()}";
                 default:
                     return $"error unknown player command '{words[0]}'";
             }
 
             RefreshCareerScreens();
             return $"ok {DescribePlayers()}";
+        }
+
+        /// <summary>
+        /// Every player with their game mode, instrument, difficulty, note speed and devices (with the
+        /// gameplay binding set each device would use).
+        /// </summary>
+        private static string DescribePlayerDevices()
+        {
+            return "players: " + string.Join("; ", PlayerContainer.Players.Select(player =>
+            {
+                var profile = player.Profile;
+                var devices = player.DeviceInfo.Controllers.Select(controller =>
+                    $"{controller.displayName}" +
+                    $"[{player.DeviceInfo.GetSelectedGameplayBindingsForController(controller)?.Name ?? "no bindings"}]")
+                    .Concat(player.DeviceInfo.Microphones.Select(mic => $"mic:{mic.DisplayName}"));
+                return $"'{profile.Name}' {profile.GameMode}/{profile.CurrentInstrument}/{profile.CurrentDifficulty} " +
+                    $"speed={profile.NoteSpeed} saved=[{string.Join(",", profile.ModeSettings.Keys)}] " +
+                    $"devices=[{string.Join(", ", devices)}]";
+            }));
         }
 
         private static string DescribePlayers()

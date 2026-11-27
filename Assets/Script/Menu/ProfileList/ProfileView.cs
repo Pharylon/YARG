@@ -24,7 +24,7 @@ namespace YARG.Menu.ProfileList
     public class ProfileView : NavigatableBehaviour
     {
         // Cache for gamepads that have been prompted for this session
-        private static readonly Dictionary<XInputController, GamepadBindingMode> _xinputGamepads = new();
+        private static readonly Dictionary<InputDevice, GamepadBindingMode> _xinputGamepads = new();
 
         [Space]
         [SerializeField]
@@ -262,6 +262,7 @@ namespace YARG.Menu.ProfileList
 
             bool selectedController = false;
             bool xinputDialogShowing = false;
+            var listButtons = new List<(InputDevice controller, YARG.Menu.ColoredButton button, string text)>();
 
             // Add InputSystem devices immediately — fast, no probe
             foreach (var controller in InputSystem.devices)
@@ -278,43 +279,41 @@ namespace YARG.Menu.ProfileList
                 }
 
                 var text = (existingUser is null) ?
-                    controller.displayName :
-                    Localize.KeyFormat("Menu.ProfileList.StealDevice", controller.displayName, existingUser.Profile.Name);
+                    DeviceIdentity.GetName(controller) :
+                    Localize.KeyFormat("Menu.ProfileList.StealDevice", DeviceIdentity.GetName(controller), existingUser.Profile.Name);
 
-                // Only Windows awaits the XInput mode prompt. Non-Windows omits async to prevent CS1998 warning.
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-                dialog.AddListButton(text, async () =>
-#else
-                dialog.AddListButton(text, () =>
-#endif
+                var listButton = dialog.AddListButton(text, async () =>
                 {
-                    if (existingUser is not null)
+                    xinputDialogShowing = IsGamepadOfUnknownKind(controller);
+                    if (!await AssignController(player, controller))
                     {
-                        existingUser.DeviceInfo.RemoveController(controller);
+                        return;
                     }
-
-                    player.DeviceInfo.AddController(controller);
-#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-                    if (controller is XInputController xinput)
-                    {
-                        xinputDialogShowing = true;
-                        var mode = await PromptGamepadMode(xinput);
-                        if (!mode.HasValue || !xinput.added)
-                        {
-                            return;
-                        }
-
-                        var (gameplay, menu) = player.DeviceInfo.GetBindingSetsForGamepad(mode.Value, Profile.GameMode);
-                        player.DeviceInfo.SetGameplayBindingsForController(controller, gameplay);
-                        player.DeviceInfo.SetMenuBindingsForController(controller, menu);
-                    }
-#endif
 
                     selectedController = true;
                 });
+                listButtons.Add((controller, listButton, text));
             }
 
-            await dialog.WaitUntilClosed();
+            // While the list is up, a controller's entry lights up when a button is pressed on it, so
+            // that two of the same kind can be told apart
+            bool open = true;
+            dialog.WaitUntilClosed().ContinueWith(() => open = false).Forget();
+            while (open)
+            {
+                foreach (var (controller, listButton, text) in listButtons)
+                {
+                    if (listButton == null)
+                    {
+                        continue;
+                    }
+
+                    bool pressed = controller.added && DeviceIdentity.IsAnyButtonPressed(controller);
+                    listButton.Text.text = pressed ? $"<color=#2DD9FE>\u25ba {text} \u25c4</color>" : text;
+                }
+
+                await UniTask.Yield();
+            }
 
             if (xinputDialogShowing)
             {
@@ -429,7 +428,70 @@ namespace YARG.Menu.ProfileList
             }
         }
 
-        private static async UniTask<GamepadBindingMode?> PromptGamepadMode(XInputController xinput)
+        /// <summary>
+        /// Gives a controller to a player on the player's say-so, taking it from whoever holds it. For
+        /// a controller that presents itself as a plain gamepad this asks what it is, and takes the
+        /// answer for the bindings and for the game mode.
+        /// </summary>
+        /// <returns>False if that question was left unanswered (the controller is attached all the same).</returns>
+        public static async UniTask<bool> AssignController(YargPlayer player, InputDevice controller)
+        {
+            var existingUser = PlayerContainer.GetControllerUser(controller);
+            if (existingUser != player)
+            {
+                existingUser?.DeviceInfo.RemoveController(controller);
+                player.DeviceInfo.AddControllerManually(controller);
+            }
+
+            if (!IsGamepadOfUnknownKind(controller))
+            {
+                return true;
+            }
+
+            var mode = await PromptGamepadMode(controller);
+            if (!mode.HasValue || !controller.added)
+            {
+                return false;
+            }
+
+            // Before the mode change, which looks at what the controller is
+            DeviceIdentity.SetInstrumentHint(controller, GetGameMode(mode.Value));
+            if (GetGameMode(mode.Value) is { } gameMode)
+            {
+                player.ChooseGameMode(gameMode);
+            }
+
+            var (gameplay, menu) = player.DeviceInfo.GetBindingSetsForGamepad(mode.Value, player.Profile.GameMode);
+            player.DeviceInfo.SetGameplayBindingsForController(controller, gameplay);
+            player.DeviceInfo.SetMenuBindingsForController(controller, menu);
+            return true;
+        }
+
+        private static bool IsGamepadOfUnknownKind(InputDevice controller)
+        {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            return controller is XInputController;
+#else
+            return YARG.Helpers.LayoutHelper.InputDeviceToControllerFamily(controller) is ControllerFamily.Gamepad;
+#endif
+        }
+
+        // The game mode the instrument is for; null for a plain gamepad, which says nothing
+        private static YARG.Core.GameMode? GetGameMode(GamepadBindingMode mode)
+        {
+            return mode switch
+            {
+                GamepadBindingMode.CrkdGuitar_Mode1 or GamepadBindingMode.CrkdGuitar_Mode1_Fw30 or
+                    GamepadBindingMode.WiitarThing_Guitar or GamepadBindingMode.RB4InstrumentMapper_Guitar
+                    => YARG.Core.GameMode.FiveFretGuitar,
+                GamepadBindingMode.RB4InstrumentMapper_GHLGuitar => YARG.Core.GameMode.SixFretGuitar,
+                GamepadBindingMode.WiitarThing_Drums => YARG.Core.GameMode.FiveLaneDrums,
+                GamepadBindingMode.RB4InstrumentMapper_Drums => YARG.Core.GameMode.FourLaneDrums,
+                _ => null,
+            };
+        }
+
+        private static async UniTask<GamepadBindingMode?> PromptGamepadMode(InputDevice xinput)
         {
             await DialogManager.Instance.WaitUntilCurrentClosed();
 
@@ -445,6 +507,8 @@ namespace YARG.Menu.ProfileList
             dialog.AddListButton("Gamepad", () => mode = GamepadBindingMode.Gamepad);
             dialog.AddListButton("CRKD Guitar (Mode 1)", () => mode = GamepadBindingMode.CrkdGuitar_Mode1);
             dialog.AddListButton("CRKD Guitar (Mode 1, FW3.0+)", () => mode = GamepadBindingMode.CrkdGuitar_Mode1_Fw30);
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+            // These are Windows programs
             dialog.AddListButton("WiitarThing Guitar", () => mode = GamepadBindingMode.WiitarThing_Guitar);
             dialog.AddListButton("WiitarThing Drumkit", () => mode = GamepadBindingMode.WiitarThing_Drums);
             dialog.AddListButton("RB4InstrumentMapper Guitar",
@@ -453,6 +517,7 @@ namespace YARG.Menu.ProfileList
                 () => mode = GamepadBindingMode.RB4InstrumentMapper_GHLGuitar);
             dialog.AddListButton("RB4InstrumentMapper Drumkit",
                 () => mode = GamepadBindingMode.RB4InstrumentMapper_Drums);
+#endif
             await dialog.WaitUntilClosed();
 
             if (mode.HasValue)
