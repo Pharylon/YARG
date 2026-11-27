@@ -27,6 +27,8 @@
 #   simulate career="YARG Setlist Rock" tier=0 song=2 stars=4
 #   band list|create|select|rename|edit|members|delete|adopt|sheet|history, profile create,
 #   player add|remove|sitout, players,
+#   player mode <profile> <GameMode>, player device <profile> <device name|layout>, player press <profile> <device>,
+#   player devices (game modes and controllers, DevRemote.Bands.cs),
 #   dialog, type <text>, press <button label> (bands and dialogs, see Assets/Script/Dev/DevRemote.Bands.cs), e.g.
 #   band create name="The Testers" hometown=Austin members="New Profile"
 #   songs, validate, editor open|copy|tier|song|rows|fields|set|scroll|close (career content and the career

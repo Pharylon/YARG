@@ -107,7 +107,9 @@ namespace YARG.Input.Serialization
 
         public bool MatchesDevice(InputDevice device)
         {
-            return Layout == device.layout && Hash == device.GetHash();
+            // Entries saved before a device's hash became independent of the connection order (MIDI
+            // devices) still carry the old one; they get the new one the next time they are saved
+            return Layout == device.layout && (Hash == device.GetHash() || Hash == device.GetLegacyHash());
         }
     }
 
@@ -136,20 +138,48 @@ namespace YARG.Input.Serialization
         private static readonly Regex _xinputUserIndexRegex = new(@"\\""userIndex\\"":\s*\d,");
 
         private static readonly Dictionary<InputDevice, string> _hashCache = new();
+        private static readonly Dictionary<InputDevice, string> _legacyHashCache = new();
 
         public static SerializedInputDevice Serialize(this InputDevice device)
         {
             return new(device);
         }
 
+        /// <summary>
+        /// Identifies a device across sessions. For a MIDI device it does not depend on the order the
+        /// devices were connected in, and tells apart two of the same kind when they have serial numbers.
+        /// </summary>
         public static string GetHash(this InputDevice device)
+        {
+            return GetHash(device, _hashCache, DeviceIdentity.GetStableDescription(device));
+        }
+
+        /// <summary>
+        /// Call when a device's <see cref="DeviceIdentity.GetStableDescription"/> has changed.
+        /// </summary>
+        public static void InvalidateHash(InputDevice device)
+        {
+            _hashCache.Remove(device);
+        }
+
+        /// <summary>
+        /// The hash as it was before <see cref="DeviceIdentity.GetStableDescription"/>: of the whole
+        /// description, which for a MIDI device includes its client number.
+        /// </summary>
+        public static string GetLegacyHash(this InputDevice device)
+        {
+            return GetHash(device, _legacyHashCache, null);
+        }
+
+        private static string GetHash(InputDevice device, Dictionary<InputDevice, string> _hashCache,
+            string stableDescription)
         {
             // Check if we have a calculated hash cached already
             if (_hashCache.TryGetValue(device, out string hash))
                 return hash;
 
             var description = device.description;
-            string descriptionJson = description.ToJson();
+            string descriptionJson = stableDescription ?? description.ToJson();
             // Exclude user index on XInput devices
             if (description.interfaceName == "XInput")
                 descriptionJson = _xinputUserIndexRegex.Replace(descriptionJson, "");

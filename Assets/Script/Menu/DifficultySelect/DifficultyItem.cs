@@ -74,6 +74,56 @@ namespace YARG.Menu.DifficultySelect
         }
 
         /// <summary>
+        /// The width of the body text as drawn.
+        /// </summary>
+        public float BodyTextWidth
+        {
+            get
+            {
+                _body.ForceMeshUpdate();
+                float width = _body.textBounds.size.x;
+                return width > 0f && !float.IsInfinity(width) ? width : _body.preferredWidth;
+            }
+        }
+
+        /// <summary>
+        /// Puts a copy of the given tier ring to the left of the body text, with the text starting at
+        /// a fixed distance from it. Rows given the same <paramref name="textWidth"/> (that of the
+        /// widest of them) get their rings in one column and their texts starting on one line, the
+        /// whole block centered in the row.
+        /// </summary>
+        public YARG.Menu.MusicLibrary.DifficultyRing AttachLeadingRing(
+            YARG.Menu.MusicLibrary.DifficultyRing template, float textWidth, float size = 40f, float gap = 14f)
+        {
+            float rowWidth = _body.rectTransform.rect.width;
+            if (rowWidth <= 0f)
+            {
+                rowWidth = ((RectTransform) transform).sizeDelta.x;
+            }
+
+            // Where the block of ring, gap and text starts, from the row's left edge
+            float blockLeft = Mathf.Max(0f, (rowWidth - (size + gap + textWidth)) / 2f);
+
+            _body.horizontalAlignment = HorizontalAlignmentOptions.Left;
+            var margin = _body.margin;
+            margin.x = blockLeft + size + gap;
+            _body.margin = margin;
+
+            var ring = Instantiate(template, _body.transform);
+            var rect = (RectTransform) ring.transform;
+
+            // The ring prefab's native rect is 65x65; scale it uniformly
+            rect.anchorMin = rect.anchorMax = new Vector2(0f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(65f, 65f);
+            rect.localScale = Vector3.one * (size / 65f);
+            rect.anchoredPosition = new Vector2(blockLeft + size / 2f, 0f);
+
+            ring.gameObject.SetActive(true);
+            return ring;
+        }
+
+        /// <summary>
         /// Shrinks the body text to the header's font size. Used by rows whose
         /// body lists several settings and would otherwise dominate the menu.
         /// </summary>

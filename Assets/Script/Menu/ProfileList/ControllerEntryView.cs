@@ -9,6 +9,7 @@ using YARG.Core;
 using YARG.Core.Game;
 using YARG.Core.Logging;
 using YARG.Helpers;
+using YARG.Input;
 using YARG.Input.Bindings;
 using YARG.Localization;
 using YARG.Player;
@@ -61,7 +62,6 @@ namespace YARG.Menu.ProfileList
 
         public void Init(YargProfile profile, ProfileView profileView, ProfileCenterPane centerPane, InputDevice controller, bool drawerOpen)
         {
-            _name.text = controller.displayName;
             Profile = profile;
             _profileView = profileView;
             _centerPane = centerPane;
@@ -151,12 +151,34 @@ namespace YARG.Menu.ProfileList
 
         private void UpdateGameplayBindingsStatus()
         {
-            _gameplayIndicator.SetLit(_gameplayBindingSetDropdown.value is not 0);
+            bool playsThisMode = _gameplayBindingSetDropdown.value is not 0;
+            _gameplayIndicator.SetLit(playsThisMode);
+
+            // A profile keeps all of its controllers in every game mode; say which ones the mode leaves idle
+            _name.text = playsThisMode
+                ? DeviceIdentity.GetName(Controller)
+                : Localize.KeyFormat("Menu.ProfileList.ControllerMenusOnly", DeviceIdentity.GetName(Controller),
+                    Profile.GameMode.ToLocalizedName());
         }
 
         private void UpdateMenuBindingsStatus()
         {
             _menuIndicator.SetLit(_menuBindingSetDropdown.value is not 0);
+        }
+
+        // Lights the name while a button is held on the controller, to tell which one this is
+        private static readonly Color _pressedColor = new(0.18f, 0.85f, 1f);
+        private Color? _nameColor;
+
+        private void Update()
+        {
+            if (Controller is null)
+            {
+                return;
+            }
+
+            _nameColor ??= _name.color;
+            _name.color = DeviceIdentity.IsAnyButtonPressed(Controller) ? _pressedColor : _nameColor.Value;
         }
 
         public void ToggleDrawer()

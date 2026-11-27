@@ -42,7 +42,8 @@ namespace YARG.Menu.DifficultySelect
             Modifiers,
             OpenLane,
             Accessibility,
-            Harmony
+            Harmony,
+            ManageControllers
         }
 
         // Modifiers relocated from the Modifiers menu to the Accessibility menu.
@@ -183,6 +184,7 @@ namespace YARG.Menu.DifficultySelect
                         {
                             State.OpenLane => State.Modifiers,
                             State.Modifiers or State.Accessibility => State.Adjustments,
+                            State.ManageControllers => State.Instrument,
                             _ => State.Main,
                         };
                         UpdateForPlayer();
@@ -248,6 +250,37 @@ namespace YARG.Menu.DifficultySelect
             _scrollRect = GetComponentInChildren<ScrollRect>();
             _scrollbar = GetComponentInChildren<Scrollbar>();
             _navGroup.SelectionChanged += UpdateForSelectionChanged;
+            PlayerContainer.PlayerGameModeChanged += OnPlayerGameModeChanged;
+        }
+
+        // A player's game mode changed under the menu: they picked up another instrument, chose another
+        // mode or swapped with someone. Everything chosen for the old mode is void, so the menu goes back
+        // to that player (or stays on them) and starts their selection again.
+        private void OnPlayerGameModeChanged(YargPlayer player)
+        {
+            int index = -1;
+            for (int i = 0; i < PlayerContainer.Players.Count; i++)
+            {
+                if (PlayerContainer.Players[i] == player)
+                {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index < 0 || index > _playerIndex || _playerIndex >= PlayerContainer.Players.Count)
+            {
+                // Not reached yet; they get the new mode when their turn comes
+                return;
+            }
+
+            if (_vocalModifierSelectIndex >= index)
+            {
+                _vocalModifierSelectIndex = -1;
+            }
+
+            _playerIndex = index;
+            ChangePlayer(0);
         }
 
         private void UpdateForSelectionChanged(NavigatableBehaviour navigatableBehaviour,
@@ -329,6 +362,9 @@ namespace YARG.Menu.DifficultySelect
                     break;
                 case State.Harmony:
                     CreateHarmonyMenu();
+                    break;
+                case State.ManageControllers:
+                    CreateManageControllersMenu();
                     break;
             }
 
@@ -425,7 +461,7 @@ namespace YARG.Menu.DifficultySelect
 
                 var instrumentItem = CreateItem(LocalizeHeader("Instrument"),
                     GetInstrumentDisplayName(player.Profile.CurrentInstrument, player.Profile.GameMode),
-                    _lastMenuState == State.Instrument, _ringsItemPrefab, () =>
+                    _lastMenuState is State.Instrument or State.ManageControllers, _ringsItemPrefab, () =>
                 {
                     _menuState = State.Instrument;
                     UpdateForPlayer();
@@ -530,6 +566,17 @@ namespace YARG.Menu.DifficultySelect
                 }
             }
 
+            // Nothing to play in the mode the player is in, but the instrument list has other things:
+            // an instrument of another controller they hold, or another controller to take
+            if (_possibleInstruments.Count <= 0 && !player.Profile.IsBot)
+            {
+                CreateItem(LocalizeHeader("Instrument"), _lastMenuState is State.Instrument or State.ManageControllers, () =>
+                {
+                    _menuState = State.Instrument;
+                    UpdateForPlayer();
+                });
+            }
+
             // Only show if there is more than one play, only if there is instruments available
             if (_possibleInstruments.Count <= 0 || PlayerContainer.Players.Count != 1)
             {
@@ -605,16 +652,15 @@ namespace YARG.Menu.DifficultySelect
         private void CreateInstrumentMenu()
         {
             var song = GlobalVariables.State.CurrentSong;
+            var rows = new List<(DifficultyItem item, Instrument instrument)>();
 
             foreach (var instrument in _possibleInstruments)
             {
                 bool selected = CurrentPlayer.Profile.CurrentInstrument == instrument;
-                // Instrument name with its charted tier on a smaller, dimmed
-                // second line (mirroring the header text style).
-                string label = GetInstrumentDisplayName(instrument, CurrentPlayer.Profile.GameMode)
-                    + $"\n<size=18><color=#FFFFFF80>{GetTierLabel(GetTierValues(song, instrument))}</color></size>";
+                // Instrument name with its tier wheel (the instrument's icon inside) to the left
+                string label = GetInstrumentDisplayName(instrument, CurrentPlayer.Profile.GameMode);
 
-                CreateItem(label, selected, () =>
+                var item = CreateItem(label, selected, () =>
                 {
                     var preferredInstrument = CurrentPlayer.Profile.PreferredInstrument;
                     CurrentPlayer.Profile.CurrentInstrument = instrument;
@@ -639,7 +685,105 @@ namespace YARG.Menu.DifficultySelect
                     _menuState = State.Main;
                     UpdateForPlayer();
                 });
+                rows.Add((item, instrument));
             }
+
+            // Everything else the player's own controllers can play: the instruments of the other game
+            // modes (a drum kit next to the guitar). Picking one changes the game mode with it.
+            var player = CurrentPlayer;
+            foreach (var (mode, instrument) in GetOtherModeInstruments(player))
+            {
+                var item = CreateItem(GetInstrumentDisplayName(instrument, mode), false, () =>
+                {
+                    _menuState = State.Main;
+
+                    // The mode change rebuilds the menu for the player (OnPlayerGameModeChanged), on the
+                    // instrument they last played in that mode; then make it the one they picked here
+                    player.ChooseGameMode(mode);
+                    player.Profile.PreferredInstrument = instrument;
+                    player.Profile.CurrentInstrument = instrument;
+                    ChangePlayer(0);
+                });
+                rows.Add((item, instrument));
+            }
+
+            // The tier wheels in one column, with the names starting on one line beside them
+            if (_difficultyRing != null)
+            {
+                float textWidth = 0f;
+                foreach (var (item, _) in rows)
+                {
+                    textWidth = Mathf.Max(textWidth, item.BodyTextWidth);
+                }
+
+                foreach (var (item, instrument) in rows)
+                {
+                    item.AttachLeadingRing(_difficultyRing, textWidth).SetInfo(
+                        GetInstrumentRingAsset(instrument, song.VocalsCount), instrument,
+                        GetTierValues(song, instrument));
+                }
+            }
+
+            // ...and the controllers they are not holding
+            if (!player.Profile.IsBot && player.DeviceInfo is not null)
+            {
+                CreateItem(LocalizeHeader("ManageControllers"), _lastMenuState == State.ManageControllers, () =>
+                {
+                    _menuState = State.ManageControllers;
+                    UpdateForPlayer();
+                });
+            }
+        }
+
+        // The instruments this song (or show) has for the game modes the player's controllers can play
+        // other than the one they are in, each once and without the ones the current mode already has.
+        private List<(GameMode mode, Instrument instrument)> GetOtherModeInstruments(YargPlayer player)
+        {
+            var instruments = new List<(GameMode, Instrument)>();
+            if (player.Profile.IsBot || player.DeviceInfo is null)
+            {
+                return instruments;
+            }
+
+            foreach (var mode in player.DeviceInfo.GetPlayableGameModes())
+            {
+                if (mode == player.Profile.GameMode)
+                {
+                    continue;
+                }
+
+                foreach (var instrument in mode.PossibleInstrumentsForSong(GlobalVariables.State.CurrentSong))
+                {
+                    bool inEverySong = true;
+                    foreach (var showSong in _songList)
+                    {
+                        if (!HasPlayableInstrument(showSong, instrument))
+                        {
+                            inEverySong = false;
+                            break;
+                        }
+                    }
+
+                    if (!inEverySong || _possibleInstruments.Contains(instrument))
+                    {
+                        continue;
+                    }
+
+                    // Several modes can play the same instrument (4-lane drums on a 5-lane or elite
+                    // kit, guitar on a 6-fret); list it once, under the mode made for it if they have it
+                    int existing = instruments.FindIndex(entry => entry.Item2 == instrument);
+                    if (existing < 0)
+                    {
+                        instruments.Add((mode, instrument));
+                    }
+                    else if (mode == instrument.ToNativeGameMode())
+                    {
+                        instruments[existing] = (mode, instrument);
+                    }
+                }
+            }
+
+            return instruments;
         }
 
         private void CreateDifficultyMenu()
@@ -979,6 +1123,77 @@ namespace YARG.Menu.DifficultySelect
             return text.Length == 0 ? Modifier.None.ToLocalizedName() : text;
         }
 
+        // Every connected controller, to take for this player: one nobody holds, or another player's.
+        // This is how two players trade instruments, each taking the other's.
+        private void CreateManageControllersMenu()
+        {
+            var player = CurrentPlayer;
+            bool first = true;
+            foreach (var controller in UnityEngine.InputSystem.InputSystem.devices)
+            {
+                if (!controller.enabled)
+                {
+                    continue;
+                }
+
+                string name = YARG.Input.DeviceIdentity.GetName(controller);
+                var holder = PlayerContainer.GetControllerUser(controller);
+                if (holder == player)
+                {
+                    // Already theirs: shown, not selectable
+                    CreateItem(null, $"<sprite name=\"{player.Profile.GameMode.ToResourceName()}\"> {name}",
+                        false, _difficultyItemPrefab, () => { }, interactable: false);
+                    continue;
+                }
+
+                string label = holder is null
+                    ? name
+                    : Localize.KeyFormat("Menu.ProfileList.StealDevice", name, holder.Profile.Name);
+
+                var item = CreateItem(label, first, () => TakeController(player, controller).Forget());
+                item.UseSmallBodyText();
+                first = false;
+            }
+
+            CreateDoneItem(() =>
+            {
+                _menuState = State.Instrument;
+                UpdateForPlayer();
+            });
+        }
+
+        private async Cysharp.Threading.Tasks.UniTaskVoid TakeController(YargPlayer player,
+            UnityEngine.InputSystem.InputDevice controller)
+        {
+            var previousHolder = PlayerContainer.GetControllerUser(controller);
+
+            // Asks what a gamepad-like controller is, as adding it in the profile menu does
+            await YARG.Menu.ProfileList.ProfileView.AssignController(player, controller);
+            if (this == null || !isActiveAndEnabled)
+            {
+                return;
+            }
+
+            // The player now plays what they picked up
+            if (player.DeviceInfo.GetGameModeToFollow(controller, false) is { } mode)
+            {
+                player.SetGameMode(mode);
+            }
+
+            // A player before this one who lost their controller has to choose again
+            for (int i = 0; i < _playerIndex && i < PlayerContainer.Players.Count; i++)
+            {
+                if (PlayerContainer.Players[i] == previousHolder && previousHolder != player)
+                {
+                    _playerIndex = i;
+                    break;
+                }
+            }
+
+            _menuState = State.Main;
+            ChangePlayer(0);
+        }
+
         private void CreateHarmonyMenu()
         {
             for (int i = 0; i < _maxHarmonyIndex; i++)
@@ -1234,6 +1449,7 @@ namespace YARG.Menu.DifficultySelect
 
         private void OnDisable()
         {
+            PlayerContainer.PlayerGameModeChanged -= OnPlayerGameModeChanged;
             Navigator.Instance.PopScheme();
         }
 

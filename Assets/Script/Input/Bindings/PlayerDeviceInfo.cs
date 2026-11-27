@@ -8,6 +8,7 @@ using UnityEngine.InputSystem.Utilities;
 using YARG.Core;
 using YARG.Core.Audio;
 using YARG.Core.Game;
+using YARG.Core.Input;
 using YARG.Core.Logging;
 using YARG.Gameplay;
 using YARG.Helpers;
@@ -67,6 +68,12 @@ namespace YARG.Input
 
         public event Action<InputDevice> ControllerAdded;
         public event Action<InputDevice> ControllerRemoved;
+
+        /// <summary>
+        ///     A menu button was pressed on one of this profile's controllers. Raised before the press
+        ///     reaches the menus.
+        /// </summary>
+        public event Action<InputDevice> MenuButtonPressed;
 
 
         public PlayerDeviceInfo() { }
@@ -320,6 +327,23 @@ namespace YARG.Input
             return true;
         }
 
+        /// <summary>
+        ///     Adds a controller the player picked themselves. It takes the place of the controllers of
+        ///     its kind that the profile remembers but that are not connected: someone who picks the
+        ///     other of two identical guitars has changed guitars, and should not get the first one
+        ///     back as well when it turns up.
+        /// </summary>
+        public bool AddControllerManually(InputDevice controller)
+        {
+            if (!AddController(controller))
+            {
+                return false;
+            }
+
+            _unresolvedControllers.RemoveAll(remembered => remembered.Layout == controller.layout);
+            return true;
+        }
+
         public bool RemoveController(InputDevice controller)
         {
             // Remove without serializing
@@ -403,6 +427,28 @@ namespace YARG.Input
             bindingSet.Changed += OnMenuBindingSetChanged;
 
             var newRuntimeBindings = bindingSet.GetRuntimeBindings(Profile, controller);
+
+            // Subscribed before the aggregator is, so that MenuButtonPressed comes before the menu input
+            GameInputProcessed onPressed = (ref GameInput _) => MenuButtonPressed?.Invoke(controller);
+            GameInputProcessed onStateChanged = (ref GameInput input) =>
+            {
+                if (input.Button)
+                {
+                    MenuButtonPressed?.Invoke(controller);
+                }
+            };
+
+            foreach (var binding in newRuntimeBindings)
+            {
+                if (binding is RuntimeImpulseBinding impulse)
+                {
+                    impulse.Pressed += onPressed;
+                }
+                else if (binding is RuntimeButtonBinding button)
+                {
+                    button.InputProcessed += onStateChanged;
+                }
+            }
 
             _activeMenuRuntimeBindings[controller] = newRuntimeBindings;
             _menuInputAggregator.Add(newRuntimeBindings);
@@ -555,6 +601,160 @@ namespace YARG.Input
                     _selectedGameplayBindings[controller] = newGameplayBindings;
                 }
             }
+        }
+
+        /// <summary>
+        ///     Whether <paramref name="controller"/> has bindings for the profile's game mode.
+        /// </summary>
+        public bool CanPlayCurrentMode(InputDevice controller)
+        {
+            // A guitar that shows up as a gamepad has gamepad bindings for drums; it is still a guitar
+            var family = LayoutHelper.InputDeviceToControllerFamily(controller);
+            return GetBindingSetForController(controller, menu: false) is not null &&
+                KindFitsMode(controller, family, Profile.GameMode) is not false;
+        }
+
+        /// <summary>
+        ///     The game mode to switch to when the player picks up <paramref name="controller"/>, or null
+        ///     to stay in the current one: a controller that can play the current mode never changes it.
+        /// </summary>
+        /// <param name="modeChosenByHand">
+        ///     The player picked the current mode themselves. It is then only left for a player who also
+        ///     holds a controller that plays it (they put that one down); someone setting up drums with
+        ///     only a guitar in hand stays on drums.
+        /// </param>
+        public GameMode? GetGameModeToFollow(InputDevice controller, bool modeChosenByHand)
+        {
+            if (!_controllers.Contains(controller) || CanPlayCurrentMode(controller))
+            {
+                return null;
+            }
+
+            if (modeChosenByHand && !_controllers.Any(CanPlayCurrentMode))
+            {
+                return null;
+            }
+
+            // A vocalist who navigates with a guitar or drum kit stays a vocalist
+            if (Profile.GameMode is GameMode.Vocals && HasMicrophoneAssigned)
+            {
+                return null;
+            }
+
+            var family = LayoutHelper.InputDeviceToControllerFamily(controller);
+
+            GameMode? best = null;
+            var bestLastUsed = DateTime.MinValue;
+            foreach (var mode in BindingsContainer.GetTypicalGameModesForControllerFamily(family))
+            {
+                if (mode is GameMode.Vocals || !ProfileCenterPane.SelectableGameModes.Contains(mode))
+                {
+                    continue;
+                }
+
+                // A MIDI port named as a drum kit is not a keyboard, nor a gamepad named as a guitar a drum kit
+                if (KindFitsMode(controller, family, mode) is false)
+                {
+                    continue;
+                }
+
+                // Skip a mode the player turned this kind of controller off for
+                if (_preferredBindsByContext.TryGetValue((mode, family), out var preferred) && preferred is null)
+                {
+                    continue;
+                }
+
+                // The first typical mode, unless the profile was in another of them more recently
+                DateTime lastUsed = default;
+                if (Profile.ModeSettings.TryGetValue(mode, out var settings))
+                {
+                    lastUsed = settings.LastUsed;
+                }
+
+                if (best is null || lastUsed > bestLastUsed)
+                {
+                    best = mode;
+                    bestLastUsed = lastUsed;
+                }
+            }
+
+            return best;
+        }
+
+        // Whether the controller is known to be (true) or not to be (false) the kind of instrument the mode
+        // is played on; null when nothing says. A computer keyboard or mouse is never an instrument.
+        private static bool? KindFitsMode(InputDevice controller, ControllerFamily family, GameMode mode)
+        {
+            if (family is not (ControllerFamily.Gamepad or ControllerFamily.MidiDevice))
+            {
+                return null;
+            }
+
+            return DeviceIdentity.FitsGameMode(controller, mode);
+        }
+
+        /// <summary>
+        ///     The game modes this profile's devices can play, the current mode first. For a keyboard or
+        ///     gamepad, which have bindings for every mode, only the modes the profile has been in.
+        /// </summary>
+        public List<GameMode> GetPlayableGameModes()
+        {
+            var modes = new List<GameMode> { Profile.GameMode };
+
+            foreach (var mode in ProfileCenterPane.SelectableGameModes)
+            {
+                if (modes.Contains(mode))
+                {
+                    continue;
+                }
+
+                bool playable;
+                if (mode is GameMode.Vocals)
+                {
+                    playable = HasMicrophoneAssigned;
+                }
+                else
+                {
+                    playable = false;
+                    foreach (var controller in _controllers)
+                    {
+                        var family = LayoutHelper.InputDeviceToControllerFamily(controller);
+                        if (_preferredBindsByContext.TryGetValue((mode, family), out var preferred))
+                        {
+                            playable |= preferred is not null;
+                        }
+                        else if (family is ControllerFamily.ComputerKeyboard or ControllerFamily.Gamepad)
+                        {
+                            // These can stand in for any instrument, which says nothing about what the
+                            // player uses them for: only the modes the profile has been in, and for a
+                            // gamepad known to be some instrument, only that instrument's
+                            playable |= Profile.HasModeSettings(mode) &&
+                                KindFitsMode(controller, family, mode) is not false &&
+                                BindingsContainer.GetBindingSetsForControllerInMode(family, mode).Count > 0;
+                        }
+                        else if (family is ControllerFamily.MidiDevice)
+                        {
+                            // A MIDI port is a drum kit or a keyboard, and only its name may say which.
+                            // Otherwise, as above, the modes the profile has been in.
+                            bool fits = KindFitsMode(controller, family, mode) ?? Profile.HasModeSettings(mode);
+
+                            playable |= fits &&
+                                BindingsContainer.GetBindingSetsForControllerInMode(family, mode).Count > 0;
+                        }
+                        else
+                        {
+                            playable |= BindingsContainer.GetBindingSetsForControllerInMode(family, mode).Count > 0;
+                        }
+                    }
+                }
+
+                if (playable)
+                {
+                    modes.Add(mode);
+                }
+            }
+
+            return modes;
         }
 
         public void OnBindingSetDeleted(ReusableBindingSet deleted)
@@ -847,6 +1047,7 @@ namespace YARG.Input
         {
             ControllerAdded = null;
             ControllerRemoved = null;
+            MenuButtonPressed = null;
 
             foreach (var runtimeGameplayBindings in _activeGameplayRuntimeBindings.Values)
             {

@@ -62,6 +62,10 @@ namespace YARG.Player
             Profile = profile;
             DeviceInfo = bindings;
             IsReplay = false;
+
+            DeviceInfo.MenuButtonPressed += OnMenuButtonPressed;
+            DeviceInfo.ControllerAdded += OnControllersChanged;
+            DeviceInfo.ControllerRemoved += OnControllersChanged;
         }
 
         public YargPlayer(ReplayFrame frame, ReplayData replay)
@@ -101,6 +105,15 @@ namespace YARG.Player
             Profile = profile;
             DeviceInfo = bindings;
 
+            if (DeviceInfo is not null)
+            {
+                DeviceInfo.MenuButtonPressed += OnMenuButtonPressed;
+                DeviceInfo.ControllerAdded += OnControllersChanged;
+                DeviceInfo.ControllerRemoved += OnControllersChanged;
+            }
+
+            GameModeChosenByHand = false;
+
             // Resolve bindings
             if (resolveDevices)
             {
@@ -112,6 +125,73 @@ namespace YARG.Player
             {
                 EnableInputs();
             }
+        }
+
+        /// <summary>
+        /// Puts the player's profile in another game mode, along with everything that depends on it:
+        /// the profile's per-mode settings, the bindings of its controllers and the presets.
+        /// </summary>
+        /// <param name="notify">
+        /// False leaves <see cref="PlayerContainer.NotifyGameModeChanged"/> to the caller, for a change that
+        /// is one step of a larger one.
+        /// </param>
+        /// <returns>False if the profile was already in that mode.</returns>
+        public bool SetGameMode(GameMode mode, bool notify = true)
+        {
+            if (!Profile.SetGameMode(mode))
+            {
+                return false;
+            }
+
+            DeviceInfo?.RefreshGameMode();
+            RefreshPresets();
+
+            if (notify)
+            {
+                PlayerContainer.NotifyGameModeChanged(this);
+            }
+
+            return true;
+        }
+
+        private void OnMenuButtonPressed(UnityEngine.InputSystem.InputDevice controller)
+        {
+            // Picking up another instrument: the press that says so only changes the mode
+            if (PlayerContainer.FollowController(this, controller))
+            {
+                _swallowPressesFrame = UnityEngine.Time.frameCount;
+            }
+        }
+
+        private int _swallowPressesFrame = -1;
+
+        /// <summary>
+        /// The player picked the current game mode themselves (profile pane, difficulty select), since
+        /// the game was started and since their controllers last changed. See
+        /// <see cref="PlayerDeviceInfo.GetGameModeToFollow"/>.
+        /// </summary>
+        public bool GameModeChosenByHand { get; private set; }
+
+        /// <summary>
+        /// <see cref="SetGameMode"/> for a mode the player picked themselves.
+        /// </summary>
+        public bool ChooseGameMode(GameMode mode)
+        {
+            // Set first: the change is announced from inside SetGameMode
+            bool before = GameModeChosenByHand;
+            GameModeChosenByHand = true;
+            if (!SetGameMode(mode))
+            {
+                GameModeChosenByHand = before;
+                return false;
+            }
+
+            return true;
+        }
+
+        private void OnControllersChanged(UnityEngine.InputSystem.InputDevice _)
+        {
+            GameModeChosenByHand = false;
         }
 
         public void RefreshPresets()
@@ -169,6 +249,11 @@ namespace YARG.Player
 
         private void OnMenuInput(ref GameInput input)
         {
+            if (input.Button && _swallowPressesFrame == UnityEngine.Time.frameCount)
+            {
+                return;
+            }
+
             MenuInput?.Invoke(this, ref input);
         }
 

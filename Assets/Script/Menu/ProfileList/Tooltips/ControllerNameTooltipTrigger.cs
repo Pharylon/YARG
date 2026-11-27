@@ -16,7 +16,7 @@ namespace YARG.Menu.ProfileList
             var familyString = LayoutHelper.LayoutStringToControllerFamily(_entry.Controller.layout).ToLocalizedNameSingularSentence();
 
             return (
-                new List<string>() { _entry.Controller.displayName },
+                new List<string>() { YARG.Input.DeviceIdentity.GetName(_entry.Controller) },
                 new List<string>() { familyString }
             );
         }

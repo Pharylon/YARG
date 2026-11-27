@@ -317,7 +317,7 @@ namespace YARG.Menu.ProfileList
                 if (family == LayoutHelper.LayoutStringToControllerFamily(controller.layout))
                 {
                     _availableDummyControllers.Add(controller);
-                    _dummyControllerDropdown.options.Add(new(controller.displayName));
+                    _dummyControllerDropdown.options.Add(new(DeviceIdentity.GetName(controller)));
                 }
             }
 

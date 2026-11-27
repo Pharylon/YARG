@@ -356,6 +356,7 @@
             "Ready": "Ready",
             "SitOut": "Sit Out",
             "Disconnect": "Disconnect",
+            "ManageControllers": "Manage Controllers",
             "Done": "Done",
             "WarningPlayerNoInputDevice": "This player has no input device assigned! Assign one from the Profiles menu.",
             "WarningVocalistNoMicrophone": "This vocalist has no microphone assigned! Assign one from the Profiles menu."
@@ -865,6 +866,8 @@
             "PressPoint": "Press Point",
             "VelocityThreshold": "Velocity Threshold",
             "StealDevice": "{0} <i>(steal from <color=#2DD9FE>{1}</color>)</i>",
+            "GameModeFollowed": "{0} is now playing {1}",
+            "ControllerMenusOnly": "<alpha=#88>{0}  <size=65%><i>menus only</i></size>",
             "AddBindingSet": "ADD",
             "AddOtherBindingSet": "ADD OTHER",
             "AddOtherBindingSetNotRecommended": "ADD OTHER (<i>Not Recommended</i>)",

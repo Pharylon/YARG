@@ -23,6 +23,11 @@ namespace YARG.Menu.ProfileList
 {
     public class ProfileCenterPane : MonoBehaviour
     {
+        /// <summary>
+        /// The game modes a profile can be put in.
+        /// </summary>
+        public static IReadOnlyList<GameMode> SelectableGameModes => _gameModes;
+
         private static readonly GameMode[] _gameModes =
         {
             GameMode.FiveFretGuitar,
@@ -168,6 +173,8 @@ namespace YARG.Menu.ProfileList
 
         private void OnEnable()
         {
+            PlayerContainer.PlayerGameModeChanged += OnPlayerGameModeChanged;
+
             // These things can change, so do it every time it's enabled.
 
             PopulateDropdownOptions();
@@ -493,17 +500,27 @@ namespace YARG.Menu.ProfileList
 
         public void ChangeGameMode()
         {
-            Profile.GameMode = _gameModesByIndex[_gameModeDropdown.value];
+            // The profile keeps its settings per game mode: this puts away the ones of the mode being left
+            // and brings back the ones of the mode being entered (a new mode starts with its first
+            // instrument, so that a new Keys profile doesn't default to 5L Lead Guitar instead of Pro Keys).
+            // The display is updated by OnPlayerGameModeChanged.
             var player = PlayerContainer.GetPlayerFromProfile(Profile);
-            player.DeviceInfo.RefreshGameMode();
+            player?.ChooseGameMode(_gameModesByIndex[_gameModeDropdown.value]);
+        }
 
-            // Set the player's instrument to the foremost of their new game mode's possible instruments. This prevents scenarios like
-            // a brand new Keys profile defaulting to 5L Lead Guitar instead of Pro Keys
-            Profile.CurrentInstrument = Profile.GameMode.PossibleInstruments()[0];
+        private void OnDisable()
+        {
+            PlayerContainer.PlayerGameModeChanged -= OnPlayerGameModeChanged;
+        }
+
+        private void OnPlayerGameModeChanged(YargPlayer player)
+        {
+            if (player.Profile != Profile || _profileView == null)
+            {
+                return;
+            }
 
             _profileView.UpdateDisplay(Profile);
-            FiltersMenu.ResetIntensityFiltersForProfile(Profile);
-            PlayerContainer.NotifyProfileChanged(Profile);
             // Update sidebar when game mode changes so the correct settings are displayed
             UpdateCenterPane(Profile, _profileView);
         }

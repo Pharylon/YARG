@@ -15,7 +15,7 @@ namespace YARG.Menu.ProfileList
         {
             return (
                 new List<string>() { },
-                new List<string>() { _entry.Controller.displayName }
+                new List<string>() { YARG.Input.DeviceIdentity.GetName(_entry.Controller) }
             );
         }
     }
