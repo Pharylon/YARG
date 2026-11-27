@@ -88,6 +88,18 @@ namespace YARG.Menu.Persistent
             // Label
             _buttonLabel.text = entry.DisplayName;
 
+            // An entry may reserve the width of another label (one that changes between two), so the
+            // buttons beside it do not shift. In layout units, so it holds at any resolution.
+            if (!_buttonLabel.TryGetComponent<LayoutElement>(out var labelLayout))
+            {
+                labelLayout = _buttonLabel.gameObject.AddComponent<LayoutElement>();
+            }
+
+            labelLayout.minWidth = string.IsNullOrEmpty(entry.WidthLocalizationKey)
+                ? -1f
+                : Mathf.Max(_buttonLabel.GetPreferredValues(entry.DisplayName).x,
+                    _buttonLabel.GetPreferredValues(Localization.Localize.Key(entry.WidthLocalizationKey)).x);
+
             // Show/hide text and transitions
             _isSpecialButton = entry.Action is MenuAction.Select or MenuAction.Start or MenuAction.Left or MenuAction.Right;
             _buttonText.gameObject.SetActive(!_isSpecialButton);

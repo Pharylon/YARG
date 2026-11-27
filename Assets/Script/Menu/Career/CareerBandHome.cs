@@ -50,6 +50,7 @@ namespace YARG.Menu.Career
         // Hero
         private Image _icon;
         private TextMeshProUGUI _name;
+        private TextMeshProUGUI _logoText;
         private TextMeshProUGUI _tagline;
 
         // Rank
@@ -146,6 +147,17 @@ namespace YARG.Menu.Career
             _icon.preserveAspect = true;
             _icon.raycastTarget = false;
 
+            // The band's name (or, if long, its initials) over the default band logo.
+            _logoText = Text("Band Logo Text", _art.TitleTemplate, Color.white);
+            _logoText.alignment = TextAlignmentOptions.Center;
+            _logoText.textWrappingMode = TextWrappingModes.NoWrap;
+            _logoText.overflowMode = TextOverflowModes.Overflow;
+            _logoText.enableAutoSizing = true;
+            _logoText.lineSpacing = -12f;
+            _logoText.fontStyle = FontStyles.Bold;
+            _logoText.outlineColor = new Color32(8, 10, 18, 255);
+            _logoText.outlineWidth = 0.3f;
+
             _name = Text("Band Name", _art.TitleTemplate, Color.white);
             _tagline = Text("Tagline", _art.BodyTemplate, DimText);
 
@@ -204,13 +216,20 @@ namespace YARG.Menu.Career
         /// Shows the band. The numbers count up and the stars and crowd make their entrance when the
         /// band (or what it has earned) changed since the panel last showed it.
         /// </summary>
-        public void Show(CareerBand band, CareerBandSheet sheet, Sprite icon, bool iconFlipped, string notice)
+        /// <param name="customIcon">
+        /// The icon is the band's own picture (decoded upside down, so it is flipped), not the default band
+        /// logo, which gets the band's name (or initials) written over it.
+        /// </param>
+        public void Show(CareerBand band, CareerBandSheet sheet, Sprite icon, bool customIcon, string notice)
         {
             gameObject.SetActive(true);
 
             _icon.sprite = icon;
             _icon.enabled = icon != null;
-            _iconFlipped = iconFlipped;
+            _iconFlipped = customIcon;
+
+            _logoText.gameObject.SetActive(icon != null && !customIcon);
+            _logoText.text = CareerBandHomeLayout.BandLogoText(band.Name);
 
             _name.text = band.Name;
 
@@ -327,6 +346,9 @@ namespace YARG.Menu.Career
             var iconSize = Mathf.Min(24f * unit, width * 0.34f);
             Place(_icon.rectTransform, centerX, y + iconSize / 2f, iconSize, iconSize);
             _icon.rectTransform.localScale = new Vector3(1f, _iconFlipped ? -1f : 1f, 1f);
+            Place(_logoText.rectTransform, centerX, y + iconSize / 2f, iconSize * 0.8f, iconSize * 0.74f);
+            _logoText.fontSizeMax = iconSize * 0.5f;
+            _logoText.fontSizeMin = iconSize * 0.05f;
             y += iconSize + 1.5f * unit;
 
             Place(_name.rectTransform, centerX, y + 3.5f * unit, width * 0.9f, 7f * unit);
@@ -417,7 +439,11 @@ namespace YARG.Menu.Career
             // The fan count sits on the crowd, near the bottom, over a dark plate so it stays readable.
             Place(_fanCount.rectTransform, centerX, height - 4.2f * unit, width * 0.9f, 5f * unit);
             _fanCount.fontSize = 3.6f * unit;
-            Place(_fanPlate, centerX, height - 4.2f * unit, width * 0.42f, 5.6f * unit);
+            // Wide enough for the band's whole count ("1,000,000,000 FANS").
+            var fanText = Localize.KeyFormat("Menu.Career.Home.Fans", _totalFans.ToString("N0"));
+            var plateWidth = Mathf.Min(width * 0.95f,
+                Mathf.Max(width * 0.42f, _fanCount.GetPreferredValues(fanText).x + 4f * unit));
+            Place(_fanPlate, centerX, height - 4.2f * unit, plateWidth, 5.6f * unit);
 
             // What is left between the stars and the crowd's front rows.
             var extrasHeight = Mathf.Max(0f, height - y - crowdHeight * 0.55f);

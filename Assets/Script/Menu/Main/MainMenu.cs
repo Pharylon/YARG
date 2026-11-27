@@ -45,70 +45,8 @@ namespace YARG.Menu.Main
 
         // The first entry of the menu is drawn larger than the rest. In retail mode that is Game
         // Modes, so it takes on the Quickplay entry's sizes; these are both entries' own, read once.
-        private EntryStyle _quickPlayStyle;
-        private EntryStyle _gameModesStyle;
-
-        private class EntryStyle
-        {
-            public RectTransform[] Rects;
-            public Vector2[] Sizes;
-            public Vector2[] Positions;
-            public TextMeshProUGUI[] Texts;
-            public float[] FontSizes;
-            public UnityEngine.UI.LayoutElement[] Layouts;
-            public Vector2[] LayoutHeights;
-
-            public static EntryStyle Read(GameObject entry)
-            {
-                var style = new EntryStyle
-                {
-                    Rects = entry.GetComponentsInChildren<RectTransform>(true),
-                    Texts = entry.GetComponentsInChildren<TextMeshProUGUI>(true),
-                    Layouts = entry.GetComponentsInChildren<UnityEngine.UI.LayoutElement>(true),
-                };
-
-                style.Sizes = System.Array.ConvertAll(style.Rects, rect => rect.sizeDelta);
-                style.Positions = System.Array.ConvertAll(style.Rects, rect => rect.anchoredPosition);
-                style.FontSizes = System.Array.ConvertAll(style.Texts, text => text.fontSize);
-                style.LayoutHeights = System.Array.ConvertAll(style.Layouts,
-                    layout => new Vector2(layout.minHeight, layout.preferredHeight));
-                return style;
-            }
-
-            /// <summary>
-            /// Gives this entry the sizes of <paramref name="from"/> (an entry built the same way).
-            /// </summary>
-            public void Apply(EntryStyle from)
-            {
-                if (from.Rects.Length != Rects.Length || from.Texts.Length != Texts.Length ||
-                    from.Layouts.Length != Layouts.Length)
-                {
-                    return;
-                }
-
-                for (var i = 0; i < Rects.Length; i++)
-                {
-                    Rects[i].sizeDelta = from.Sizes[i];
-
-                    // The entry itself is placed by the menu's layout.
-                    if (i > 0)
-                    {
-                        Rects[i].anchoredPosition = from.Positions[i];
-                    }
-                }
-
-                for (var i = 0; i < Texts.Length; i++)
-                {
-                    Texts[i].fontSize = from.FontSizes[i];
-                }
-
-                for (var i = 0; i < Layouts.Length; i++)
-                {
-                    Layouts[i].minHeight = from.LayoutHeights[i].x;
-                    Layouts[i].preferredHeight = from.LayoutHeights[i].y;
-                }
-            }
-        }
+        private MenuEntryStyle _quickPlayStyle;
+        private MenuEntryStyle _gameModesStyle;
 
         private void StyleGameModesEntry(bool large)
         {
@@ -118,7 +56,7 @@ namespace YARG.Menu.Main
                 {
                     if (entry.Calls(this, nameof(GameModes)))
                     {
-                        _gameModesStyle = EntryStyle.Read(entry.gameObject);
+                        _gameModesStyle = MenuEntryStyle.Read(entry.gameObject);
                         break;
                     }
                 }
@@ -128,7 +66,7 @@ namespace YARG.Menu.Main
                     return;
                 }
 
-                _quickPlayStyle = EntryStyle.Read(_quickPlayButton);
+                _quickPlayStyle = MenuEntryStyle.Read(_quickPlayButton);
             }
 
             _gameModesStyle.Apply(large ? _quickPlayStyle : _gameModesStyle);

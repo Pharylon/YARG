@@ -50,8 +50,7 @@ namespace YARG.Menu.Career
                             Localize.KeyFormat("Menu.Retail.CloserLocked", RetailMode.CLOSER_MIN_STARS)));
             }
 
-            return new ShowViewType(tier.Id, Localize.Key("Menu.Retail.CloserPick"),
-                Localize.Key("Menu.Retail.CloserPickDetail"), true, () =>
+            return new ShowViewType(tier.Id, Localize.Key("Menu.Retail.CloserPick"), string.Empty, true, () =>
                     MusicLibraryMenu.OpenSongPicker(Localize.Key("Menu.Retail.CloserPick"),
                         song => StartPicked(song, CloserContext(tier, tierIndex), true)));
         }
@@ -207,7 +206,8 @@ namespace YARG.Menu.Career
         private SongEntry PlayedSong(CareerEvaluation.SongResult result)
         {
             if (result is not { Completed: true } ||
-                !_songByCompletion.TryGetValue(result.CountedCompletionId, out var checksum) || checksum is not { Length: > 0 })
+                !_completionById.TryGetValue(result.CountedCompletionId, out var row) ||
+                row.SongChecksum is not { Length: > 0 } checksum)
             {
                 return null;
             }

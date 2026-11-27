@@ -43,6 +43,8 @@ namespace YARG.Menu
 
                 _quickPlayButton = Instantiate(practice.gameObject, practice.transform.parent);
                 _quickPlayButton.name = "Quickplay";
+                // Made from Practice: sized again, as large as Careers.
+                _sized = false;
                 _quickPlayButton.transform.SetSiblingIndex(careers.transform.GetSiblingIndex() + 1);
 
                 foreach (var label in _quickPlayButton.GetComponentsInChildren<TextMeshProUGUI>(true))
@@ -95,9 +97,68 @@ namespace YARG.Menu
             menu.gameObject.SetActive(true);
         }
 
+        private bool _sized;
+
+        /// <summary>
+        /// Careers and Quickplay are drawn as large as the main menu's first entry, Practice, History
+        /// and Main Menu as its other entries.
+        /// </summary>
+        private void ApplyEntrySizes()
+        {
+            if (_sized)
+            {
+                return;
+            }
+
+            var main = FindAnyObjectByType<Main.MainMenu>(FindObjectsInactive.Include);
+            if (main == null)
+            {
+                return;
+            }
+
+            GameObject MainEntry(string method)
+            {
+                foreach (var entry in main.transform.root.GetComponentsInChildren<NavigatableButton>(true))
+                {
+                    if (entry.Calls(main, method))
+                    {
+                        return entry.gameObject;
+                    }
+                }
+
+                return null;
+            }
+
+            var largeEntry = MainEntry(nameof(Main.MainMenu.QuickPlay));
+            var smallEntry = MainEntry(nameof(Main.MainMenu.Profiles));
+            if (largeEntry == null || smallEntry == null)
+            {
+                return;
+            }
+
+            _sized = true;
+            var large = Main.MenuEntryStyle.Read(largeEntry);
+            var small = Main.MenuEntryStyle.Read(smallEntry);
+
+            void Size(GameObject entry, Main.MenuEntryStyle style)
+            {
+                if (entry != null)
+                {
+                    Main.MenuEntryStyle.Read(entry).Apply(style);
+                }
+            }
+
+            Size(FindButton(nameof(CareerList))?.gameObject, large);
+            Size(_quickPlayButton, large);
+            Size(FindButton(nameof(Practice))?.gameObject, small);
+            Size(FindButton(nameof(Replays))?.gameObject, small);
+            Size(FindButton(nameof(Back))?.gameObject, small);
+        }
+
         private void OnEnable()
         {
             ApplyRetailMode();
+            ApplyEntrySizes();
 
             // Set navigation scheme
             _ = Navigator.Instance.PushScheme(new NavigationScheme(new()

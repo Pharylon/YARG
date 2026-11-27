@@ -302,7 +302,7 @@ namespace YARG.Scores
             // The no-fail setting is not stored with scores; it cannot change during a valid play
             // (toggling it invalidates the score), so the current value is the play's.
             CareerContracts.Apply(commit,
-                CareerContracts.For(career, context.TierId, context.TierIndex, context.CareerSongId),
+                CareerContracts.For(career, context.TierId, context.TierIndex),
                 gameRecord, playerEntries, SettingsManager.Settings.NoFail.Value == YARG.Gameplay.HUD.NoFailMode.Off);
 
             CareerSongOutcome.Commit(career, Careers, commit);

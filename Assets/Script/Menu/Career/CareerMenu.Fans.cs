@@ -26,7 +26,7 @@ namespace YARG.Menu.Career
 
         private bool HasContracts()
         {
-            return _career?.Tiers.Any(tier => tier.Contract is not null || tier.Songs?.Any(song => song.Contract is not null) == true)
+            return _career?.Tiers.Any(tier => tier.Contract is not null)
                 ?? false;
         }
 
@@ -82,7 +82,8 @@ namespace YARG.Menu.Career
             ShowBandHome(null);
 
             _title ??= new CareerHeaderTitle(this);
-            _title.ShowName(_career.Name);
+            // With song details open the header names the song, so the back arrow reads as leaving it.
+            _title.ShowName(_showSongDetails && DetailsTitle() is { } song ? song : _career.Name);
         }
 
         private CareerTier SelectedTier()
@@ -101,7 +102,7 @@ namespace YARG.Menu.Career
             {
                 TierViewType header => header.Tier.Contract is { IsActive: true } contract ? contract : null,
                 SongViewType song when song.TierIndex < _career.Tiers.Count =>
-                    CareerContracts.For(_career.Tiers[song.TierIndex], song.Song),
+                    CareerContracts.For(_career.Tiers[song.TierIndex]),
                 _ => null,
             };
         }

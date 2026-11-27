@@ -114,8 +114,8 @@ namespace YARG.Career.Tests
                 foreach (var tier in run.Evaluation.Tiers)
                 {
                     var content = Headliner.Tiers[tier.TierIndex];
-                    TestContext.Out.WriteLine($"  {content.Name,-22} needs {content.UnlockCriteria,6:N0}  " +
-                        $"earns {tier.Fans,6:N0}  opened after {run.OpenedAfter.GetValueOrDefault(tier.TierIndex, -1)} songs");
+                    TestContext.Out.WriteLine($"  {content.Name,-22} needs {content.UnlockCriteria,9:N0}  " +
+                        $"earns {tier.Fans,10:N0}  opened after {run.OpenedAfter.GetValueOrDefault(tier.TierIndex, -1)} songs");
                 }
 
                 Assert.That(run.Evaluation.Tiers.All(tier => tier.Unlocked), Is.True,
@@ -200,14 +200,14 @@ namespace YARG.Career.Tests
                 Is.True);
             Assert.That(career.Tiers.Count(tier => tier.IsBonus), Is.InRange(1, 2));
 
-            // Every Phase A contract type, on tiers and on single songs.
-            var tierContracts = career.Tiers.Select(tier => tier.Contract).Where(c => c is { IsActive: true }).ToList();
-            var songContracts = career.Tiers.SelectMany(tier => tier.Songs).Select(song => song.Contract)
-                .Where(c => c is { IsActive: true }).ToList();
-            Assert.That(tierContracts, Is.Not.Empty);
-            Assert.That(songContracts, Is.Not.Empty);
-            var types = tierContracts.Concat(songContracts).Select(c => c.Type).Distinct();
-            Assert.That(types, Is.EquivalentTo(Enum.GetValues<CareerContractType>().Where(t => t != CareerContractType.None)));
+            // Gig contracts of several types.
+            var types = career.Tiers.Select(tier => tier.Contract).Where(c => c is { IsActive: true })
+                .Select(c => c.Type).Distinct();
+            Assert.That(types, Is.EquivalentTo(new[]
+            {
+                CareerContractType.NoFailOff, CareerContractType.MinAccuracy, CareerContractType.FullBand,
+                CareerContractType.MinDifficulty, CareerContractType.MinStars,
+            }));
 
             // Fresh, stable ids: career song ids are not the library song ids the other careers use.
             var ids = career.Tiers.Select(tier => tier.Id)
@@ -242,8 +242,10 @@ namespace YARG.Career.Tests
                 Assert.That(Enumerable.Range(0, 12).Where(i => career.Tiers[i].IsBonus), Is.EqualTo(expectedBonus));
                 Assert.That(career.Tiers.All(tier => tier.Contract is null && tier.FanMultiplier is null &&
                     tier.City is null && tier.VenueName is null), Is.True);
-                Assert.That(career.Tiers.SelectMany(tier => tier.Songs).All(song => song.Id == song.SongId &&
-                    song.Contract is null), Is.True);
+                // The one exception: Tunnel Tripping (Rock) is a themed gig.
+                Assert.That(career.Tiers.Where(tier => tier.Theme is not null).Select(tier => tier.Name),
+                    Is.EqualTo(career == CareerPreset.YargRock ? new[] { "Tunnel Tripping" } : new string[0]), career.Name);
+                Assert.That(career.Tiers.SelectMany(tier => tier.Songs).All(song => song.Id == song.SongId), Is.True);
                 // Fans from song difficulty (no venue sizes, no fan-count unlocks), shown like any career's.
                 Assert.That(career.Tiers.All(tier => tier.VenueSize == VenueSize.NotSpecified), Is.True);
                 Assert.That(CareerFans.FanGated(career), Is.False);

@@ -37,6 +37,12 @@ namespace YARG.Menu.Navigation
             public readonly float HoldSeconds;
             public bool HasHoldHandler => _onHoldHandler != null && HoldSeconds > 0f;
 
+            /// <summary>
+            /// Optional: the button bar lays the label out at least as wide as this one, so a button whose
+            /// label changes (e.g. between two states) keeps its width and the buttons beside it stay put.
+            /// </summary>
+            public readonly string WidthLocalizationKey;
+
             public string DisplayName => Localize.Key(LocalizationKey);
 
             public Entry(MenuAction action,
@@ -56,6 +62,7 @@ namespace YARG.Menu.Navigation
                 HoldSeconds = holdSeconds;
                 Hide = hide;
                 ShowHeldState = showHeldState;
+                WidthLocalizationKey = null;
             }
 
             public Entry(MenuAction action,
@@ -75,7 +82,24 @@ namespace YARG.Menu.Navigation
                 HoldSeconds = holdSeconds;
                 Hide = hide;
                 ShowHeldState = showHeldState;
+                WidthLocalizationKey = null;
             }
+
+            private Entry(Entry other, string widthLocalizationKey)
+            {
+                Action = other.Action;
+                LocalizationKey = other.LocalizationKey;
+                _handler = other._handler;
+                _onHoldOffHandler = other._onHoldOffHandler;
+                _onHoldHandler = other._onHoldHandler;
+                HoldSeconds = other.HoldSeconds;
+                Hide = other.Hide;
+                ShowHeldState = other.ShowHeldState;
+                WidthLocalizationKey = widthLocalizationKey;
+            }
+
+            /// <summary>This entry, laid out at least as wide as the label of <paramref name="localizationKey"/>.</summary>
+            public Entry WithWidthOf(string localizationKey) => new(this, localizationKey);
 
             public void Invoke() => Invoke(new(Action, null));
 

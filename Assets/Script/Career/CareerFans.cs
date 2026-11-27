@@ -15,6 +15,7 @@ namespace YARG.Career
         TouringBand,
         Headliners,
         ArenaLegends,
+        BiggestBand,
     }
 
     /// <summary>
@@ -36,8 +37,8 @@ namespace YARG.Career
     /// </summary>
     public static class CareerFans
     {
-        /// <summary>Fans for a 5-star song at a Starter venue.</summary>
-        public const int BASE_FANS = 100;
+        /// <summary>Fans for a 5-star song at a Starter venue (or of the easiest difficulty).</summary>
+        public const int BASE_FANS = 1000;
 
         /// <summary>Bonus tiers earn fans at this rate.</summary>
         public const float BONUS_RATE = 0.5f;
@@ -53,11 +54,12 @@ namespace YARG.Career
         {
             return size switch
             {
-                VenueSize.Small  => 2.5f,  //   250 fans
-                VenueSize.Medium => 6f,    //   600 fans
-                VenueSize.Large  => 15f,   // 1,500 fans
-                VenueSize.Epic   => 40f,   // 4,000 fans
-                _                => 1f,    //   100 fans (Starter, or not specified)
+                // Each size is worth 8 times the one before (1.5 difficulty steps, see DifficultyMultiplier).
+                VenueSize.Small  => 8f,     //     8,000 fans
+                VenueSize.Medium => 64f,    //    64,000 fans
+                VenueSize.Large  => 512f,   //   512,000 fans
+                VenueSize.Epic   => 4096f,  // 4,096,000 fans
+                _                => 1f,     //     1,000 fans (Starter, or not specified)
             };
         }
 
@@ -93,15 +95,17 @@ namespace YARG.Career
         /// </summary>
         public static float DifficultyMultiplier(int intensity)
         {
+            // Each rating is worth 4 times the one below: a band that works its way up through the
+            // hardest songs of a big library heads for a billion fans (see RANK_FANS).
             return Math.Clamp(intensity, 0, 6) switch
             {
-                0 => 1f,    //   100 fans
-                1 => 1.5f,  //   150 fans
-                2 => 2.5f,  //   250 fans
-                3 => 4f,    //   400 fans
-                4 => 6f,    //   600 fans
-                5 => 10f,   // 1,000 fans
-                _ => 15f,   // 1,500 fans
+                0 => 1f,     //     1,000 fans
+                1 => 4f,     //     4,000 fans
+                2 => 16f,    //    16,000 fans
+                3 => 64f,    //    64,000 fans
+                4 => 256f,   //   256,000 fans
+                5 => 1024f,  // 1,024,000 fans
+                _ => 4096f,  // 4,096,000 fans
             };
         }
 
@@ -264,18 +268,18 @@ namespace YARG.Career
         }
 
         /// <summary>
-        /// Fans a band needs for each <see cref="CareerRank"/>, indexed by the rank. A full run of the
-        /// "Dev Fan Test" career (Starter to Epic, all gold) is worth about 25,000 fans, so the top rank
-        /// takes more than one career.
+        /// Fans a band needs for each <see cref="CareerRank"/>, indexed by the rank. Ten times more for
+        /// each; the top rank, a billion fans, takes most of a big library played well.
         /// </summary>
         private static readonly int[] RANK_FANS =
         {
-            0,      // Garage Band
-            500,    // Local Act
-            2_000,  // Club Regulars
-            7_500,  // Touring Band
-            20_000, // Headliners
-            50_000, // Arena Legends
+            0,             // Garage Band
+            10_000,        // Local Act
+            100_000,       // Club Regulars
+            1_000_000,     // Touring Band
+            10_000_000,    // Headliners
+            100_000_000,   // Arena Legends
+            1_000_000_000, // Biggest Band in the World
         };
 
         /// <summary>
@@ -324,7 +328,7 @@ namespace YARG.Career
         /// </summary>
         public static int BandFans(IEnumerable<CareerEvaluation> saveEvaluations)
         {
-            var total = 0;
+            long total = 0;
             foreach (var evaluation in saveEvaluations)
             {
                 if (evaluation is { UsesFans: true })
@@ -333,7 +337,8 @@ namespace YARG.Career
                 }
             }
 
-            return total;
+            // Fans are ints; a library big enough to pass that just stays at the most there is.
+            return (int) Math.Min(total, int.MaxValue);
         }
     }
 }

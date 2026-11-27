@@ -14,6 +14,86 @@ namespace YARG.Career
     /// </summary>
     public static class CareerBandHomeLayout
     {
+        /// <summary>Most initials the default band logo shows.</summary>
+        public const int MAX_INITIALS = 3;
+
+        /// <summary>
+        /// The initials on the default band logo (the band panel and its row icon): the first letter (or
+        /// digit) of each word, up to <see cref="MAX_INITIALS"/> ("The Bots" → "TB"), upper case. Empty
+        /// for a name with none.
+        /// </summary>
+        public static string BandInitials(string name)
+        {
+            var initials = new System.Text.StringBuilder();
+            foreach (var word in Words(name))
+            {
+                foreach (var c in word)
+                {
+                    if (char.IsLetterOrDigit(c))
+                    {
+                        initials.Append(char.ToUpperInvariant(c));
+                        break;
+                    }
+                }
+
+                if (initials.Length == MAX_INITIALS)
+                {
+                    break;
+                }
+            }
+
+            return initials.ToString();
+        }
+
+        /// <summary>Longest line of a band name the default band logo shows in full (else initials).</summary>
+        public const int MAX_LOGO_LINE_CHARS = 9;
+
+        // A capital's width and a line's height, in font sizes, of the logo's font (roughly).
+        private const float LOGO_CHAR_WIDTH = 0.6f;
+        private const float LOGO_LINE_HEIGHT = 1.1f;
+
+        /// <summary>
+        /// The text on the band panel's default logo: the band's name, upper case, on one or two lines
+        /// (whichever lets it be larger) when no line is longer than <see cref="MAX_LOGO_LINE_CHARS"/>
+        /// ("The Bots" → "THE\nBOTS"); a longer name would be too small to read, so its
+        /// <see cref="BandInitials"/> instead.
+        /// </summary>
+        public static string BandLogoText(string name)
+        {
+            var words = Words(name);
+            string best = null;
+            var bestSize = 0f;
+
+            // One line, or two split after any word.
+            for (var split = words.Count; split >= 1; split--)
+            {
+                var first = string.Join(" ", words.GetRange(0, split));
+                var second = string.Join(" ", words.GetRange(split, words.Count - split));
+                var lines = second.Length == 0 ? 1 : 2;
+                var longest = Math.Max(first.Length, second.Length);
+                if (longest == 0 || longest > MAX_LOGO_LINE_CHARS)
+                {
+                    continue;
+                }
+
+                // The largest font the text fits a square with; one line wins a tie.
+                var size = Math.Min(1f / (longest * LOGO_CHAR_WIDTH), 1f / (lines * LOGO_LINE_HEIGHT));
+                if (size > bestSize + 1e-6f)
+                {
+                    best = lines == 1 ? first : first + "\n" + second;
+                    bestSize = size;
+                }
+            }
+
+            return best?.ToUpperInvariant() ?? BandInitials(name);
+        }
+
+        private static List<string> Words(string name)
+        {
+            return new List<string>((name ?? string.Empty).Split((char[]) null,
+                StringSplitOptions.RemoveEmptyEntries));
+        }
+
         /// <summary>Stars worth one gold star. A row of hundreds of stars would be unreadable.</summary>
         public const int STARS_PER_GOLD = 100;
 
@@ -255,9 +335,10 @@ namespace YARG.Career
         }
 
         /// <summary>
-        /// How many person icons to draw for <paramref name="fans"/>: the square root, so the first fans
-        /// each show up and a huge following still fits, capped at <see cref="MAX_CROWD"/>.
-        /// 188 fans is 14 icons, 50,000 is 224.
+        /// How many person icons to draw for <paramref name="fans"/>: a full crowd
+        /// (<see cref="MAX_CROWD"/>) at a billion fans, the biggest band in the world, and a power curve
+        /// below that so every step up the ranks still adds people: 1,000 fans is 10 icons, 10,000 is 17,
+        /// a million is 49, a hundred million is 141. A band with any fans has at least one.
         /// </summary>
         public static int CrowdSize(int fans)
         {
@@ -266,8 +347,15 @@ namespace YARG.Career
                 return 0;
             }
 
-            return (int) Math.Min(MAX_CROWD, Math.Ceiling(Math.Sqrt(fans)));
+            var share = Math.Pow(Math.Min(fans, CROWD_FULL_FANS) / (double) CROWD_FULL_FANS, CROWD_CURVE);
+            return Math.Max(1, (int) Math.Round(MAX_CROWD * share));
         }
+
+        /// <summary>Fans at which the crowd is full.</summary>
+        public const int CROWD_FULL_FANS = 1_000_000_000;
+
+        // The power of the crowd curve: lower draws more of the crowd early.
+        private const double CROWD_CURVE = 0.23;
 
         /// <summary>
         /// The person icons of the crowd, in draw order: back row first, front row last, each row left to

@@ -47,7 +47,7 @@ namespace YARG.Dev
     ///                    refresh the career menu if it shows that career. Reports the career's progress.
     ///   career ...       Report the career's progress: per tier, whether it is open, its star total and
     ///                    each song's best stars ("-" = never completed, "G" = gold; then "+" if the
-    ///                    result counted for fans met the song's contract, "x" if not). Careers that use
+    ///                    result counted for fans met the gig's contract, "x" if not). Careers that use
     ///                    fans also report the save's total fans and each tier's and song's fans.
     ///   scorescreen ...  Open the score screen for one song with the result (see commit=).
     /// </summary>

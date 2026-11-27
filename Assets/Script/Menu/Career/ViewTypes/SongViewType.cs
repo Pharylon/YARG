@@ -28,11 +28,6 @@ namespace YARG.Menu.Career
         public bool ShowFans { get; set; }
 
         /// <summary>
-        /// The contract of the song's tier, which applies unless the song has its own.
-        /// </summary>
-        public CareerContract TierContract { get; set; }
-
-        /// <summary>
         /// The song's gig is played as a show (see <see cref="CareerShow"/>): clicking the song starts the
         /// whole set instead of the song alone.
         /// </summary>
@@ -69,6 +64,35 @@ namespace YARG.Menu.Career
         /// A user pick (see <see cref="CareerTier.UserPicks"/>): what clicking it does (pick a song).
         /// </summary>
         public Action PickSong { get; set; }
+
+        /// <summary>
+        /// The song's best result was played on another song in its place (a swap, see RetailMode):
+        /// that song is shown, with the gig's own song named under it.
+        /// </summary>
+        public SongEntry PlayedInstead
+        {
+            get => _playedInstead ? _songEntry : null;
+            set
+            {
+                if (value is null || _song.IsUserPick)
+                {
+                    return;
+                }
+
+                _replaced = _songEntry;
+                _songEntry = value;
+                _playedInstead = true;
+            }
+        }
+
+        private bool _playedInstead;
+        private SongEntry _replaced;
+
+        /// <summary>The gig's own song when another was played in its place (a swap), else null.</summary>
+        public SongEntry ReplacedSong => _playedInstead ? _replaced : null;
+
+        /// <summary>This song's row of the setlist's evaluation (its best result), or null.</summary>
+        public CareerEvaluation.SongResult Result => _result;
 
         /// <summary>
         /// A user pick: the song of its best result so far, shown in its place. Null: not played yet.
@@ -151,18 +175,19 @@ namespace YARG.Menu.Career
             var name = Hidden
                 ? CareerSetlistText.HiddenTitle(_song)
                 : _songEntry?.Name ?? Localize.Key(_song.IsUserPick ? "Menu.Career.Theme.Pick" : "Menu.Career.SongMissing");
+
+            // A song played in place of the gig's own (a swap) is in italics; Song Details tells more.
+            if (_playedInstead)
+            {
+                name = $"<i>{name}</i>";
+            }
             return AddStrikethrough(FormatAs(name, TextType.Primary, selected));
         }
 
         public override string GetSecondaryText(bool selected)
         {
+            // The song's fans and contract are in its details (Blue), not on the row.
             var detail = Hidden ? CareerSetlistText.HiddenDetail(HiddenBy, _song) : DetailLine();
-            if (ShowFans && _result is { Completed: true })
-            {
-                detail = Localize.KeyFormat("Menu.Career.SongFans", detail, _result.Fans.ToString("N0"));
-            }
-
-            detail = AddContract(detail);
 
             return AddStrikethrough(FormatAs(detail, TextType.Secondary, selected));
         }
@@ -171,31 +196,9 @@ namespace YARG.Menu.Career
         /// A song with its own contract shows it (the tier header shows the tier's); a song exempt from
         /// its tier's contract says so; a song whose counted result met its contract says that.
         /// </summary>
-        private string AddContract(string detail)
-        {
-            if (_result is { ContractMet: true })
-            {
-                return Localize.KeyFormat("Menu.Career.Contract.SongMet", detail);
-            }
-
-            if (_song.Contract is { IsActive: false } && TierContract is { IsActive: true })
-            {
-                return Localize.KeyFormat("Menu.Career.Contract.SongNone", detail);
-            }
-
-            return CareerContractText.Line(_song.Contract, ShowFans) is { } own
-                ? Localize.KeyFormat("Menu.Career.HeaderJoin", detail, own)
-                : detail;
-        }
-
         private string AddStrikethrough(string text)
         {
-            // From this save's evaluation, so it never carries over from another save (see SongResult.Done).
-            if (_result is { Done: true })
-            {
-                return ZString.Format("<color=white><s>{0}</s></color>", text);
-            }
-
+            // Finished songs used to be struck through; the stars show that well enough.
             return text;
         }
 
@@ -249,13 +252,15 @@ namespace YARG.Menu.Career
                 return;
             }
 
-            if (_songEntry is null)
+            // A swapped song shows what was played, but the gig's own song is what it plays.
+            var song = _playedInstead ? _replaced : _songEntry;
+            if (song is null)
             {
                 YargLogger.LogError("Career: cannot start song, it was not found in the library.");
                 return;
             }
 
-            GlobalVariables.State.SetPlaybackSong(_songEntry, new CareerContext
+            GlobalVariables.State.SetPlaybackSong(song, new CareerContext
             {
                 CareerId = _careerId,
                 TierId = _tierId,

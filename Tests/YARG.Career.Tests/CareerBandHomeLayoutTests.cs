@@ -4,6 +4,35 @@ namespace YARG.Career.Tests
 {
     public class CareerBandHomeLayoutTests
     {
+        [TestCase("The Bots", "TB")]
+        [TestCase("Test", "T")]
+        [TestCase("the midnight accountants", "TMA")]
+        [TestCase("One Two Three Four", "OTT")]
+        [TestCase("  \"Weird\"   Al's  Band ", "WAB")]
+        [TestCase("4 Non Blondes", "4NB")]
+        [TestCase("", "")]
+        [TestCase(null, "")]
+        [TestCase("!!! ???", "")]
+        public void BandInitials_FirstLetterOfEachWord(string name, string expected)
+        {
+            Assert.That(CareerBandHomeLayout.BandInitials(name), Is.EqualTo(expected));
+        }
+
+        [TestCase("Test", "TEST")]
+        [TestCase("The Bots", "THE\nBOTS")]
+        [TestCase("Testfff", "TESTFFF")]
+        [TestCase("AC Power", "AC\nPOWER")]
+        [TestCase("Big Red Car", "BIG RED\nCAR")]
+        [TestCase("Superstitious", "S")]
+        [TestCase("The Midnight Accountants", "TMA")]
+        [TestCase("One Two Three Four", "OTT")]
+        [TestCase("", "")]
+        [TestCase(null, "")]
+        public void BandLogoText_FullNameWhenShortElseInitials(string name, string expected)
+        {
+            Assert.That(CareerBandHomeLayout.BandLogoText(name), Is.EqualTo(expected));
+        }
+
         private const float EPSILON = 1e-3f;
         private const float MAX_STAR = 48f;
         private const float MIN_STAR = 16f;
@@ -129,15 +158,14 @@ namespace YARG.Career.Tests
 
         [TestCase(0, 0)]
         [TestCase(-10, 0)]
-        [TestCase(1, 1)]
-        [TestCase(4, 2)]
-        [TestCase(5, 3)]
-        [TestCase(188, 14)]
-        [TestCase(50_000, 224)]
-        [TestCase(57_600, 240)]
-        [TestCase(1_000_000, 240)]
+        [TestCase(1, 2)]
+        [TestCase(10, 3)]
+        [TestCase(1_000, 10)]
+        [TestCase(1_000_000, 49)]
+        [TestCase(100_000_000, 141)]
+        [TestCase(1_000_000_000, 240)]
         [TestCase(int.MaxValue, 240)]
-        public void CrowdSize_SquareRootCapped(int fans, int expected)
+        public void CrowdSize_FullAtABillion(int fans, int expected)
         {
             Assert.That(CareerBandHomeLayout.CrowdSize(fans), Is.EqualTo(expected));
         }
@@ -195,7 +223,7 @@ namespace YARG.Career.Tests
         [Test]
         public void Crowd_SmallIsOneCenteredRowAtFullSize()
         {
-            var crowd = CareerBandHomeLayout.Crowd(10, 800f, 220f, 6, 90f, 30f, 0.667f);
+            var crowd = CareerBandHomeLayout.Crowd(15, 800f, 220f, 6, 90f, 30f, 0.667f);
             Assert.That(crowd, Has.Count.EqualTo(4));
             Assert.That(crowd.All(c => c.Depth == 0f && Math.Abs(c.Size - 90f) < EPSILON), Is.True);
             Assert.That(crowd.Average(c => c.X), Is.EqualTo(400f).Within(0.5f * 90f));
@@ -205,7 +233,7 @@ namespace YARG.Career.Tests
         [Test]
         public void Crowd_LargeHasSeveralRowsWithSmallerBackRow()
         {
-            var crowd = CareerBandHomeLayout.Crowd(50_000, 800f, 220f, 6, 90f, 30f, 0.667f);
+            var crowd = CareerBandHomeLayout.Crowd(100_000_000, 800f, 220f, 6, 90f, 30f, 0.667f);
             Assert.That(crowd[0].Depth, Is.EqualTo(1f).Within(EPSILON));
             Assert.That(crowd[0].Size, Is.LessThan(crowd[^1].Size));
         }
@@ -215,7 +243,7 @@ namespace YARG.Career.Tests
         {
             foreach (var variants in new[] { 1, 2, 5, 9 })
             {
-                var crowd = CareerBandHomeLayout.Crowd(20_000, 800f, 220f, variants, 90f, 30f, 0.667f);
+                var crowd = CareerBandHomeLayout.Crowd(100_000_000, 800f, 220f, variants, 90f, 30f, 0.667f);
                 Assert.That(crowd.All(c => c.Variant >= 0 && c.Variant < variants), Is.True);
                 if (variants > 1)
                 {

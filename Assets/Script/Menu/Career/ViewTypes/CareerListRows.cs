@@ -32,9 +32,11 @@ namespace YARG.Menu.Career
 
         public override void ViewClick() => _onSelect?.Invoke(Band);
 
-        public override RowIcon CareerIcon => RowIcon.Person;
+        public override RowIcon CareerIcon => RowIcon.Band;
 
         public override UnityEngine.Sprite CustomIcon => CareerIcons.BandIcon(Band.Id);
+
+        public override string CareerIconText => CareerBandHomeLayout.BandInitials(Band.Name);
     }
 
     /// <summary>
@@ -72,7 +74,7 @@ namespace YARG.Menu.Career
         /// </summary>
         public Guid? IconBand { get; set; }
 
-        public override RowIcon CareerIcon => IconBand is null ? RowIcon.None : RowIcon.Person;
+        public override RowIcon CareerIcon => IconBand is null ? RowIcon.None : RowIcon.Band;
 
         public override UnityEngine.Sprite CustomIcon => IconBand is { } id ? CareerIcons.BandIcon(id) : null;
 

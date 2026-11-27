@@ -411,7 +411,7 @@ namespace YARG.Dev
             var song = tier.Songs[songIndex];
             var (record, players) = ScoreRecordsFor(song.SongEntry, result, result.Choose(CareerPlayers()));
             var commit = new CareerSongCompletionCommit();
-            CareerContracts.Apply(commit, CareerContracts.For(tier, song), record, players, NoFailOff(result));
+            CareerContracts.Apply(commit, CareerContracts.For(tier), record, players, NoFailOff(result));
 
             return new CareerSongCompletions
             {
@@ -450,7 +450,7 @@ namespace YARG.Dev
 
             // Judged from the made-up result as the score path would judge a played one.
             var (record, playerEntries) = ScoreRecordsFor(song.SongEntry, result, players);
-            CareerContracts.Apply(commit, CareerContracts.For(career.Tiers[tierIndex], song), record, playerEntries,
+            CareerContracts.Apply(commit, CareerContracts.For(career.Tiers[tierIndex]), record, playerEntries,
                 NoFailOff(result));
 
             CareerSongOutcome.Commit(career, careers, commit);

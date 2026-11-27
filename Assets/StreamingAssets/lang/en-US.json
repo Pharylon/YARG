@@ -391,7 +391,6 @@
             "Closer": "Closer",
             "CloserLocked": "Get {0} stars on every song of the gig to pick its closer",
             "CloserPick": "Pick a Closer",
-            "CloserPickDetail": "Close out the gig with any song you like. It is unlocked for Quickplay.",
             "CloserPlayed": "Closer: {0}",
             "CloserPlayedDetail": "{0}  ·  Unlocked for Quickplay",
             "Substitute": "Play Another Song Instead",
@@ -426,7 +425,6 @@
             "UnlockFans": "Needs {0} more fans",
             "HeaderFans": "{0} fans",
             "TierFans": "{0}  ·  {1} fans",
-            "SongFans": "{0}  ·  {1} fans",
             "Venue": "{0}, {1}",
             "FansGained": "+{0} fans",
             "FansNoGain": "No new fans: only your best result counts",
@@ -440,8 +438,6 @@
                 "Met": "Contract met: {0}",
                 "MetBonus": "Contract met: {0} (+{1}% fans)",
                 "Missed": "Contract missed: {0}",
-                "SongMet": "{0}  ·  contract met",
-                "SongNone": "{0}  ·  no contract",
                 "MinStars": "Crowd pleaser: {0} stars or better",
                 "MinStarsGold": "Crowd pleaser: gold stars",
                 "MinAccuracy": "Tight set: {0}% accuracy or better",
@@ -523,7 +519,8 @@
                 "ClubRegulars": "Club Regulars",
                 "TouringBand": "Touring Band",
                 "Headliners": "Headliners",
-                "ArenaLegends": "Arena Legends"
+                "ArenaLegends": "Arena Legends",
+                "BiggestBand": "Biggest Band in the World"
             },
             "Sheet": {
                 "NextRank": "{0} more fans to {1}",
@@ -578,6 +575,18 @@
                 "MysteryDetail": "Revealed when you play it",
                 "Rules": "Gig rules: {0}",
                 "RuleSpeed": "{0}% speed or faster"
+            },
+            "Details": {
+                "Show": "Song Details",
+                "Back": "Band Details",
+                "Difficulty": "Difficulty",
+                "Best": "Your Best",
+                "NotPlayed": "Not played yet",
+                "NoSong": "Pick a song to see its details",
+                "Swapped": "Played instead of {0}",
+                "Points": "{0} points",
+                "Fans": "{0} fans",
+                "Player": "{0}  ·  {1}  ·  {2}"
             },
             "Theme": {
                 "Line": "Theme: {0}",
@@ -2947,9 +2956,6 @@
                 "EmptySongSummary": "      {0}. ... [{1}]",
                 "UnknownSong": "Unknown Song",
                 "UnknownArtist": "Unknown Artist",
-                "SongContractNone": "No contract (exempt from the tier's)",
-                "SongContractTier": "From tier: {0}",
-                "SongContractTierNone": "From tier: none",
                 "WarningSummary": " [!] {0}",
                 "Issue": {
                     "Unreachable": {
@@ -3000,7 +3006,6 @@
                     "City": "City",
                     "VenueName": "Venue Name",
                     "ContractType": "Contract",
-                    "SongContract": "Contract",
                     "ContractParameter": {
                         "MinStars": "Minimum Stars (6 = gold)",
                         "MinAccuracy": "Minimum Accuracy (%)",

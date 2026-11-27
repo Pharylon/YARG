@@ -64,29 +64,28 @@ namespace YARG.Career.Tests
         [Test]
         public void FanTierAboveTheMostThatCanBeEarnedIsUnreachable()
         {
-            // Tier 0: 3 Starter songs, at most 3 * 125 (gold) = 375 fans.
-            var career = Career(Tier(3, UnlockType.StarCount), Tier(2, criteria: 375), Tier(2, criteria: 376 + 250));
+            // Tier 0: 3 Starter songs, at most 3 * 1,250 (gold) = 3,750 fans.
+            var career = Career(Tier(3, UnlockType.StarCount), Tier(2, criteria: 3_750), Tier(2, criteria: 3_751 + 2_500));
 
             var issues = Issues(career);
             Assert.That(issues, Has.Count.EqualTo(1));
             Assert.That(issues[0].Type, Is.EqualTo(CareerIssueType.UnreachableTier));
             Assert.That(issues[0].TierIndex, Is.EqualTo(2));
-            Assert.That(issues[0].Required, Is.EqualTo(626));
-            Assert.That(issues[0].Available, Is.EqualTo(625), "tiers 0 and 1, all gold");
-            Assert.That(issues[0].Describe(career), Does.Contain("626 fans").And.Contain("625"));
+            Assert.That(issues[0].Required, Is.EqualTo(6_251));
+            Assert.That(issues[0].Available, Is.EqualTo(6_250), "tiers 0 and 1, all gold");
+            Assert.That(issues[0].Describe(career), Does.Contain($"{6_251:N0} fans").And.Contain($"{6_250:N0}"));
         }
 
         [Test]
         public void ContractBonusesAndBonusTiersCountTowardsTheMaximum()
         {
-            // Gold on 2 Starter songs = 250; +20% on one song = 275. A bonus tier at Small: 2 * 312.5 * 0.5.
-            var tier0 = Tier(2, UnlockType.StarCount);
-            tier0.Songs[0].Contract = Contract(CareerContractType.MinStars, 4, bonus: 20);
+            // Gold on 2 Starter songs = 2,500; +20% on both = 3,000. A bonus tier at Small: 2 * 10,000 * 0.5.
+            var tier0 = Tier(2, UnlockType.StarCount, contract: Contract(CareerContractType.MinStars, 4, bonus: 20));
             var bonus = Tier(2, criteria: 0, venue: VenueSize.Small, bonus: true);
             var bonusFans = 2 * CareerFans.SongFans(bonus, CareerFans.GOLD_STARS);
 
-            Assert.That(Issues(Career(tier0, bonus, Tier(1, criteria: 275 + bonusFans))), Is.Empty);
-            Assert.That(Issues(Career(tier0, bonus, Tier(1, criteria: 276 + bonusFans))).Single().Type,
+            Assert.That(Issues(Career(tier0, bonus, Tier(1, criteria: 3_000 + bonusFans))), Is.Empty);
+            Assert.That(Issues(Career(tier0, bonus, Tier(1, criteria: 3_001 + bonusFans))).Single().Type,
                 Is.EqualTo(CareerIssueType.UnreachableTier));
         }
 
@@ -94,19 +93,19 @@ namespace YARG.Career.Tests
         public void ATierOnlyAnUnreachableTierCouldOpenIsUnreachableToo()
         {
             // Tier 2 would be reachable with tier 1's fans, but tier 1 can never open.
-            var career = Career(Tier(1, UnlockType.StarCount), Tier(5, criteria: 1000, venue: VenueSize.Epic),
-                Tier(1, criteria: 500));
+            var career = Career(Tier(1, UnlockType.StarCount), Tier(5, criteria: 10_000, venue: VenueSize.Epic),
+                Tier(1, criteria: 5_000));
 
             var issues = Issues(career);
             Assert.That(issues.Select(issue => issue.TierIndex), Is.EqualTo(new[] { 1, 2 }));
-            Assert.That(issues[1].Available, Is.EqualTo(125), "only tier 0 can open before it");
+            Assert.That(issues[1].Available, Is.EqualTo(1_250), "only tier 0 can open before it");
         }
 
         [Test]
         public void TiersOpenInAnyOrderForTheMaximum()
         {
             // The second tier needs fans that only the later (cheaper) tier gives: still reachable.
-            var career = Career(Tier(2, UnlockType.StarCount), Tier(1, criteria: 400), Tier(2, criteria: 100));
+            var career = Career(Tier(2, UnlockType.StarCount), Tier(1, criteria: 4_000), Tier(2, criteria: 1_000));
             Assert.That(Issues(career), Is.Empty);
         }
 
@@ -178,35 +177,24 @@ namespace YARG.Career.Tests
         {
             Assert.That(CareerValidation.ParameterInRange(type, parameter), Is.EqualTo(valid));
 
-            var onTier = Career(Tier(1, UnlockType.StarCount, contract: Contract(type, parameter)));
-            var onSong = Career(Tier(2, UnlockType.StarCount));
-            onSong.Tiers[0].Songs[1].Contract = Contract(type, parameter);
-
-            foreach (var (career, songIndex) in new[] { (onTier, -1), (onSong, 1) })
+            var issues = Issues(Career(Tier(1, UnlockType.StarCount, contract: Contract(type, parameter))));
+            if (valid)
             {
-                var issues = Issues(career);
-                if (valid)
-                {
-                    Assert.That(issues, Is.Empty);
-                    continue;
-                }
-
-                var issue = issues.Single();
-                Assert.That(issue.Type, Is.EqualTo(CareerIssueType.ContractParameterOutOfRange));
-                Assert.That((issue.TierIndex, issue.SongIndex, issue.ContractType, issue.Value),
-                    Is.EqualTo((0, songIndex, type, parameter)));
+                Assert.That(issues, Is.Empty);
+                return;
             }
+
+            var issue = issues.Single();
+            Assert.That(issue.Type, Is.EqualTo(CareerIssueType.ContractParameterOutOfRange));
+            Assert.That((issue.TierIndex, issue.SongIndex, issue.ContractType, issue.Value),
+                Is.EqualTo((0, -1, type, parameter)));
         }
 
         [Test]
-        public void SongContractsWithoutATierContractAndExemptionsAreFine()
+        public void NoContractIsFineWhateverItsNumbers()
         {
-            var career = Career(Tier(3, UnlockType.StarCount, contract: Contract(CareerContractType.FullBand, 2)),
-                Tier(2, criteria: 100));
-            // An exemption (None) with a parameter that means nothing, and a song contract on a tier without one.
-            career.Tiers[0].Songs[0].Contract = Contract(CareerContractType.None, -5, bonus: -5);
-            career.Tiers[1].Songs[1].Contract = Contract(CareerContractType.MinAccuracy, 90);
-
+            // A None contract's parameter and bonus mean nothing.
+            var career = Career(Tier(3, UnlockType.StarCount, contract: Contract(CareerContractType.None, -5, bonus: -5)));
             Assert.That(Issues(career), Is.Empty);
         }
 

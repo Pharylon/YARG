@@ -18,6 +18,7 @@ namespace YARG.Menu.Career
         private readonly Guid? _bandId;
         private readonly string _primary;
         private readonly string _secondary;
+        private readonly string _bandName;
 
         public BandViewType(Action onBandChanged)
         {
@@ -33,6 +34,7 @@ namespace YARG.Menu.Career
             }
 
             _bandId = band.Id;
+            _bandName = band.Name;
             _primary = Localize.KeyFormat("Menu.Career.HeaderBand", band.Name);
             _secondary = Describe(careers, band);
         }
@@ -70,9 +72,11 @@ namespace YARG.Menu.Career
             return FormatAs(_secondary, TextType.Secondary, selected);
         }
 
-        public override RowIcon CareerIcon => _bandId is null ? RowIcon.None : RowIcon.Person;
+        public override RowIcon CareerIcon => _bandId is null ? RowIcon.None : RowIcon.Band;
 
         public override UnityEngine.Sprite CustomIcon => _bandId is { } id ? CareerIcons.BandIcon(id) : null;
+
+        public override string CareerIconText => CareerBandHomeLayout.BandInitials(_bandName);
 
         public override void ViewClick()
         {

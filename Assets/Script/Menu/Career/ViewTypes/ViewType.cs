@@ -72,6 +72,8 @@ namespace YARG.Menu.Career
             None,
             Person,
             Bot,
+            // A band without a picture of its own: the default band logo.
+            Band,
         }
 
         // Career list rows (see CareerView): an icon of its own, the text on the right edge of a
@@ -81,6 +83,9 @@ namespace YARG.Menu.Career
         // A picture of its own (a band icon, a profile picture), drawn in place of CareerIcon.
         // Decoded image textures are upside down, so the row flips it.
         public virtual UnityEngine.Sprite CustomIcon => null;
+
+        // Text drawn over CareerIcon when there is no CustomIcon (a band's initials on the band logo).
+        public virtual string CareerIconText => null;
 
         public virtual string GetSideText(bool selected) => null;
 
