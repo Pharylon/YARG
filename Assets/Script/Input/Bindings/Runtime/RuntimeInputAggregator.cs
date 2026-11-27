@@ -45,18 +45,13 @@ namespace YARG.Input.Bindings
             {
                 if (binding is RuntimeImpulseBinding impulse)
                 {
+                    // Only the presses of an impulse binding are passed on. Its releases must not be
+                    // counted: its presses are not (they come through Pressed), so every hit would
+                    // leave the count of its action one lower. The counts outlive the bindings, and
+                    // actions of different game modes share numbers (the Elite Drums kick and the
+                    // first guitar fret are both 0), so a profile that went from drums to guitar
+                    // would have frets that never register.
                     impulse.Pressed += OnButtonPressed;
-                    GameInputProcessed handler = (ref GameInput input) => OnButtonInputProcessed(source, ref input);
-                    _buttonHandlers[impulse] = handler;
-                    impulse.InputProcessed += handler;
-
-                    if (impulse.State)
-                    {
-                        _activeButtonCounts[impulse.Action] =
-                            _activeButtonCounts.GetValueOrDefault(impulse.Action) + 1;
-
-                        _buttonStates[impulse.Action] = true;
-                    }
                 }
                 else if (binding is RuntimeButtonBinding button)
                 {
@@ -84,24 +79,6 @@ namespace YARG.Input.Bindings
                 if (binding is RuntimeImpulseBinding impulse)
                 {
                     impulse.Pressed -= OnButtonPressed;
-                    impulse.InputProcessed -= _buttonHandlers[impulse];
-                    _buttonHandlers.Remove(impulse);
-
-                    if (impulse.State)
-                    {
-                        var count = _activeButtonCounts.GetValueOrDefault(impulse.Action);
-                        count--;
-
-                        if (count <= 0)
-                        {
-                            _activeButtonCounts.Remove(impulse.Action);
-                            _buttonStates[impulse.Action] = false;
-                        }
-                        else
-                        {
-                            _activeButtonCounts[impulse.Action] = count;
-                        }
-                    }
                 }
                 else if (binding is RuntimeButtonBinding button)
                 {
@@ -251,7 +228,8 @@ namespace YARG.Input.Bindings
             }
             else
             {
-                count--;
+                // Never below zero: a release whose press was not seen must not eat the next press
+                count = Math.Max(count - 1, 0);
             }
 
             _activeButtonCounts[input.Action] = count;
