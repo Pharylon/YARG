@@ -76,10 +76,9 @@ namespace YARG.Career
                 FanGated = CareerFans.FanGated(career),
             };
 
-            // Best stars per song: max BandStars across all committed completions for that song.
-            // Gold is tracked beside it (a gold row stores 5 in BandStars), for fans only.
-            var bestStarsBySong = new Dictionary<Guid, int>();
-            var goldSongs = new HashSet<Guid>();
+            // The rows of each career song. Only those of the song last played in its place count (see
+            // CurrentSongRows): best stars are the max BandStars among them, gold is tracked beside it (a
+            // gold row stores 5 in BandStars), for fans only.
             var rowsBySong = new Dictionary<Guid, List<CareerSongCompletions>>();
             foreach (var completion in snapshot.Completions)
             {
@@ -89,16 +88,18 @@ namespace YARG.Career
                 }
 
                 rows.Add(completion);
+            }
 
-                if (!bestStarsBySong.TryGetValue(completion.CareerSongId, out var currentBest) ||
-                    completion.BandStars > currentBest)
+            var bestStarsBySong = new Dictionary<Guid, int>();
+            var goldSongs = new HashSet<Guid>();
+            foreach (var songId in rowsBySong.Keys.ToList())
+            {
+                var rows = CurrentSongRows(rowsBySong[songId]);
+                rowsBySong[songId] = rows;
+                bestStarsBySong[songId] = rows.Max(row => row.BandStars);
+                if (rows.Any(row => row.IsGold))
                 {
-                    bestStarsBySong[completion.CareerSongId] = completion.BandStars;
-                }
-
-                if (completion.IsGold)
-                {
-                    goldSongs.Add(completion.CareerSongId);
+                    goldSongs.Add(songId);
                 }
             }
 
@@ -218,6 +219,33 @@ namespace YARG.Career
             }
 
             return evaluation;
+        }
+
+        /// <summary>
+        /// The rows that count for a career song: those of the song last played in its place. A song
+        /// played in place of another (a swap, or a user pick) trades the slot over to it, stars and fans,
+        /// even if the earlier song had done better; playing the earlier song again trades it back. Replays
+        /// of the same song still only raise what counts. Rows are told apart by their song checksum (rows
+        /// without one are all the same song).
+        /// </summary>
+        public static List<CareerSongCompletions> CurrentSongRows(List<CareerSongCompletions> rows)
+        {
+            if (rows.Count <= 1)
+            {
+                return rows;
+            }
+
+            var latest = rows
+                .OrderByDescending(row => row.CompletedAt)
+                .ThenByDescending(row => row.Id)
+                .First();
+            var song = ChecksumKey(latest.SongChecksum);
+            return rows.Where(row => ChecksumKey(row.SongChecksum) == song).ToList();
+        }
+
+        private static string ChecksumKey(byte[] checksum)
+        {
+            return checksum is { Length: > 0 } ? Convert.ToBase64String(checksum) : string.Empty;
         }
 
         /// <summary>

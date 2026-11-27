@@ -50,6 +50,8 @@ namespace YARG.Career
             var before = CareerEvaluation.Evaluate(career, careers.LoadProgressSnapshot(commit.CareerSaveId));
 
             careers.CommitSongCompletion(commit);
+            YARG.Core.Logging.YargLogger.LogFormatInfo("Career: recorded {0} stars for song {1} of tier {2} in save {3}.",
+                commit.IsGold ? "gold" : commit.BandStars.ToString(), commit.SongIndex, commit.TierIndex, commit.CareerSaveId);
             var after = career.SyncProgress(careers, commit.CareerSaveId);
 
             // Whatever was just completed is now unlocked for quickplay.

@@ -68,6 +68,10 @@ namespace YARG.Menu.Career
         [SerializeField]
         private RawImage _videoTexture;
 
+        // The music library's instrument difficulty ring, for the song details (see CareerSongDetails).
+        [SerializeField]
+        private GameObject _difficultyRingPrefab;
+
         // The band's home screen on the left (see CareerMenu.Home.cs).
         [SerializeField]
         private Sprite _bandFallbackSprite;
@@ -195,8 +199,11 @@ namespace YARG.Menu.Career
                     Back, hide: true),
             };
 
+            entries.Add(new NavigationScheme.Entry(MenuAction.Blue,
+                _showSongDetails ? "Menu.Career.Details.Back" : "Menu.Career.Details.Show", ToggleSongDetails));
+
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-            entries.Add(new NavigationScheme.Entry(MenuAction.Blue, "Menu.Career.DebugGrant", DebugGrantStars));
+            entries.Add(new NavigationScheme.Entry(MenuAction.Select, "Menu.Career.DebugGrant", DebugGrantStars));
 #endif
 
             _ = Navigator.Instance.PushScheme(new NavigationScheme(entries, false));
@@ -362,6 +369,14 @@ namespace YARG.Menu.Career
                         tier.Songs[songIndex], _career.Id, tier.Id, tierIndex, songIndex, tier.VenueHint,
                         closerRow is null && songIndex == tier.Songs.Length - 1, songResult,
                         OnSongPlayed) { Reveal = reveal, ShowFans = _evaluation.UsesFans, TierContract = tier.Contract, StartShow = startShow, HiddenBy = hidden ? tier : null, BandScores = ScoresFor(songResult) });
+
+                    // A swapped song: what its best result was played on.
+                    if (!tier.Songs[songIndex].IsUserPick && viewList[^1] is SongViewType swapped &&
+                        PlayedSong(songResult) is { } played && !ReferenceEquals(played, tier.Songs[songIndex].SongEntry) &&
+                        !(tier.Songs[songIndex].SongEntry is { } own && own.Hash.Equals(played.Hash)))
+                    {
+                        swapped.PlayedInstead = played;
+                    }
 
                     // A user pick: the song of its best result, and picking one to play.
                     if (tier.Songs[songIndex].IsUserPick && viewList[^1] is SongViewType pick)

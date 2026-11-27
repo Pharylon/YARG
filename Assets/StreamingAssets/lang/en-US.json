@@ -578,6 +578,18 @@
                 "Rules": "Gig rules: {0}",
                 "RuleSpeed": "{0}% speed or faster"
             },
+            "Details": {
+                "Show": "Song Details",
+                "Back": "Band",
+                "Difficulty": "Difficulty",
+                "Best": "Your Best",
+                "NotPlayed": "Not played yet",
+                "NoSong": "Pick a song to see its details",
+                "Swapped": "Played instead of {0}",
+                "Points": "{0} points",
+                "Fans": "{0} fans",
+                "Player": "{0}  ·  {1}  ·  {2}"
+            },
             "Theme": {
                 "Line": "Theme: {0}",
                 "Years": "{0}-{1}",

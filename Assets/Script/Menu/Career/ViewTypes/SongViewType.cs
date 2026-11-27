@@ -71,6 +71,35 @@ namespace YARG.Menu.Career
         public Action PickSong { get; set; }
 
         /// <summary>
+        /// The song's best result was played on another song in its place (a swap, see RetailMode):
+        /// that song is shown, with the gig's own song named under it.
+        /// </summary>
+        public SongEntry PlayedInstead
+        {
+            get => _playedInstead ? _songEntry : null;
+            set
+            {
+                if (value is null || _song.IsUserPick)
+                {
+                    return;
+                }
+
+                _replaced = _songEntry;
+                _songEntry = value;
+                _playedInstead = true;
+            }
+        }
+
+        private bool _playedInstead;
+        private SongEntry _replaced;
+
+        /// <summary>The gig's own song when another was played in its place (a swap), else null.</summary>
+        public SongEntry ReplacedSong => _playedInstead ? _replaced : null;
+
+        /// <summary>This song's row of the setlist's evaluation (its best result), or null.</summary>
+        public CareerEvaluation.SongResult Result => _result;
+
+        /// <summary>
         /// A user pick: the song of its best result so far, shown in its place. Null: not played yet.
         /// </summary>
         public SongEntry PickedSong
@@ -151,6 +180,12 @@ namespace YARG.Menu.Career
             var name = Hidden
                 ? CareerSetlistText.HiddenTitle(_song)
                 : _songEntry?.Name ?? Localize.Key(_song.IsUserPick ? "Menu.Career.Theme.Pick" : "Menu.Career.SongMissing");
+
+            // A song played in place of the gig's own (a swap) is in italics; Song Details tells more.
+            if (_playedInstead)
+            {
+                name = $"<i>{name}</i>";
+            }
             return AddStrikethrough(FormatAs(name, TextType.Primary, selected));
         }
 
@@ -190,12 +225,7 @@ namespace YARG.Menu.Career
 
         private string AddStrikethrough(string text)
         {
-            // From this save's evaluation, so it never carries over from another save (see SongResult.Done).
-            if (_result is { Done: true })
-            {
-                return ZString.Format("<color=white><s>{0}</s></color>", text);
-            }
-
+            // Finished songs used to be struck through; the stars show that well enough.
             return text;
         }
 
@@ -249,13 +279,15 @@ namespace YARG.Menu.Career
                 return;
             }
 
-            if (_songEntry is null)
+            // A swapped song shows what was played, but the gig's own song is what it plays.
+            var song = _playedInstead ? _replaced : _songEntry;
+            if (song is null)
             {
                 YargLogger.LogError("Career: cannot start song, it was not found in the library.");
                 return;
             }
 
-            GlobalVariables.State.SetPlaybackSong(_songEntry, new CareerContext
+            GlobalVariables.State.SetPlaybackSong(song, new CareerContext
             {
                 CareerId = _careerId,
                 TierId = _tierId,

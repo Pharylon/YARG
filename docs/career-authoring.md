@@ -39,6 +39,10 @@ whether or not it has fan-count unlocks.
 For each song only its **best** result counts: of all the plays of that song in the save, the one worth
 the most fans. Replaying a song can raise its fans but never adds a second share.
 
+When another song is played in a song's place (a swap, or a user pick), the slot **trades** to it: only
+results of the song last played in the slot count, even if an earlier song had done better. Playing the
+earlier song again trades the slot back, and its earlier results count again.
+
 ```
 fans = 100 x multiplier x star factor
        x 0.5                          (bonus tiers only)

@@ -207,7 +207,8 @@ namespace YARG.Menu.Career
         private SongEntry PlayedSong(CareerEvaluation.SongResult result)
         {
             if (result is not { Completed: true } ||
-                !_songByCompletion.TryGetValue(result.CountedCompletionId, out var checksum) || checksum is not { Length: > 0 })
+                !_completionById.TryGetValue(result.CountedCompletionId, out var row) ||
+                row.SongChecksum is not { Length: > 0 } checksum)
             {
                 return null;
             }

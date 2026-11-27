@@ -403,6 +403,15 @@ namespace YARG.Menu.MusicLibrary
                 difficultyRing.gameObject.SetActive(true);
             }
 
+            FillDifficultyRings(_difficultyRings, entry);
+        }
+
+        /// <summary>
+        /// Shows the song's parts on ten rings, as the sidebar does (also used by the career's song
+        /// details).
+        /// </summary>
+        public static void FillDifficultyRings(IReadOnlyList<DifficultyRing> rings, SongEntry entry)
+        {
             /*
 
                 Guitar               ; Bass               ; 4 or 5 lane ; Keys     ; Vocals
@@ -411,28 +420,28 @@ namespace YARG.Menu.MusicLibrary
             */
 
 
-            _difficultyRings[0].SetInfo("guitar", Instrument.FiveFretGuitar, entry[Instrument.FiveFretGuitar]);
-            _difficultyRings[1].SetInfo("bass", Instrument.FiveFretBass, entry[Instrument.FiveFretBass]);
+            rings[0].SetInfo("guitar", Instrument.FiveFretGuitar, entry[Instrument.FiveFretGuitar]);
+            rings[1].SetInfo("bass", Instrument.FiveFretBass, entry[Instrument.FiveFretBass]);
 
             // 5-lane or 4-lane
             if (entry.HasInstrument(Instrument.FiveLaneDrums))
             {
-                _difficultyRings[2].SetInfo("ghDrums", Instrument.FiveLaneDrums, entry[Instrument.FiveLaneDrums]);
+                rings[2].SetInfo("ghDrums", Instrument.FiveLaneDrums, entry[Instrument.FiveLaneDrums]);
             }
             else if (entry.HasInstrument(Instrument.ProDrums))
             {
-                _difficultyRings[2].SetInfo("realDrums", Instrument.ProDrums, entry[Instrument.ProDrums]);
+                rings[2].SetInfo("realDrums", Instrument.ProDrums, entry[Instrument.ProDrums]);
             }
             else
             {
-                _difficultyRings[2].SetInfo("drums", Instrument.FourLaneDrums, entry[Instrument.FourLaneDrums]);
+                rings[2].SetInfo("drums", Instrument.FourLaneDrums, entry[Instrument.FourLaneDrums]);
             }
 
-            _difficultyRings[3].SetInfo("keys", Instrument.Keys, entry[Instrument.Keys]);
+            rings[3].SetInfo("keys", Instrument.Keys, entry[Instrument.Keys]);
 
             var vocalsPart = GetVocalsPartValues(entry);
 
-            _difficultyRings[4].SetInfo(vocalsPart.PartIcon, Instrument.Vocals, vocalsPart.PartValues);
+            rings[4].SetInfo(vocalsPart.PartIcon, Instrument.Vocals, vocalsPart.PartValues);
 
             // Protar or Co-op
             if (entry.HasInstrument(Instrument.ProGuitar_17Fret) || entry.HasInstrument(Instrument.ProGuitar_22Fret))
@@ -444,11 +453,11 @@ namespace YARG.Menu.MusicLibrary
                     values = entry[Instrument.ProGuitar_22Fret];
                     instrument = Instrument.ProGuitar_22Fret;
                 }
-                _difficultyRings[5].SetInfo("realGuitar", instrument, values);
+                rings[5].SetInfo("realGuitar", instrument, values);
             }
             else
             {
-                _difficultyRings[5].SetInfo("guitarCoop", Instrument.FiveFretCoopGuitar, entry[Instrument.FiveFretCoopGuitar]);
+                rings[5].SetInfo("guitarCoop", Instrument.FiveFretCoopGuitar, entry[Instrument.FiveFretCoopGuitar]);
             }
 
             // ProBass or Rhythm
@@ -461,36 +470,36 @@ namespace YARG.Menu.MusicLibrary
                     values = entry[Instrument.ProBass_22Fret];
                     instrument = Instrument.ProBass_22Fret;
                 }
-                _difficultyRings[6].SetInfo("realBass", instrument, values);
+                rings[6].SetInfo("realBass", instrument, values);
             }
             else
             {
-                _difficultyRings[6].SetInfo("rhythm", Instrument.FiveFretRhythm, entry[Instrument.FiveFretRhythm]);
+                rings[6].SetInfo("rhythm", Instrument.FiveFretRhythm, entry[Instrument.FiveFretRhythm]);
             }
 
             // 6-fret guitar or 6-fret variants
             if (entry.HasInstrument(Instrument.SixFretGuitar))
             {
-                _difficultyRings[7].SetInfo("guitar6", Instrument.SixFretGuitar, entry[Instrument.SixFretGuitar]);
+                rings[7].SetInfo("guitar6", Instrument.SixFretGuitar, entry[Instrument.SixFretGuitar]);
             }
             else if (entry.HasInstrument(Instrument.SixFretBass))
             {
-                _difficultyRings[7].SetInfo("bass6", Instrument.SixFretBass, entry[Instrument.SixFretBass]);
+                rings[7].SetInfo("bass6", Instrument.SixFretBass, entry[Instrument.SixFretBass]);
             }
             else if (entry.HasInstrument(Instrument.SixFretRhythm))
             {
-                _difficultyRings[7].SetInfo("rhythm6", Instrument.SixFretRhythm, entry[Instrument.SixFretRhythm]);
+                rings[7].SetInfo("rhythm6", Instrument.SixFretRhythm, entry[Instrument.SixFretRhythm]);
             }
             else if (entry.HasInstrument(Instrument.SixFretCoopGuitar))
             {
-                _difficultyRings[7].SetInfo("coop6", Instrument.SixFretCoopGuitar, entry[Instrument.SixFretCoopGuitar]);
+                rings[7].SetInfo("coop6", Instrument.SixFretCoopGuitar, entry[Instrument.SixFretCoopGuitar]);
             }
             else
             {
-                _difficultyRings[7].SetInfo("eliteDrums", Instrument.EliteDrums, entry[Instrument.EliteDrums]);
+                rings[7].SetInfo("eliteDrums", Instrument.EliteDrums, entry[Instrument.EliteDrums]);
             }
-            _difficultyRings[8].SetInfo("realKeys", Instrument.ProKeys, entry[Instrument.ProKeys]);
-            _difficultyRings[9].SetInfo("band", Instrument.Band, entry[Instrument.Band]);
+            rings[8].SetInfo("realKeys", Instrument.ProKeys, entry[Instrument.ProKeys]);
+            rings[9].SetInfo("band", Instrument.Band, entry[Instrument.Band]);
             return;
 
             static (string PartIcon, PartValues PartValues) GetVocalsPartValues(SongEntry songEntry)
